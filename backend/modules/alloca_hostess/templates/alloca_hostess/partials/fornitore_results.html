@@ -1,0 +1,7 @@
+{% for f in fornitori %}
+<div class="fornitore-item" data-id="{{ f.codice }}" data-nome="{{ f.nome }}">
+    {{ f.codice }} - {{ f.nome|truncatechars:40 }}
+</div>
+{% empty %}
+<div class="p-2 text-muted">Nessun risultato</div>
+{% endfor %}

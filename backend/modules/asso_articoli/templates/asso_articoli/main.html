@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assortimenti - Gestione Articoli</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f5f7fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .header-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem 0;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .filter-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            margin-bottom: 2rem;
+        }
+        .table-container {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        .table {
+            margin-bottom: 0;
+        }
+        .table thead th {
+            background-color: #667eea;
+            color: white;
+            border: none;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            padding: 1rem 0.75rem;
+        }
+        .table tbody tr {
+            transition: background-color 0.2s;
+        }
+        .table tbody tr:hover {
+            background-color: #f8f9fa;
+        }
+        .barcode-cell {
+            padding: 0.5rem;
+            text-align: center;
+        }
+        .barcode-cell svg {
+            max-width: 120px;
+            height: auto;
+        }
+        .badge-stato {
+            padding: 0.35rem 0.75rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .btn-export {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: white;
+            font-weight: 600;
+            padding: 0.75rem 2rem;
+            border-radius: 8px;
+            transition: transform 0.2s;
+        }
+        .btn-export:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            color: white;
+        }
+        .stats-badge {
+            background: #e3f2fd;
+            color: #1976d2;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-weight: 600;
+        }
+        .form-control, .form-select {
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+        }
+        .form-control:focus, .form-select:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header-section">
+        <div class="container">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="mb-2">
+                        <span class="material-icons" style="vertical-align: middle; font-size: 2rem;">inventory_2</span>
+                        Gestione Assortimenti
+                    </h1>
+                    <p class="mb-0 opacity-75">Visualizzazione e export articoli per CCOM</p>
+                </div>
+                <div>
+                    <span class="stats-badge">
+                        <span class="material-icons" style="vertical-align: middle; font-size: 1.2rem;">list_alt</span>
+                        {{ total_count }} articoli
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Filtri -->
+        <div class="filter-card">
+            <form method="GET" id="filterForm">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-4">
+                        <label for="ccom" class="form-label fw-semibold">
+                            <span class="material-icons" style="vertical-align: middle; font-size: 1.2rem;">business</span>
+                            Codice Commerciale (CCOM)
+                        </label>
+                        <select name="ccom" id="ccom" class="form-select">
+                            <option value="">-- Tutti i CCOM --</option>
+                            {% for ccom in ccom_list %}
+                            <option value="{{ ccom.ccom }}" {% if selected_ccom == ccom.ccom %}selected{% endif %}>
+                                {{ ccom.ccom }} - {{ ccom.descrccom }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-3">
+                        <label for="search" class="form-label fw-semibold">
+                            <span class="material-icons" style="vertical-align: middle; font-size: 1.2rem;">search</span>
+                            Cerca
+                        </label>
+                        <input type="text" name="search" id="search" class="form-control" 
+                               placeholder="Codice, descrizione, EAN..." value="{{ search_query }}">
+                    </div>
+                    
+                    <div class="col-md-2">
+                        <div class="form-check mt-4">
+                            <input class="form-check-input" type="checkbox" name="linea1" value="1" 
+                                   id="linea1" {% if linea1_checked %}checked{% endif %}>
+                            <label class="form-check-label fw-semibold" for="linea1">
+                                Fornitore Principale
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-3">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <span class="material-icons" style="vertical-align: middle;">filter_alt</span>
+                            Applica Filtri
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- Azioni -->
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                {% if selected_ccom %}
+                <span class="badge bg-primary">CCOM: {{ selected_ccom }}</span>
+                {% endif %}
+                {% if search_query %}
+                <span class="badge bg-info">Ricerca: {{ search_query }}</span>
+                {% endif %}
+            </div>
+            <div>
+                <a href="{% url 'asso_articoli:export_excel' %}?{{ request.GET.urlencode }}" 
+                   class="btn btn-export">
+                    <span class="material-icons" style="vertical-align: middle;">file_download</span>
+                    Export Excel
+                </a>
+            </div>
+        </div>
+
+        <!-- Tabella Articoli -->
+        <div class="table-container">
+            {% if articoli %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Codice</th>
+                            <th>Descrizione</th>
+                            <th>Famiglia</th>
+                            <th>CCOM</th>
+                            <th>EAN</th>
+                            <th>Barcode</th>
+                            <th class="text-end">Giac. PDV</th>
+                            <th class="text-end">Giac. Dep</th>
+                            <th>Stato</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for articolo in articoli %}
+                        <tr>
+                            <td class="fw-semibold">{{ articolo.codart }}</td>
+                            <td>{{ articolo.descrart|truncatechars:50 }}</td>
+                            <td>
+                                <small class="text-muted">{{ articolo.fam }}</small><br>
+                                <small>{{ articolo.descrfam|truncatechars:30 }}</small>
+                            </td>
+                            <td>
+                                <small class="text-muted">{{ articolo.ccom }}</small><br>
+                                <small>{{ articolo.descrccom|truncatechars:30 }}</small>
+                            </td>
+                            <td><code>{{ articolo.ean }}</code></td>
+                            <td class="barcode-cell">
+                                {% if articolo.barcode_svg %}
+                                    {{ articolo.barcode_svg|safe }}
+                                {% else %}
+                                    <small class="text-muted">N/D</small>
+                                {% endif %}
+                            </td>
+                            <td class="text-end">
+                                <span class="badge bg-success">{{ articolo.giacenza_pdv|floatformat:2 }}</span>
+                            </td>
+                            <td class="text-end">
+                                <span class="badge bg-info">{{ articolo.giacenza_deposito|floatformat:2 }}</span>
+                            </td>
+                            <td>
+                                {% if articolo.stato == 'A' %}
+                                    <span class="badge bg-success badge-stato">Attivo</span>
+                                {% elif articolo.stato == 'F' %}
+                                    <span class="badge bg-warning badge-stato">Fuori Prod.</span>
+                                {% else %}
+                                    <span class="badge bg-secondary badge-stato">{{ articolo.stato }}</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            {% if total_count >= 100 %}
+            <div class="alert alert-info mt-3">
+                <span class="material-icons" style="vertical-align: middle;">info</span>
+                Visualizzati i primi 100 risultati. Usa i filtri per raffinare la ricerca.
+            </div>
+            {% endif %}
+            
+            {% else %}
+            <div class="text-center py-5">
+                <span class="material-icons" style="font-size: 4rem; color: #ccc;">search_off</span>
+                <p class="text-muted mt-3">Nessun articolo trovato con i filtri selezionati.</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Report Links -->
+        <div class="row mt-4 mb-5">
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <span class="material-icons" style="font-size: 3rem; color: #667eea;">inventory</span>
+                        <h5 class="card-title mt-2">Report Inventario</h5>
+                        <p class="card-text text-muted">Stampa inventario completo con barcode</p>
+                        <a href="{% url 'asso_articoli:report_inventario' %}" class="btn btn-outline-primary">
+                            Visualizza
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <span class="material-icons" style="font-size: 3rem; color: #764ba2;">local_bar</span>
+                        <h5 class="card-title mt-2">Report BAR</h5>
+                        <p class="card-text text-muted">Articoli specifici reparto BAR</p>
+                        <a href="{% url 'asso_articoli:report_reparto' tipo='bar' %}" class="btn btn-outline-primary">
+                            Visualizza
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <span class="material-icons" style="font-size: 3rem; color: #e91e63;">restaurant</span>
+                        <h5 class="card-title mt-2">Report MACELLERIA</h5>
+                        <p class="card-text text-muted">Articoli specifici reparto MACELLERIA</p>
+                        <a href="{% url 'asso_articoli:report_reparto' tipo='macelleria' %}" class="btn btn-outline-primary">
+                            Visualizza
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

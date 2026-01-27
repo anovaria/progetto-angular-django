@@ -1,0 +1,24 @@
+{% extends "pallet_promoter/base.html" %}
+
+{% block title %}Planning Hostess - Pallet-Promoter{% endblock %}
+
+{% block content %}
+<h4 class="mb-4">
+    <span class="material-icons" style="vertical-align: middle;">people</span>
+    Planning Hostess
+</h4>
+
+<div class="alert alert-warning">
+    <span class="material-icons" style="vertical-align: middle;">event_busy</span>
+    <strong>Nessun periodo attivo oggi.</strong>
+    <p class="mb-0 mt-2">
+        Non c'è nessun periodo promozionale attivo per la data odierna.
+        Il planning hostess sarà disponibile quando inizierà un nuovo periodo.
+    </p>
+</div>
+
+<a href="{% url 'pallet_promoter:pallet_list' %}" class="btn btn-primary">
+    <span class="material-icons" style="vertical-align: middle;">calendar_today</span>
+    Vai ai Periodi
+</a>
+{% endblock %}

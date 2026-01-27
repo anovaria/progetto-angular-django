@@ -1,0 +1,249 @@
+{% extends "merchandiser/base_minimal.html" %}
+{% load merch_tags %}
+
+{% block title %}Registrazione Orari - Punto Info{% endblock %}
+
+{% block extra_css %}
+<style>
+    .date-selector {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+    
+    .date-selector h5 {
+        margin: 0;
+    }
+    
+    .orari-grid {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        overflow: hidden;
+    }
+    
+    .orari-table {
+        width: 100%;
+        margin: 0;
+    }
+    
+    .orari-table th {
+        background: #ff5722;
+        color: white;
+        padding: 12px 8px;
+        text-align: center;
+        font-weight: 600;
+    }
+    
+    .orari-table th:first-child {
+        text-align: left;
+        padding-left: 15px;
+    }
+    
+    .orari-table td {
+        padding: 8px;
+        border-bottom: 1px solid #eee;
+        text-align: center;
+        vertical-align: middle;
+    }
+    
+    .orari-table td:first-child {
+        text-align: left;
+        padding-left: 15px;
+    }
+    
+    .orari-table tr:hover {
+        background: #fff8f6;
+    }
+    
+    .orari-table input[type="time"] {
+        width: 85px;
+        padding: 5px 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 0.9em;
+    }
+    
+    .orari-table input[type="time"]:focus {
+        border-color: #ff5722;
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(255,87,34,0.2);
+    }
+    
+    .merchandiser-name {
+        font-weight: 600;
+    }
+    
+    .referente-name {
+        font-size: 0.85em;
+        color: #666;
+    }
+    
+    .ore-cell {
+        font-weight: bold;
+        color: #4caf50;
+        min-width: 60px;
+    }
+    
+    .btn-salva-riga {
+        padding: 4px 10px;
+    }
+    
+    .nav-day {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .nav-day .btn {
+        padding: 8px 15px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Selettore data -->
+<div class="date-selector">
+    <div class="nav-day">
+        <a href="?data={{ data_prec|date:'Y-m-d' }}" class="btn btn-outline-primary">
+            <span class="material-icons">chevron_left</span>
+        </a>
+        <h5>
+            <span class="material-icons" style="vertical-align: middle;">calendar_today</span>
+            {{ data|date:"l d F Y" }}
+        </h5>
+        <a href="?data={{ data_succ|date:'Y-m-d' }}" class="btn btn-outline-primary">
+            <span class="material-icons">chevron_right</span>
+        </a>
+    </div>
+    
+    <input type="date" class="form-control" style="width: auto;" 
+           value="{{ data|date:'Y-m-d' }}"
+           onchange="window.location.href='?data=' + this.value">
+</div>
+
+<!-- Griglia orari -->
+<div class="orari-grid">
+    <table class="orari-table">
+        <thead>
+            <tr>
+                <th>Merchandiser</th>
+                <th>I.1</th>
+                <th>U.1</th>
+                <th>I.2</th>
+                <th>U.2</th>
+                <th>I.Extra</th>
+                <th>U.Extra</th>
+                <th>Ore</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in slot_orari %}
+            <tr data-slot="{{ item.slot.id }}" data-data="{{ data|date:'Y-m-d' }}">
+                <td>
+                    <div class="merchandiser-name">{{ item.slot.merchandiser.nominativo }}</div>
+                    <div class="referente-name">Ref: {{ item.slot.utente.nominativo|default:"-" }}</div>
+                </td>
+                <td>
+                    <input type="time" name="ingresso_1" 
+                           value="{% if item.ingresso.ingresso_1 %}{{ item.ingresso.ingresso_1|time:'H:i' }}{% endif %}">
+                </td>
+                <td>
+                    <input type="time" name="uscita_1" 
+                           value="{% if item.ingresso.uscita_1 %}{{ item.ingresso.uscita_1|time:'H:i' }}{% endif %}">
+                </td>
+                <td>
+                    <input type="time" name="ingresso_2" 
+                           value="{% if item.ingresso.ingresso_2 %}{{ item.ingresso.ingresso_2|time:'H:i' }}{% endif %}">
+                </td>
+                <td>
+                    <input type="time" name="uscita_2" 
+                           value="{% if item.ingresso.uscita_2 %}{{ item.ingresso.uscita_2|time:'H:i' }}{% endif %}">
+                </td>
+                <td>
+                    <input type="time" name="ingresso_extra" 
+                           value="{% if item.ingresso.ingresso_extra %}{{ item.ingresso.ingresso_extra|time:'H:i' }}{% endif %}">
+                </td>
+                <td>
+                    <input type="time" name="uscita_extra" 
+                           value="{% if item.ingresso.uscita_extra %}{{ item.ingresso.uscita_extra|time:'H:i' }}{% endif %}">
+                </td>
+                <td class="ore-cell">
+                    <span class="ore-value">{{ item.ingresso.ore_lavorate|default:"0" }}</span>
+                </td>
+                <td>
+                    <button type="button" class="btn btn-sm btn-success btn-salva-riga" onclick="salvaRiga(this)">
+                        <span class="material-icons" style="font-size: 16px;">save</span>
+                    </button>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="9" class="text-center text-muted py-4">
+                    Nessuno slot attivo per questa data
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="mt-3 text-muted">
+    <span class="material-icons" style="font-size: 16px; vertical-align: middle;">info</span>
+    Slot attivi: {{ slot_orari|length }}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function salvaRiga(btn) {
+    const row = btn.closest('tr');
+    const slotId = row.dataset.slot;
+    const data = row.dataset.data;
+    
+    const formData = new FormData();
+    formData.append('slot_id', slotId);
+    formData.append('data', data);
+    formData.append('ingresso_1', row.querySelector('[name="ingresso_1"]').value);
+    formData.append('uscita_1', row.querySelector('[name="uscita_1"]').value);
+    formData.append('ingresso_2', row.querySelector('[name="ingresso_2"]').value);
+    formData.append('uscita_2', row.querySelector('[name="uscita_2"]').value);
+    formData.append('ingresso_extra', row.querySelector('[name="ingresso_extra"]').value);
+    formData.append('uscita_extra', row.querySelector('[name="uscita_extra"]').value);
+    formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+    
+    btn.disabled = true;
+    const originalHtml = btn.innerHTML;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+    
+    fetch("{% url 'merchandiser:salva_orario' %}", {
+        method: 'POST',
+        body: formData
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            row.querySelector('.ore-value').textContent = data.ore_lavorate;
+            btn.innerHTML = '<span class="material-icons" style="font-size: 16px;">check</span>';
+            setTimeout(() => {
+                btn.innerHTML = originalHtml;
+                btn.disabled = false;
+            }, 1500);
+        }
+    })
+    .catch(err => {
+        btn.innerHTML = '<span class="material-icons" style="font-size: 16px;">error</span>';
+        setTimeout(() => {
+            btn.innerHTML = originalHtml;
+            btn.disabled = false;
+        }, 1500);
+    });
+}
+</script>
+{% endblock %}

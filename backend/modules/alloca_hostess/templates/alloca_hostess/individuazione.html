@@ -1,0 +1,559 @@
+{% extends "alloca_hostess/base.html" %}
+{% load alloca_tags %}
+
+{% block title %}Individuazione Hostess - Alloca Hostess{% endblock %}
+
+{% block extra_css %}
+<style>
+    .header-info {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+    
+    .periodo-info {
+        display: flex;
+        gap: 20px;
+        align-items: center;
+    }
+    
+    .periodo-info .badge {
+        font-size: 1.1em;
+        padding: 8px 16px;
+    }
+    
+    .day-navigator {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: white;
+        padding: 10px 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 20px;
+    }
+    
+    .day-navigator .btn {
+        padding: 5px 15px;
+    }
+    
+    .day-navigator h5 {
+        margin: 0;
+        min-width: 250px;
+        text-align: center;
+    }
+    
+    .slots-container {
+        display: flex;
+        gap: 10px;
+        overflow-x: auto;
+        padding-bottom: 10px;
+    }
+    
+    .slot-card {
+        min-width: 180px;
+        max-width: 180px;
+        background: white;
+        border: 2px solid #ddd;
+        border-radius: 8px;
+        padding: 10px;
+        flex-shrink: 0;
+    }
+    
+    .slot-card.has-data {
+        border-color: #9c27b0;
+        background: #fdf5ff;
+    }
+    
+    .slot-header {
+        background: #9c27b0;
+        color: white;
+        margin: -10px -10px 10px -10px;
+        padding: 8px;
+        border-radius: 6px 6px 0 0;
+        font-weight: bold;
+        text-align: center;
+    }
+    
+    .slot-card.has-data .slot-header {
+        background: #7b1fa2;
+    }
+    
+    .slot-field {
+        margin-bottom: 8px;
+    }
+    
+    .slot-field label {
+        display: block;
+        font-size: 0.75em;
+        color: #666;
+        margin-bottom: 2px;
+    }
+    
+    .slot-field input,
+    .slot-field select {
+        width: 100%;
+        padding: 4px 6px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 0.85em;
+    }
+    
+    .slot-field input:focus,
+    .slot-field select:focus {
+        border-color: #9c27b0;
+        outline: none;
+    }
+    
+    .slot-field.time-fields {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 5px;
+    }
+    
+    .slot-field.time-fields label {
+        grid-column: span 2;
+    }
+    
+    .slot-field input[type="time"] {
+        padding: 2px 4px;
+    }
+    
+    .fornitore-search-mini {
+        position: relative;
+    }
+    
+    .fornitore-search-mini input {
+        font-size: 0.8em;
+    }
+    
+    .fornitore-results-mini {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        max-height: 150px;
+        overflow-y: auto;
+        z-index: 1000;
+        display: none;
+        font-size: 0.8em;
+    }
+    
+    .fornitore-results-mini.show {
+        display: block;
+    }
+    
+    .fornitore-item {
+        padding: 5px 8px;
+        cursor: pointer;
+        border-bottom: 1px solid #eee;
+    }
+    
+    .fornitore-item:hover {
+        background: #f3e5f5;
+    }
+    
+    .selected-fornitore {
+        font-size: 0.75em;
+        background: #f3e5f5;
+        padding: 3px 6px;
+        border-radius: 3px;
+        margin-top: 3px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .selected-fornitore .remove {
+        cursor: pointer;
+        color: #f44336;
+        font-weight: bold;
+    }
+    
+    .storico-container {
+        margin-top: 20px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        overflow: hidden;
+    }
+    
+    .storico-header {
+        background: #f5f5f5;
+        padding: 10px 15px;
+        font-weight: bold;
+        border-bottom: 1px solid #ddd;
+    }
+    
+    .storico-table {
+        width: 100%;
+        font-size: 0.85em;
+    }
+    
+    .storico-table th {
+        background: #fafafa;
+        padding: 8px;
+        text-align: left;
+        font-weight: 600;
+        border-bottom: 1px solid #ddd;
+        position: sticky;
+        top: 0;
+    }
+    
+    .storico-table td {
+        padding: 6px 8px;
+        border-bottom: 1px solid #eee;
+    }
+    
+    .storico-table tr:hover {
+        background: #f8f9fa;
+    }
+    
+    .storico-table tr.current-day {
+        background: #f3e5f5;
+    }
+    
+    .storico-table .day-link {
+        color: #9c27b0;
+        text-decoration: none;
+        font-weight: 500;
+    }
+    
+    .storico-table .day-link:hover {
+        text-decoration: underline;
+    }
+    
+    .storico-scroll {
+        max-height: 300px;
+        overflow-y: auto;
+    }
+    
+    .save-bar {
+        position: sticky;
+        bottom: 0;
+        background: white;
+        padding: 15px;
+        border-top: 2px solid #9c27b0;
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        margin-top: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="header-info">
+    <h4 class="mb-0">
+        <span class="material-icons" style="vertical-align: middle;">event_available</span>
+        Individuazione Hostess
+    </h4>
+    <div class="periodo-info">
+        <span class="badge bg-primary">Periodo: {{ periodo.id }}</span>
+        <span class="badge bg-info">NHostess: {{ periodo.num_hostess }}</span>
+    </div>
+</div>
+
+<!-- Navigazione giorno -->
+<div class="day-navigator">
+    {% if giorno_prec %}
+    <a href="?periodo={{ periodo.id }}&giorno={{ giorno_prec|date:'Y-m-d' }}" class="btn btn-outline-primary">
+        <span class="material-icons">chevron_left</span>
+    </a>
+    {% else %}
+    <button class="btn btn-outline-secondary" disabled>
+        <span class="material-icons">chevron_left</span>
+    </button>
+    {% endif %}
+    
+    <h5>
+        <span class="material-icons" style="vertical-align: middle;">calendar_today</span>
+        {{ giorno|date:"l d F Y" }}
+    </h5>
+    
+    {% if giorno_succ %}
+    <a href="?periodo={{ periodo.id }}&giorno={{ giorno_succ|date:'Y-m-d' }}" class="btn btn-outline-primary">
+        <span class="material-icons">chevron_right</span>
+    </a>
+    {% else %}
+    <button class="btn btn-outline-secondary" disabled>
+        <span class="material-icons">chevron_right</span>
+    </button>
+    {% endif %}
+    
+    <input type="date" class="form-control ms-3" style="width: auto;" 
+           value="{{ giorno|date:'Y-m-d' }}"
+           min="{{ periodo.data_inizio|date:'Y-m-d' }}"
+           max="{{ periodo.data_fine|date:'Y-m-d' }}"
+           onchange="window.location.href='?periodo={{ periodo.id }}&giorno=' + this.value">
+</div>
+
+<!-- Slot Hostess -->
+<form id="form-presenze" data-giorno="{{ giorno|date:'Y-m-d' }}">
+{% csrf_token %}
+<div class="slots-container">
+    {% for slot in slots %}
+    {% with presenza=presenze|get_item:slot %}
+    <div class="slot-card {% if presenza.hostess %}has-data{% endif %}" data-slot="{{ slot }}">
+        <div class="slot-header">Slot {{ slot }}</div>
+        
+        <!-- Fornitore -->
+        <div class="slot-field">
+            <label>Fornitore</label>
+            <div class="fornitore-search-mini">
+                <input type="text" placeholder="Cerca..." 
+                       class="fornitore-search-input"
+                       data-slot="{{ slot }}"
+                       autocomplete="off">
+                <div class="fornitore-results-mini"></div>
+            </div>
+            <input type="hidden" name="fornitore_id_{{ slot }}" 
+                   value="{% if presenza.fornitore %}{{ presenza.fornitore.codice }}{% endif %}">
+            {% if presenza.fornitore %}
+            <div class="selected-fornitore" id="sel-forn-{{ slot }}">
+                <span>{{ presenza.fornitore.nome|truncatechars:25 }}</span>
+                <span class="remove" onclick="clearFornitoreSlot({{ slot }})">&times;</span>
+            </div>
+            {% else %}
+            <div class="selected-fornitore" id="sel-forn-{{ slot }}" style="display:none;"></div>
+            {% endif %}
+        </div>
+        
+        <!-- Nota Fornitore -->
+        <div class="slot-field">
+            <label>Nota</label>
+            <input type="text" name="nota_fornitore_{{ slot }}" 
+                   value="{{ presenza.nota_fornitore|default:'' }}">
+        </div>
+        
+        <!-- Hostess -->
+        <div class="slot-field">
+            <label>Hostess</label>
+            <select name="hostess_id_{{ slot }}">
+                <option value="">-- Seleziona --</option>
+                {% for h in hostess_list %}
+                <option value="{{ h.id }}" {% if presenza.hostess and presenza.hostess.id == h.id %}selected{% endif %}>
+                    {{ h.nominativo }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <!-- Agenzia -->
+        <div class="slot-field">
+            <label>Agenzia</label>
+            <select name="agenzia_id_{{ slot }}">
+                <option value="">-- Seleziona --</option>
+                {% for a in agenzie_list %}
+                <option value="{{ a.id }}" {% if presenza.agenzia and presenza.agenzia.id == a.id %}selected{% endif %}>
+                    {{ a.descrizione|truncatechars:20 }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <!-- Orari Mattino -->
+        <div class="slot-field time-fields">
+            <label>Mattino</label>
+            <input type="time" name="ingresso_mattino_{{ slot }}" 
+                   value="{% if presenza.ingresso_mattino %}{{ presenza.ingresso_mattino|time:'H:i' }}{% endif %}"
+                   placeholder="Ingr.">
+            <input type="time" name="uscita_mattino_{{ slot }}" 
+                   value="{% if presenza.uscita_mattino %}{{ presenza.uscita_mattino|time:'H:i' }}{% endif %}"
+                   placeholder="Usc.">
+        </div>
+        
+        <!-- Orari Pomeriggio -->
+        <div class="slot-field time-fields">
+            <label>Pomeriggio</label>
+            <input type="time" name="ingresso_pomeriggio_{{ slot }}" 
+                   value="{% if presenza.ingresso_pomeriggio %}{{ presenza.ingresso_pomeriggio|time:'H:i' }}{% endif %}"
+                   placeholder="Ingr.">
+            <input type="time" name="uscita_pomeriggio_{{ slot }}" 
+                   value="{% if presenza.uscita_pomeriggio %}{{ presenza.uscita_pomeriggio|time:'H:i' }}{% endif %}"
+                   placeholder="Usc.">
+        </div>
+        
+        <!-- Varie -->
+        <div class="slot-field">
+            <label>Varie</label>
+            <input type="text" name="varie_{{ slot }}" 
+                   value="{{ presenza.nota|default:'' }}">
+        </div>
+    </div>
+    {% endwith %}
+    {% endfor %}
+</div>
+</form>
+
+<!-- Barra salvataggio -->
+<div class="save-bar">
+    <button type="button" class="btn btn-secondary" onclick="location.reload()">
+        <span class="material-icons" style="vertical-align: middle;">refresh</span>
+        Annulla
+    </button>
+    <button type="button" class="btn btn-primary" id="btn-salva-tutto" onclick="salvaTutto()">
+        <span class="material-icons" style="vertical-align: middle;">save</span>
+        Salva Tutto
+    </button>
+</div>
+
+<!-- Storico giorni -->
+<div class="storico-container">
+    <div class="storico-header">
+        <span class="material-icons" style="vertical-align: middle;">history</span>
+        Riepilogo Periodo
+    </div>
+    <div class="storico-scroll">
+        <table class="storico-table">
+            <thead>
+                <tr>
+                    <th>Giorno</th>
+                    {% for s in slots %}
+                    <th>Slot {{ s }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for g in giorni_periodo %}
+                <tr class="{% if g.data == giorno %}current-day{% endif %}">
+                    <td>
+                        <a href="?periodo={{ periodo.id }}&giorno={{ g.data|date:'Y-m-d' }}" class="day-link">
+                            {{ g.data|date:"D d/m" }}
+                        </a>
+                    </td>
+                    {% for s in slots %}
+                    <td>
+                        {% for p in g.presenze %}
+                            {% if p.slot == s and p.hostess %}
+                                {{ p.hostess.nominativo|truncatechars:15 }}
+                            {% endif %}
+                        {% endfor %}
+                    </td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Ricerca fornitore
+document.querySelectorAll('.fornitore-search-input').forEach(input => {
+    let timeout;
+    const slot = input.dataset.slot;
+    const resultsDiv = input.nextElementSibling;
+    
+    input.addEventListener('keyup', function() {
+        clearTimeout(timeout);
+        const q = this.value;
+        
+        if (q.length < 2) {
+            resultsDiv.innerHTML = '';
+            resultsDiv.classList.remove('show');
+            return;
+        }
+        
+        timeout = setTimeout(() => {
+            fetch(`{% url 'alloca_hostess:cerca_fornitore' %}?q=${encodeURIComponent(q)}`)
+                .then(r => r.text())
+                .then(html => {
+                    resultsDiv.innerHTML = html;
+                    resultsDiv.classList.add('show');
+                });
+        }, 300);
+    });
+    
+    resultsDiv.addEventListener('click', function(e) {
+        const item = e.target.closest('.fornitore-item');
+        if (item) {
+            const id = item.dataset.id;
+            const nome = item.dataset.nome;
+            
+            document.querySelector(`input[name="fornitore_id_${slot}"]`).value = id;
+            const selDiv = document.getElementById(`sel-forn-${slot}`);
+            selDiv.innerHTML = `<span>${nome.substring(0, 25)}</span><span class="remove" onclick="clearFornitoreSlot(${slot})">&times;</span>`;
+            selDiv.style.display = 'flex';
+            
+            input.value = '';
+            resultsDiv.classList.remove('show');
+        }
+    });
+});
+
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.fornitore-search-mini')) {
+        document.querySelectorAll('.fornitore-results-mini').forEach(d => d.classList.remove('show'));
+    }
+});
+
+function clearFornitoreSlot(slot) {
+    document.querySelector(`input[name="fornitore_id_${slot}"]`).value = '';
+    document.getElementById(`sel-forn-${slot}`).style.display = 'none';
+}
+
+function salvaTutto() {
+    const btn = document.getElementById('btn-salva-tutto');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Salvataggio...';
+    
+    const form = document.getElementById('form-presenze');
+    const giorno = form.dataset.giorno;
+    const slots = document.querySelectorAll('.slot-card');
+    
+    const presenze = [];
+    slots.forEach(card => {
+        const slot = card.dataset.slot;
+        presenze.push({
+            slot: slot,
+            fornitore_id: form.querySelector(`input[name="fornitore_id_${slot}"]`).value || null,
+            nota_fornitore: form.querySelector(`input[name="nota_fornitore_${slot}"]`).value || '',
+            hostess_id: form.querySelector(`select[name="hostess_id_${slot}"]`).value || null,
+            agenzia_id: form.querySelector(`select[name="agenzia_id_${slot}"]`).value || null,
+            ingresso_mattino: form.querySelector(`input[name="ingresso_mattino_${slot}"]`).value || null,
+            uscita_mattino: form.querySelector(`input[name="uscita_mattino_${slot}"]`).value || null,
+            ingresso_pomeriggio: form.querySelector(`input[name="ingresso_pomeriggio_${slot}"]`).value || null,
+            uscita_pomeriggio: form.querySelector(`input[name="uscita_pomeriggio_${slot}"]`).value || null,
+            varie: form.querySelector(`input[name="varie_${slot}"]`).value || '',
+        });
+    });
+    
+    fetch("{% url 'alloca_hostess:salva_presenze' %}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': form.querySelector('[name="csrfmiddlewaretoken"]').value
+        },
+        body: JSON.stringify({
+            giorno: giorno,
+            presenze: presenze
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            btn.innerHTML = '<span class="material-icons" style="vertical-align: middle;">check</span> Salvato!';
+            btn.classList.remove('btn-primary');
+            btn.classList.add('btn-success');
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            alert('Errore durante il salvataggio');
+            btn.disabled = false;
+            btn.innerHTML = '<span class="material-icons" style="vertical-align: middle;">save</span> Salva Tutto';
+        }
+    })
+    .catch(err => {
+        alert('Errore di connessione');
+        btn.disabled = false;
+        btn.innerHTML = '<span class="material-icons" style="vertical-align: middle;">save</span> Salva Tutto';
+    });
+}
+</script>
+{% endblock %}

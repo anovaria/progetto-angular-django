@@ -1,0 +1,19 @@
+{% extends 'importelab/base.html' %}
+{% block content %}
+
+<h2>Elimina import</h2>
+
+<p>Stai per eliminare il file <strong>{{ batch.filename }}</strong>, caricato il
+   {{ batch.uploaded_at|date:"d/m/Y H:i" }}.</p>
+
+<p>Questo eliminerà anche <strong>{{ rows_count }}</strong> righe associate.</p>
+
+<form method="post" style="margin-top: 1.5rem;">
+  {% csrf_token %}
+  <button type="submit" style="background:#c0392b; color:white; padding:.5rem 1rem; border:none; cursor:pointer;">
+    Sì, elimina definitivamente
+  </button>
+  <a href="{% url 'importelab:dashboard' %}" style="margin-left:1rem;">Annulla</a>
+</form>
+
+{% endblock %}

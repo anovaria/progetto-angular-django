@@ -1,0 +1,34 @@
+.login-card {
+  max-width: 400px;
+  margin: 5rem auto;
+  padding: 1.5rem;
+  text-align: center;
+}
+
+.title {
+  font-size: 1.4rem;
+  font-weight: 500;
+  margin-bottom: 1rem;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+
+.full-width {
+  width: 100%;
+}
+
+.actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 0.5rem;
+}
+
+.error {
+  color: #d32f2f;
+  font-weight: 500;
+  margin-top: 1rem;
+}

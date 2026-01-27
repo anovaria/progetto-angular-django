@@ -1,0 +1,23 @@
+<div class="login-test-container">
+    <h3>🧪 Test Login API Django (LDAP)</h3>
+
+    <form (ngSubmit)="onLoginTest()">
+        <div>
+            <label for="username">Username:</label>
+            <input id="username" type="text" [(ngModel)]="credentials.username" name="username" autocomplete="username"
+                required>
+        </div>
+        <div>
+            <label for="password">Password:</label>
+            <input id="password" type="password" [(ngModel)]="credentials.password" name="password"
+                autocomplete="current-password" required>
+        </div>
+        <button type="submit">Test Login</button>
+    </form>
+
+    <hr>
+
+    <div [ngClass]="{'result-success': !isError, 'result-error': isError}">
+        <strong>Stato:</strong> {{ message }}
+    </div>
+</div>

@@ -1,0 +1,18 @@
+{% extends "welfare/base.html" %}
+{% block title %}Accesso Negato{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-body text-center py-5">
+        <span class="material-icons text-danger" style="font-size:80px">lock</span>
+        <h3 class="mt-4">Accesso Negato</h3>
+        <p class="text-muted fs-5">
+            {{ messaggio|default:"Non hai i permessi per accedere a questa sezione." }}
+        </p>
+        <a href="{% url 'welfare:dashboard' %}" class="btn btn-welfare mt-3">
+            <span class="material-icons align-middle me-1">home</span>
+            Torna alla Dashboard
+        </a>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,58 @@
+{
+  "name": "portale-frontend",
+  "version": "1.0.0",
+  "scripts": {
+    "ng": "ng",
+    "start": "ng serve --proxy-config proxy.conf.json -o",
+    "stop-django": "powershell -Command \"Write-Host '[INFO] Verifica istanze Django...' -ForegroundColor Cyan\"",
+    "backend": "npm run stop-django && cd ..\\backend && call venv\\Scripts\\activate && set DJANGO_SETTINGS_MODULE=project_core.settings.dev && echo [DJANGO] Avvio Django su 127.0.0.1:8002... && python manage.py runserver 127.0.0.1:8002 --settings=project_core.settings.dev",
+    "dev": "concurrently --kill-others-on-fail --names \"🐍DJANGO,⚡ANGULAR\" --prefix-colors \"blue.bold,green.bold\" \"npm run backend\" \"npm start\"",
+    "build": "ng build",
+    "build:test": "ng build --configuration=test",
+    "build:prod": "ng build --configuration=production",
+    "test": "ng test",
+    "lint": "ng lint"
+  },
+  "prettier": {
+    "printWidth": 100,
+    "singleQuote": true,
+    "overrides": [
+      {
+        "files": "*.html",
+        "options": {
+          "parser": "angular"
+        }
+      }
+    ]
+  },
+  "private": true,
+  "dependencies": {
+    "@angular/animations": "^21.0.5",
+    "@angular/cdk": "^21.0.3",
+    "@angular/common": "^21.0.5",
+    "@angular/compiler": "^21.0.5",
+    "@angular/core": "^21.0.5",
+    "@angular/forms": "^21.0.5",
+    "@angular/material": "^21.0.3",
+    "@angular/platform-browser": "^21.0.5",
+    "@angular/platform-browser-dynamic": "^21.0.5",
+    "@angular/router": "^21.0.5",
+    "exceljs": "^4.4.0",
+    "file-saver": "^2.0.5",
+    "jsbarcode": "^3.12.1",
+    "rxjs": "~7.8.0",
+    "tslib": "^2.8.0",
+    "xlsx-js-style": "^1.2.0",
+    "zone.js": "~0.15.0"
+  },
+  "devDependencies": {
+    "@angular/build": "^21.0.3",
+    "@angular/cli": "^21.0.3",
+    "@angular/compiler-cli": "^21.0.5",
+    "@types/exceljs": "^0.5.3",
+    "@types/file-saver": "^2.0.7",
+    "@types/jsbarcode": "^3.11.4",
+    "concurrently": "^9.2.1",
+    "typescript": "~5.9.0"
+  }
+}

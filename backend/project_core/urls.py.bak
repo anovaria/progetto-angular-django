@@ -1,0 +1,14 @@
+from django.contrib import admin
+from django.urls import path, include
+from django.http import HttpResponse
+
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    path('api/auth/', include('modules.auth.urls')),
+    path('api/util/', include('modules.util.urls')),
+    path('api/', include('modules.plu.urls')),
+    path('api/test/', lambda r: HttpResponse("OK")),
+    
+    # Dashboard per iframe embedding
+    path('dashboard/', include('modules.dashboard.urls')),
+]

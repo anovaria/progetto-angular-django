@@ -1,0 +1,65 @@
+{% extends "merchandiser/base.html" %}
+
+{% block title %}Utenti - Merchandiser{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="mb-0">
+        <span class="material-icons" style="vertical-align: middle;">people</span>
+        Elenco Utenti (Referenti)
+    </h4>
+    <div class="form-check form-switch">
+        <input class="form-check-input" type="checkbox" id="filtroAttivi" 
+               {% if solo_attivi %}checked{% endif %}
+               onchange="window.location.href='?attivi=' + (this.checked ? '1' : '0')">
+        <label class="form-check-label" for="filtroAttivi">Solo attivi</label>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Cognome</th>
+                    <th>Nome</th>
+                    <th>Reparto</th>
+                    <th>Telefono</th>
+                    <th>Email</th>
+                    <th>Stato</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in utenti_list %}
+                <tr>
+                    <td>{{ u.id }}</td>
+                    <td><strong>{{ u.cognome|default:"-" }}</strong></td>
+                    <td>{{ u.nome|default:"-" }}</td>
+                    <td>{{ u.code_reparto|default:"-" }}</td>
+                    <td>{{ u.telefono|default:"-" }}</td>
+                    <td>{{ u.email|default:"-" }}</td>
+                    <td>
+                        {% if u.attivo %}
+                        <span class="badge bg-success">Attivo</span>
+                        {% else %}
+                        <span class="badge bg-secondary">Inattivo</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="text-center text-muted py-4">
+                        Nessun utente trovato
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="mt-3 text-muted">
+    Totale: {{ utenti_list|length }} utenti
+</div>
+{% endblock %}

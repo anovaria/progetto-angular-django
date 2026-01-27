@@ -1,0 +1,22 @@
+{
+    "name": "portale-root",
+    "private": true,
+    "scripts": {
+        "dev": "npm run dev --prefix frontend",
+        "start": "npm run dev",
+        "backend": "npm run backend --prefix frontend",
+        "frontend": "npm run start --prefix frontend",
+        "deploy:test": "powershell -ExecutionPolicy Bypass -Command \"Start-Process powershell -Verb RunAs -ArgumentList '-ExecutionPolicy Bypass -NoExit -File C:\\portale\\deploy\\deploy-test.ps1'\"",
+        "deploy:prod": "powershell -ExecutionPolicy Bypass -Command \"Start-Process powershell -Verb RunAs -ArgumentList '-ExecutionPolicy Bypass -NoExit -File C:\\portale\\deploy\\deploy-prod.ps1'\"",
+        "sync:backendFromTest": "powershell -ExecutionPolicy Bypass -Command \"Start-Process powershell -Verb RunAs -ArgumentList '-ExecutionPolicy Bypass -NoExit -File C:\\portale\\deploy\\sync-backend-from-test.ps1'\"",
+        "sync:backendFromProd": "powershell -ExecutionPolicy Bypass -Command \"Start-Process powershell -Verb RunAs -ArgumentList '-ExecutionPolicy Bypass -NoExit -File C:\\portale\\deploy\\sync-backend-from-prod.ps1'\"",
+        "frontend:install": "cd frontend && npm install",
+        "frontend:build": "cd frontend && npm run build",
+        "frontend:build:test": "cd frontend && npm run build -- --configuration=test",
+        "frontend:build:prod": "cd frontend && npm run build -- --configuration=production",
+        "security:audit": "powershell -ExecutionPolicy Bypass -Command \"Start-Process powershell -Verb RunAs -ArgumentList '-ExecutionPolicy Bypass -NoExit -File C:\\portale\\deploy\\security-audit.ps1'\""
+    },
+    "devDependencies": {
+        "concurrently": "^9.2.1"
+    }
+}

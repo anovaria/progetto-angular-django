@@ -1,0 +1,30 @@
+{% load pallet_tags %}
+<div class="testata-row {% if testata.bloccata %}testata-bloccata{% endif %}"
+     data-testata-id="{{ testata.id }}"
+     data-testata-locazione="{{ testata.locazione }}"
+     data-fornitore-id="{% if assegnazione and assegnazione.fornitore %}{{ assegnazione.fornitore.codice }}{% endif %}"
+     data-fornitore-nome="{% if assegnazione and assegnazione.fornitore %}{{ assegnazione.fornitore.nome }}{% endif %}">
+    <div class="testata-id">
+        {{ testata.id }}
+        {% if testata.bloccata %}
+        <span class="badge bg-danger badge-bloccata">BLOCCATA</span>
+        {% endif %}
+    </div>
+    <div class="testata-locazione">{{ testata.locazione }}</div>
+    <div class="testata-fornitore {% if assegnazione and assegnazione.fornitore %}assegnato{% else %}vuoto{% endif %}">
+        {% if assegnazione and assegnazione.fornitore %}
+        {{ assegnazione.fornitore.nome }}
+        {% else %}
+        — disponibile —
+        {% endif %}
+    </div>
+    <div class="testata-actions">
+        {% if not testata.bloccata %}
+        <button class="btn btn-sm btn-outline-primary btn-assegna-testata"
+                data-bs-toggle="modal" 
+                data-bs-target="#modalTestata">
+            <span class="material-icons" style="font-size: 16px;">edit</span>
+        </button>
+        {% endif %}
+    </div>
+</div>

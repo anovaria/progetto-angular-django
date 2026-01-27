@@ -1,0 +1,44 @@
+{% extends 'importelab/base.html' %}
+{% block content %}
+
+<h2>Invio ordine via Outlook (simulazione)</h2>
+
+<p class="muted">
+  In questa fase il file allegato è fisso: <code>prova_Ordine.ext</code>.<br>
+  La cartella di riferimento è quella configurata in <code>ELAB_SOURCE_DIR</code> (cartella di lavoro).<br>
+  Se il file non esiste, il sistema ne crea uno di test automaticamente.
+</p>
+
+{% if last_batch %}
+  <p style="margin: 0.5rem 0;">
+    <strong>Ultimo batch:</strong> {{ last_batch.filename }} ({{ last_batch.uploaded_at }})<br>
+    <strong>Cartella sorgente configurata:</strong> <code>{{ source_dir }}</code><br>
+    <strong>Cartella batch (server-side):</strong> <code>{{ last_batch.import_dir }}</code><br>
+    <strong>Allegato:</strong> <code>{{ attachment_path }}</code>
+  </p>
+{% endif %}
+
+{% if message %}
+  <div style="padding:0.75rem; border:1px solid #cce5ff; background:#eef7ff; margin:1rem 0;">
+    {{ message }}
+  </div>
+{% endif %}
+
+{% if error %}
+  <div style="padding:0.75rem; border:1px solid #f5c6cb; background:#fff0f1; margin:1rem 0;">
+    <strong>Errore:</strong> {{ error }}
+  </div>
+{% endif %}
+
+<form method="post" style="margin: 1.25rem 0;">
+  {% csrf_token %}
+  <button type="submit" style="padding: 0.6rem 1rem;">
+    Genera file email (.eml) con allegato
+  </button>
+</form>
+
+<p>
+  <a href="{% url 'importelab:dashboard' %}">← Torna alla dashboard</a>
+</p>
+
+{% endblock %}

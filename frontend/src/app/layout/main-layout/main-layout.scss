@@ -1,0 +1,201 @@
+// Header
+.app-header-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 1.5rem;
+  background: linear-gradient(135deg, #d1dae7 0%, #424446 100%);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.logo-container {
+  h1 {
+    margin: 0;
+    line-height: 1;
+
+    img {
+      height: 40px;
+      width: auto;
+    }
+  }
+}
+
+.user-badge {
+  display: inline-flex;
+  align-items: center;
+  background: rgb(245, 243, 243);
+  padding: 0.35rem 0.5rem 0.35rem 0.75rem;
+  border-radius: 24px;
+  font-size: 0.875rem;
+  gap: 8px;
+  color: #054585;
+
+  mat-icon {
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+    color: #80abe0;
+  }
+
+  span {
+    font-weight: 500;
+  }
+
+  .logout-btn {
+    width: 35px;
+    height: 35px;
+    line-height: 35px;
+
+    mat-icon {
+      font-size: 25px;
+      width: 25px;
+      height: 25px;
+      color: #94a3b8;
+      transition: color 0.2s;
+    }
+
+    &:hover mat-icon {
+      color: #0307db;
+    }
+  }
+}
+
+// Layout
+.layout {
+  height: calc(100vh - 56px); // Altezza meno header
+}
+
+.sidebar {
+  width: 250px;
+  background: #fff;
+  border-right: 1px solid #e2e8f0;
+  transition: width 0.3s ease;
+
+  &.collapsed {
+    width: 64px;
+  }
+}
+
+.sidebar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.sidebar-title {
+  font-weight: 600;
+  font-size: 1.1rem;
+  color: #334155;
+}
+
+.collapse-btn {
+  color: #64748b;
+}
+
+// Nav items
+mat-nav-list {
+  padding-top: 0.5rem;
+
+  a.mat-mdc-list-item {
+    margin: 2px 8px;
+    border-radius: 8px;
+    height: 44px;
+
+    mat-icon {
+      color: #64748b;
+      margin-right: 12px;
+    }
+
+    span {
+      color: #334155;
+    }
+
+    &:hover {
+      background: #f1f5f9;
+    }
+
+    &.active {
+      background: #e0e7ff;
+
+      mat-icon,
+      span {
+        color: #4f46e5;
+      }
+    }
+  }
+}
+
+// Menu espandibile Welfare
+.menu-parent {
+  cursor: pointer;
+
+  .expand-icon {
+    margin-left: auto;
+    font-size: 20px;
+    transition: transform 0.2s;
+  }
+}
+
+.submenu {
+  background: rgba(0, 0, 0, 0.02);
+  margin: 0 8px;
+  border-radius: 8px;
+  overflow: hidden;
+
+  a.mat-mdc-list-item {
+    padding-left: 24px !important;
+    height: 40px !important;
+    font-size: 0.9rem;
+    margin: 0;
+    border-radius: 0;
+
+    mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+      margin-right: 12px;
+      color: #64748b;
+    }
+
+    &.active {
+      background: rgba(99, 102, 241, 0.1);
+
+      mat-icon,
+      span {
+        color: #6366f1;
+      }
+    }
+
+    &:hover {
+      background: rgba(0, 0, 0, 0.04);
+    }
+  }
+}
+
+// Content area
+.main-content-bg {
+  background: #f8fafc;
+}
+
+.main-content {
+  padding: 0;
+  height: 100%;
+}
+
+// Sidebar collapsed state
+.sidebar.collapsed {
+  mat-nav-list a.mat-mdc-list-item {
+    justify-content: center;
+    padding: 0;
+
+    mat-icon {
+      margin-right: 0;
+    }
+  }
+
+  .sidebar-header {
+    justify-content: center;
+  }
+}

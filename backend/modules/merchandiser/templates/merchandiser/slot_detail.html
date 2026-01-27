@@ -1,0 +1,273 @@
+{% extends "merchandiser/base.html" %}
+
+{% block title %}Slot {{ slot.id }} - Merchandiser{% endblock %}
+
+{% block extra_css %}
+<style>
+    .slot-header {
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 20px;
+    }
+    
+    .slot-info {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+    }
+    
+    .slot-info-item label {
+        font-size: 0.8em;
+        color: #666;
+        display: block;
+    }
+    
+    .slot-info-item strong {
+        font-size: 1.1em;
+    }
+    
+    .giorni-badges .badge {
+        margin-right: 5px;
+    }
+    
+    .orari-table {
+        font-size: 0.9em;
+    }
+    
+    .orari-table th {
+        background: #ff5722;
+        color: white;
+        text-align: center;
+        padding: 10px;
+    }
+    
+    .orari-table td {
+        text-align: center;
+        vertical-align: middle;
+    }
+    
+    .orari-table input[type="time"] {
+        width: 90px;
+        padding: 3px 5px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 0.85em;
+    }
+    
+    .orari-table input[type="time"]:focus {
+        border-color: #ff5722;
+        outline: none;
+    }
+    
+    .ore-cell {
+        font-weight: bold;
+        color: #4caf50;
+    }
+    
+    .date-filter {
+        background: white;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 15px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <a href="{% url 'merchandiser:slot_list' %}" class="btn btn-outline-secondary btn-sm mb-2">
+            <span class="material-icons" style="font-size: 16px; vertical-align: middle;">arrow_back</span>
+            Torna alla Lista
+        </a>
+        <h4 class="mb-0">
+            <span class="material-icons" style="vertical-align: middle;">event_note</span>
+            Slot #{{ slot.id }}
+        </h4>
+    </div>
+</div>
+
+<!-- Info slot -->
+<div class="slot-header">
+    <div class="slot-info">
+        <div class="slot-info-item">
+            <label>Merchandiser</label>
+            <strong>{{ slot.merchandiser.nominativo }}</strong>
+        </div>
+        <div class="slot-info-item">
+            <label>Referente</label>
+            <strong>{{ slot.utente.nominativo|default:"-" }}</strong>
+        </div>
+        <div class="slot-info-item">
+            <label>Periodo</label>
+            <strong>{{ slot.data_inizio|date:"d/m/Y" }} - {{ slot.data_fine|date:"d/m/Y" }}</strong>
+        </div>
+        <div class="slot-info-item">
+            <label>Giorni</label>
+            <div class="giorni-badges">
+                <span class="badge {% if slot.lun %}bg-success{% else %}bg-secondary{% endif %}">Lu</span>
+                <span class="badge {% if slot.mar %}bg-success{% else %}bg-secondary{% endif %}">Ma</span>
+                <span class="badge {% if slot.mer %}bg-success{% else %}bg-secondary{% endif %}">Me</span>
+                <span class="badge {% if slot.gio %}bg-success{% else %}bg-secondary{% endif %}">Gi</span>
+                <span class="badge {% if slot.ven %}bg-success{% else %}bg-secondary{% endif %}">Ve</span>
+                <span class="badge {% if slot.sab %}bg-success{% else %}bg-secondary{% endif %}">Sa</span>
+                <span class="badge {% if slot.dom %}bg-success{% else %}bg-secondary{% endif %}">Do</span>
+            </div>
+        </div>
+        <div class="slot-info-item">
+            <label>Plafond Ore</label>
+            <strong>{{ slot.plafond_ore }}</strong>
+        </div>
+        <div class="slot-info-item">
+            <label>Badge</label>
+            <strong>{{ slot.badge|default:"-" }}</strong>
+        </div>
+    </div>
+    {% if slot.note %}
+    <div class="mt-3">
+        <label class="text-muted" style="font-size: 0.8em;">Note</label>
+        <p class="mb-0">{{ slot.note }}</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Filtro date -->
+<div class="date-filter">
+    <form method="get" class="row g-2 align-items-end">
+        <div class="col-auto">
+            <label class="form-label">Orizzonte da:</label>
+            <input type="date" name="da" class="form-control" value="{{ data_da|date:'Y-m-d' }}">
+        </div>
+        <div class="col-auto">
+            <label class="form-label">a:</label>
+            <input type="date" name="a" class="form-control" value="{{ data_a|date:'Y-m-d' }}">
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-primary">
+                <span class="material-icons" style="font-size: 16px; vertical-align: middle;">filter_alt</span>
+                Filtra
+            </button>
+        </div>
+        <div class="col-auto ms-auto">
+            <strong>Totale ore nel range: <span class="text-success">{{ totale_ore }}</span></strong>
+        </div>
+    </form>
+</div>
+
+<!-- Griglia orari -->
+<div class="card">
+    <div class="card-header">
+        <span class="material-icons" style="vertical-align: middle;">schedule</span>
+        Orari Giornalieri
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-bordered orari-table mb-0">
+            <thead>
+                <tr>
+                    <th>Data</th>
+                    <th>I.1</th>
+                    <th>U.1</th>
+                    <th>I.2</th>
+                    <th>U.2</th>
+                    <th>I.Extra</th>
+                    <th>U.Extra</th>
+                    <th>Ore</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for g in giorni %}
+                <tr data-slot="{{ slot.id }}" data-data="{{ g.data|date:'Y-m-d' }}">
+                    <td>
+                        <strong>{{ g.data|date:"d/m/Y" }}</strong>
+                        <small class="text-muted d-block">{{ g.data|date:"l"|slice:":3" }}</small>
+                    </td>
+                    <td>
+                        <input type="time" class="orario-input" name="ingresso_1" 
+                               value="{% if g.ingresso.ingresso_1 %}{{ g.ingresso.ingresso_1|time:'H:i' }}{% endif %}">
+                    </td>
+                    <td>
+                        <input type="time" class="orario-input" name="uscita_1" 
+                               value="{% if g.ingresso.uscita_1 %}{{ g.ingresso.uscita_1|time:'H:i' }}{% endif %}">
+                    </td>
+                    <td>
+                        <input type="time" class="orario-input" name="ingresso_2" 
+                               value="{% if g.ingresso.ingresso_2 %}{{ g.ingresso.ingresso_2|time:'H:i' }}{% endif %}">
+                    </td>
+                    <td>
+                        <input type="time" class="orario-input" name="uscita_2" 
+                               value="{% if g.ingresso.uscita_2 %}{{ g.ingresso.uscita_2|time:'H:i' }}{% endif %}">
+                    </td>
+                    <td>
+                        <input type="time" class="orario-input" name="ingresso_extra" 
+                               value="{% if g.ingresso.ingresso_extra %}{{ g.ingresso.ingresso_extra|time:'H:i' }}{% endif %}">
+                    </td>
+                    <td>
+                        <input type="time" class="orario-input" name="uscita_extra" 
+                               value="{% if g.ingresso.uscita_extra %}{{ g.ingresso.uscita_extra|time:'H:i' }}{% endif %}">
+                    </td>
+                    <td class="ore-cell">
+                        <span class="ore-value">{{ g.ingresso.ore_lavorate|default:"0" }}</span>
+                    </td>
+                    <td>
+                        <button type="button" class="btn btn-sm btn-outline-success btn-salva" onclick="salvaRiga(this)">
+                            <span class="material-icons" style="font-size: 16px;">save</span>
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function salvaRiga(btn) {
+    const row = btn.closest('tr');
+    const slotId = row.dataset.slot;
+    const data = row.dataset.data;
+    
+    const formData = new FormData();
+    formData.append('slot_id', slotId);
+    formData.append('data', data);
+    formData.append('ingresso_1', row.querySelector('[name="ingresso_1"]').value);
+    formData.append('uscita_1', row.querySelector('[name="uscita_1"]').value);
+    formData.append('ingresso_2', row.querySelector('[name="ingresso_2"]').value);
+    formData.append('uscita_2', row.querySelector('[name="uscita_2"]').value);
+    formData.append('ingresso_extra', row.querySelector('[name="ingresso_extra"]').value);
+    formData.append('uscita_extra', row.querySelector('[name="uscita_extra"]').value);
+    formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+    
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+    
+    fetch("{% url 'merchandiser:salva_orario' %}", {
+        method: 'POST',
+        body: formData
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            row.querySelector('.ore-value').textContent = data.ore_lavorate;
+            btn.innerHTML = '<span class="material-icons" style="font-size: 16px;">check</span>';
+            btn.classList.remove('btn-outline-success');
+            btn.classList.add('btn-success');
+            setTimeout(() => {
+                btn.innerHTML = '<span class="material-icons" style="font-size: 16px;">save</span>';
+                btn.classList.remove('btn-success');
+                btn.classList.add('btn-outline-success');
+                btn.disabled = false;
+            }, 1500);
+        }
+    })
+    .catch(err => {
+        btn.innerHTML = '<span class="material-icons" style="font-size: 16px;">error</span>';
+        btn.disabled = false;
+    });
+}
+</script>
+{% endblock %}

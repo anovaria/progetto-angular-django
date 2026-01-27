@@ -1,0 +1,103 @@
+{% extends "merchandiser/base.html" %}
+
+{% block title %}Slot - Merchandiser{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="mb-0">
+        <span class="material-icons" style="vertical-align: middle;">event_note</span>
+        Slot Merchandiser
+    </h4>
+</div>
+
+<!-- Filtri -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label">Merchandiser</label>
+                <select name="merchandiser" class="form-select">
+                    <option value="">Tutti</option>
+                    {% for m in merchandiser_list %}
+                    <option value="{{ m.id }}" {% if filtro_merchandiser == m.id|stringformat:"s" %}selected{% endif %}>
+                        {{ m.nominativo }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Referente</label>
+                <select name="utente" class="form-select">
+                    <option value="">Tutti</option>
+                    {% for u in utenti_list %}
+                    <option value="{{ u.id }}" {% if filtro_utente == u.id|stringformat:"s" %}selected{% endif %}>
+                        {{ u.nominativo }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <div class="form-check">
+                    <input type="checkbox" class="form-check-input" name="attivi" value="1" 
+                           id="attivi" {% if solo_attivi %}checked{% endif %}>
+                    <label class="form-check-label" for="attivi">Solo attivi</label>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary">
+                    <span class="material-icons" style="font-size: 16px; vertical-align: middle;">filter_list</span>
+                    Filtra
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Lista slot -->
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Merchandiser</th>
+                    <th>Referente</th>
+                    <th>Inizio</th>
+                    <th>Fine</th>
+                    <th>Giorni</th>
+                    <th>Note</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for slot in slots %}
+                <tr class="{% if slot.data_inizio <= oggi and slot.data_fine >= oggi %}table-success{% endif %}">
+                    <td>{{ slot.id }}</td>
+                    <td><strong>{{ slot.merchandiser.nominativo }}</strong></td>
+                    <td>{{ slot.utente.nominativo|default:"-" }}</td>
+                    <td>{{ slot.data_inizio|date:"d/m/Y" }}</td>
+                    <td>{{ slot.data_fine|date:"d/m/Y" }}</td>
+                    <td>{{ slot.giorni_attivi }}</td>
+                    <td>{{ slot.note|default:"-"|truncatechars:30 }}</td>
+                    <td>
+                        <a href="{% url 'merchandiser:slot_detail' slot.id %}" class="btn btn-sm btn-outline-primary">
+                            <span class="material-icons" style="font-size: 16px;">edit</span>
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8" class="text-center text-muted py-4">
+                        Nessuno slot trovato
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="mt-3 text-muted">
+    Totale: {{ slots|length }} slot
+</div>
+{% endblock %}

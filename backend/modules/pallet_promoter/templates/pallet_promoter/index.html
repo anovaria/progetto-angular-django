@@ -1,0 +1,130 @@
+{% extends "pallet_promoter/base.html" %}
+
+{% block title %}Dashboard - Pallet-Promoter{% endblock %}
+
+{% block content %}
+<h4 class="mb-4">
+    <span class="material-icons" style="vertical-align: middle;">dashboard</span>
+    Dashboard
+</h4>
+
+<!-- Periodo Corrente -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                {% if periodo_corrente %}
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="card-title mb-1">Periodo Corrente</h5>
+                        <h3 class="text-primary mb-0">{{ periodo_corrente.codice }}</h3>
+                        <p class="text-muted mb-0">
+                            {{ periodo_corrente.data_inizio|date:"d/m/Y" }} - {{ periodo_corrente.data_fine|date:"d/m/Y" }}
+                        </p>
+                    </div>
+                    <div>
+                        <a href="{% url 'pallet_promoter:pallet_griglia' periodo_corrente.id %}" 
+                           class="btn btn-primary btn-lg">
+                            <span class="material-icons">edit</span>
+                            Gestisci Pallet
+                        </a>
+                    </div>
+                </div>
+                {% else %}
+                <div class="text-center text-muted py-3">
+                    <span class="material-icons" style="font-size: 48px;">event_busy</span>
+                    <p>Nessun periodo attivo oggi</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Statistiche -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <span class="material-icons text-primary" style="font-size: 36px;">grid_view</span>
+                <h2 class="mt-2 mb-0">{{ stats.totale_pallet }}</h2>
+                <p class="text-muted mb-0">Spazi Pallet</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <span class="material-icons text-success" style="font-size: 36px;">view_column</span>
+                <h2 class="mt-2 mb-0">{{ stats.totale_testate }}</h2>
+                <p class="text-muted mb-0">Testate</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <span class="material-icons text-warning" style="font-size: 36px;">business</span>
+                <h2 class="mt-2 mb-0">{{ stats.totale_fornitori }}</h2>
+                <p class="text-muted mb-0">Fornitori</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <span class="material-icons text-info" style="font-size: 36px;">people</span>
+                <h2 class="mt-2 mb-0">{{ stats.totale_hostess }}</h2>
+                <p class="text-muted mb-0">Hostess Attive</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Prossimi Periodi -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <span class="material-icons" style="vertical-align: middle;">event</span>
+                Prossimi Periodi
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Codice</th>
+                            <th>Descrizione</th>
+                            <th>Inizio</th>
+                            <th>Fine</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for periodo in prossimi_periodi %}
+                        <tr>
+                            <td><strong>{{ periodo.codice }}</strong></td>
+                            <td>{{ periodo.descrizione }}</td>
+                            <td>{{ periodo.data_inizio|date:"d/m/Y" }}</td>
+                            <td>{{ periodo.data_fine|date:"d/m/Y" }}</td>
+                            <td>
+                                <a href="{% url 'pallet_promoter:pallet_griglia' periodo.id %}" 
+                                   class="btn btn-sm btn-outline-primary">
+                                    Gestisci
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center text-muted py-4">
+                                Nessun periodo futuro disponibile
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

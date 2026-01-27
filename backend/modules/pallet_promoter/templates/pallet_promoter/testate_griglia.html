@@ -1,0 +1,321 @@
+{% extends "pallet_promoter/base.html" %}
+{% load pallet_tags %}
+
+{% block title %}Testate {{ mese }}/{{ anno }} - Pallet-Promoter{% endblock %}
+
+{% block extra_css %}
+<style>
+    .testata-row {
+        display: flex;
+        align-items: center;
+        padding: 12px 15px;
+        border-bottom: 1px solid #eee;
+        transition: background 0.2s;
+    }
+    
+    .testata-row:hover {
+        background: #f8f9fa;
+    }
+    
+    .testata-id {
+        width: 50px;
+        font-weight: bold;
+        color: #1976d2;
+    }
+    
+    .testata-locazione {
+        flex: 1;
+        padding: 0 15px;
+    }
+    
+    .testata-fornitore {
+        flex: 1;
+        padding: 0 15px;
+    }
+    
+    .testata-fornitore.vuoto {
+        color: #999;
+        font-style: italic;
+    }
+    
+    .testata-fornitore.assegnato {
+        color: #2e7d32;
+        font-weight: 500;
+    }
+    
+    .testata-actions {
+        width: 100px;
+        text-align: right;
+    }
+    
+    .testata-bloccata {
+        background: #ffebee;
+    }
+    
+    .badge-bloccata {
+        font-size: 0.7em;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <a href="{% url 'pallet_promoter:testate_list' %}" class="btn btn-outline-secondary btn-sm mb-2">
+            <span class="material-icons" style="font-size: 16px; vertical-align: middle;">arrow_back</span>
+            Torna alla lista
+        </a>
+        <h4 class="mb-0">
+            <span class="material-icons" style="vertical-align: middle;">view_column</span>
+            Testate - 
+            {% if mese == 1 %}Gennaio
+            {% elif mese == 2 %}Febbraio
+            {% elif mese == 3 %}Marzo
+            {% elif mese == 4 %}Aprile
+            {% elif mese == 5 %}Maggio
+            {% elif mese == 6 %}Giugno
+            {% elif mese == 7 %}Luglio
+            {% elif mese == 8 %}Agosto
+            {% elif mese == 9 %}Settembre
+            {% elif mese == 10 %}Ottobre
+            {% elif mese == 11 %}Novembre
+            {% elif mese == 12 %}Dicembre
+            {% endif %} {{ anno }}
+        </h4>
+    </div>
+    <div>
+        <a href="{% url 'pallet_promoter:testate_griglia' anno mese|add:'-1' %}" 
+           class="btn btn-outline-secondary btn-sm {% if mese == 1 %}disabled{% endif %}">
+            <span class="material-icons">chevron_left</span>
+        </a>
+        <a href="{% url 'pallet_promoter:testate_griglia' anno mese|add:'1' %}" 
+           class="btn btn-outline-secondary btn-sm {% if mese == 12 %}disabled{% endif %}">
+            <span class="material-icons">chevron_right</span>
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header d-flex">
+        <div style="width: 50px;"><strong>#</strong></div>
+        <div style="flex: 1; padding: 0 15px;"><strong>Locazione</strong></div>
+        <div style="flex: 1; padding: 0 15px;"><strong>Fornitore</strong></div>
+        <div style="width: 100px;"></div>
+    </div>
+    <div class="card-body p-0">
+        {% for testata in testate %}
+        {% with assegn=assegnazioni|get_item:testata.id %}
+        <div class="testata-row {% if testata.bloccata %}testata-bloccata{% endif %}"
+             data-testata-id="{{ testata.id }}"
+             data-testata-locazione="{{ testata.locazione }}"
+             data-fornitore-id="{% if assegn and assegn.fornitore %}{{ assegn.fornitore.codice }}{% endif %}"
+             data-fornitore-nome="{% if assegn and assegn.fornitore %}{{ assegn.fornitore.nome }}{% endif %}">
+            <div class="testata-id">
+                {{ testata.id }}
+                {% if testata.bloccata %}
+                <span class="badge bg-danger badge-bloccata">BLOCCATA</span>
+                {% endif %}
+            </div>
+            <div class="testata-locazione">{{ testata.locazione }}</div>
+            <div class="testata-fornitore {% if assegn and assegn.fornitore %}assegnato{% else %}vuoto{% endif %}">
+                {% if assegn and assegn.fornitore %}
+                {{ assegn.fornitore.nome }}
+                {% else %}
+                — disponibile —
+                {% endif %}
+            </div>
+            <div class="testata-actions">
+                {% if not testata.bloccata %}
+                <button class="btn btn-sm btn-outline-primary btn-assegna-testata"
+                        data-bs-toggle="modal" 
+                        data-bs-target="#modalTestata">
+                    <span class="material-icons" style="font-size: 16px;">edit</span>
+                </button>
+                {% endif %}
+            </div>
+        </div>
+        {% endwith %}
+        {% empty %}
+        <div class="text-center text-muted py-4">
+            <span class="material-icons" style="font-size: 48px;">view_column</span>
+            <p>Nessuna testata configurata</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Modal Assegnazione Testata -->
+<div class="modal fade" id="modalTestata" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <span class="material-icons" style="vertical-align: middle;">edit</span>
+                    Assegna Testata <span id="modal-testata-id"></span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted" id="modal-testata-locazione"></p>
+                <form id="form-assegna-testata">
+                    {% csrf_token %}
+                    <input type="hidden" name="testata_id" id="input-testata-id">
+                    <input type="hidden" name="anno" value="{{ anno }}">
+                    <input type="hidden" name="mese" value="{{ mese }}">
+                    <input type="hidden" name="fornitore_id" id="input-testata-fornitore-id">
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Fornitore</label>
+                        <div class="fornitore-search">
+                            <input type="text" class="form-control" id="input-testata-fornitore-search" name="q"
+                                   placeholder="Cerca fornitore..." autocomplete="off">
+                            <div class="fornitore-results" id="testata-fornitore-results"></div>
+                        </div>
+                        <div id="testata-fornitore-selezionato" class="mt-2"></div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-danger" id="btn-rimuovi-testata" style="margin-right: auto;">
+                    <span class="material-icons" style="vertical-align: middle;">delete</span>
+                    Rimuovi
+                </button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                <button type="button" class="btn btn-primary" id="btn-salva-testata">
+                    <span class="material-icons" style="vertical-align: middle;">save</span>
+                    Salva
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById('modalTestata');
+    const fornitoreResults = document.getElementById('testata-fornitore-results');
+    const inputFornitoreSearch = document.getElementById('input-testata-fornitore-search');
+    let currentRow = null;
+    
+    // Apri modal
+    document.querySelectorAll('.btn-assegna-testata').forEach(btn => {
+        btn.addEventListener('click', function() {
+            currentRow = this.closest('.testata-row');
+            document.getElementById('input-testata-id').value = currentRow.dataset.testataId;
+            document.getElementById('modal-testata-id').textContent = '#' + currentRow.dataset.testataId;
+            document.getElementById('modal-testata-locazione').textContent = currentRow.dataset.testataLocazione;
+            
+            const fornitoreId = currentRow.dataset.fornitoreId;
+            const fornitoreNome = currentRow.dataset.fornitoreNome;
+            
+            if (fornitoreId) {
+                document.getElementById('input-testata-fornitore-id').value = fornitoreId;
+                document.getElementById('testata-fornitore-selezionato').innerHTML = `
+                    <span class="badge bg-success">
+                        ${fornitoreNome}
+                        <span class="ms-1" style="cursor:pointer" onclick="clearTestataFornitore()">×</span>
+                    </span>`;
+            } else {
+                document.getElementById('input-testata-fornitore-id').value = '';
+                document.getElementById('testata-fornitore-selezionato').innerHTML = '';
+            }
+            document.getElementById('input-testata-fornitore-search').value = '';
+            fornitoreResults.innerHTML = '';
+        });
+    });
+    
+    // Ricerca fornitore con JS puro
+    let searchTimeout;
+    inputFornitoreSearch.addEventListener('keyup', function() {
+        clearTimeout(searchTimeout);
+        const q = this.value;
+        
+        if (q.length < 2) {
+            fornitoreResults.innerHTML = '';
+            return;
+        }
+        
+        searchTimeout = setTimeout(function() {
+            fetch(`{% url 'pallet_promoter:cerca_fornitore' %}?q=${encodeURIComponent(q)}`)
+                .then(response => response.text())
+                .then(html => {
+                    fornitoreResults.innerHTML = html;
+                });
+        }, 300);
+    });
+    
+    // Click su fornitore
+    fornitoreResults.addEventListener('click', function(event) {
+        const item = event.target.closest('.fornitore-item');
+        if (item) {
+            document.getElementById('input-testata-fornitore-id').value = item.dataset.id;
+            document.getElementById('testata-fornitore-selezionato').innerHTML = `
+                <span class="badge bg-success">
+                    ${item.dataset.nome}
+                    <span class="ms-1" style="cursor:pointer" onclick="clearTestataFornitore()">×</span>
+                </span>`;
+            fornitoreResults.innerHTML = '';  // Chiudi dropdown
+            document.getElementById('input-testata-fornitore-search').value = '';
+        }
+    });
+    
+    // Nascondi risultati quando clicchi fuori
+    document.addEventListener('click', function(event) {
+        if (!event.target.closest('.fornitore-search')) {
+            fornitoreResults.innerHTML = '';
+        }
+    });
+    
+    // Salva
+    document.getElementById('btn-salva-testata').addEventListener('click', function() {
+        const form = document.getElementById('form-assegna-testata');
+        const formData = new FormData(form);
+        const btn = this;
+        
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Salvataggio...';
+        
+        fetch("{% url 'pallet_promoter:assegna_testata' %}", {
+            method: 'POST',
+            body: formData
+        }).then(response => {
+            if (response.ok) {
+                bootstrap.Modal.getInstance(modal).hide();
+                location.reload();
+            } else {
+                btn.disabled = false;
+                btn.innerHTML = '<span class="material-icons" style="vertical-align: middle;">save</span> Salva';
+                alert('Errore durante il salvataggio');
+            }
+        });
+    });
+    
+    // Rimuovi
+    document.getElementById('btn-rimuovi-testata').addEventListener('click', function() {
+        document.getElementById('input-testata-fornitore-id').value = '';
+        const form = document.getElementById('form-assegna-testata');
+        const formData = new FormData(form);
+        const btn = this;
+        
+        btn.disabled = true;
+        
+        fetch("{% url 'pallet_promoter:assegna_testata' %}", {
+            method: 'POST',
+            body: formData
+        }).then(response => {
+            if (response.ok) {
+                bootstrap.Modal.getInstance(modal).hide();
+                location.reload();
+            }
+        });
+    });
+});
+
+function clearTestataFornitore() {
+    document.getElementById('input-testata-fornitore-id').value = '';
+    document.getElementById('testata-fornitore-selezionato').innerHTML = '';
+}
+</script>
+{% endblock %}

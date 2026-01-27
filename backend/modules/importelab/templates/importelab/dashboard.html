@@ -1,0 +1,225 @@
+{% extends 'importelab/base.html' %}
+{% block content %}
+
+<h2>Carica file .elab</h2>
+<form method="post" enctype="multipart/form-data" style="margin-bottom: 1.5rem;">
+  {% csrf_token %}
+  {{ form.file.label_tag }} {{ form.file }}<br><br>
+  <button type="submit">Carica e salva nel DB</button>
+</form>
+
+<hr>
+
+<h3>Ordini</h3>
+<p>
+  <a href="{% url 'importelab:ordine_email' %}">Invio ordine via Outlook (allega .ext)</a>
+  <span class="muted" style="margin-left:0.5rem;">(per ora: carica prova_Ordine.ext)</span>
+</p>
+
+
+
+<hr>
+
+<h3>Tabelle Gold (SQL Server)</h3>
+<form method="post" action="{% url 'importelab:sync_gold' %}" style="margin-bottom: 1rem;">
+  {% csrf_token %}
+  <button type="submit">Sincronizza tabelle Gold</button>
+  <span class="muted" style="margin-left:.5rem;">(Popola tabelle su SQL Server)</span>
+</form>
+
+{% if gold_sync_info %}
+<p class="muted">
+  Ultima sync: {{ gold_sync_info.synced_at }} —
+  {% for t, s in gold_sync_info.summary.items %}
+  {{ t }}: {{ s.rows_fetched }} righe{% if not forloop.last %} • {% endif %}
+  {% endfor %}
+</p>
+{% endif %}
+
+{% if gold_preview %}
+<h4>Verifica: prime 5 righe</h4>
+{% for table_name, rows in gold_preview.items %}
+<details style="margin: .75rem 0;">
+  <summary><strong>{{ table_name }}</strong> ({{ rows|length }} righe mostrate)</summary>
+  {% if rows %}
+  <div style="overflow:auto; max-height: 280px; border: 1px solid #ddd; margin-top: .5rem;">
+    <table>
+      <thead>
+        <tr>
+          {% for k, v in rows.0.items %}
+          <th>{{ k }}</th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rows %}
+        <tr>
+          {% for k, v in r.items %}
+          <td>{{ v }}</td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="muted">Nessun dato locale per questa tabella.</p>
+  {% endif %}
+</details>
+{% endfor %}
+{% endif %}
+
+<hr>
+
+<h3>Query intermedie (staging)</h3>
+<form method="post" action="{% url 'importelab:regen_intermediate' %}" style="margin-bottom: 1rem;">
+  {% csrf_token %}
+  {% if selected_batch %}
+  <input type="hidden" name="batch_id" value="{{ selected_batch.id }}">
+  <button type="submit">Rigenera 3 query intermedie (batch selezionato)</button>
+  <span class="muted" style="margin-left:0.5rem;">Batch: <strong>{{ selected_batch.filename }}</strong></span>
+  {% else %}
+  <button type="submit">Rigenera 3 query intermedie (ultimo batch)</button>
+  <span class="muted" style="margin-left:0.5rem;">Nessun batch selezionato: verrà usato l'ultimo import.</span>
+  {% endif %}
+</form>
+
+{% if intermediate_info %}
+<p class="muted">
+  Ultima rigenerazione: {{ intermediate_info.created_at }} — batch {{ intermediate_info.batch_id }} ({{
+  intermediate_info.filename }})
+  {% if intermediate_info.counts %} — risultati: {{ intermediate_info.counts }}{% endif %}
+</p>
+{% endif %}
+
+{% if intermediate_preview %}
+<div style="display:grid; grid-template-columns: 1fr; gap: 0.8rem;">
+  {% for qname, rows in intermediate_preview.items %}
+  <details open>
+    <summary><strong>{{ qname }}</strong> — prime 5 righe</summary>
+    {% if rows and rows|length > 0 %}
+    <div style="overflow:auto; border:1px solid #ddd; padding:0.5rem; margin-top:0.5rem;">
+      <table style="border-collapse:collapse; width:100%;">
+        <thead>
+          <tr>
+            {% for k,v in rows.0.items %}
+            <th style="text-align:left; border-bottom:1px solid #ccc; padding:4px 6px;">{{ k }}</th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in rows %}
+          <tr>
+            {% for k,v in r.items %}
+            <td style="border-bottom:1px solid #eee; padding:4px 6px; white-space:nowrap;">{{ v }}</td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="muted">Nessuna riga prodotta (o tabella vuota).</p>
+    {% endif %}
+  </details>
+  {% endfor %}
+</div>
+{% endif %}
+<hr>
+
+<h3>File importati</h3>
+{% if batches %}
+<ul>
+  {% for b in batches %}
+  <li>
+    <a href="?batch={{ b.id }}">
+      {{ b.filename }} – <span class="muted">{{ b.uploaded_at|date:"d/m/Y H:i" }}</span>
+    </a>
+    &nbsp;
+    <a href="{% url 'importelab:delete_batch' b.id %}" class="muted">(elimina…)</a>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p class="muted">Nessun file importato finora.</p>
+{% endif %}
+
+{% if selected_batch %}
+<hr>
+<h3>Dati del file: {{ selected_batch.filename }}</h3>
+<p class="muted">Caricato il {{ selected_batch.uploaded_at|date:"d/m/Y H:i" }}</p>
+
+<form method="get" style="margin: 0.5rem 0 1rem 0;">
+  <input type="hidden" name="batch" value="{{ selected_batch.id }}">
+  <label for="id_q">Filtra righe:</label>
+  <input id="id_q" type="text" name="q" value="{{ search_query }}" placeholder="CodArtFo, descrizione o EAN">
+  <button type="submit">Cerca</button>
+  {% if search_query %}
+  <a href="?batch={{ selected_batch.id }}" class="muted" style="margin-left: .5rem;">pulisci filtro</a>
+  {% endif %}
+</form>
+
+{% if rows %}
+<div style="overflow:auto; max-height: 500px; border: 1px solid #ddd; margin-top: 1rem;">
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>CodArtFo</th>
+        <th>Descrizione articolo</th>
+        <th>IVA</th>
+        <th>PrzAcq</th>
+        <th>Campo5</th>
+        <th>PzXCrt</th>
+        <th>CrtXstr</th>
+        <th>StrXplt</th>
+        <th>TotColli</th>
+        <th>EAN</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td>{{ r.line_number }}</td>
+        <td>{{ r.cod_art_fo }}</td>
+        <td>{{ r.descrizione_articolo }}</td>
+        <td>{{ r.iva }}</td>
+        <td>{{ r.prz_acq }}</td>
+        <td>{{ r.campo5 }}</td>
+        <td>{{ r.pz_x_crt }}</td>
+        <td>{{ r.crt_x_str }}</td>
+        <td>{{ r.str_x_plt }}</td>
+        <td>{{ r.tot_colli }}</td>
+        <td>{{ r.ean }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<p>Nessuna riga trovata per questo file.</p>
+{% endif %}
+{% endif %}
+
+
+{% if selected_batch %}
+<div style="margin-top:16px; padding:12px; border:1px solid #ddd; border-radius:8px;">
+  <h3 style="margin:0 0 8px 0;">Report stampabili (batch selezionato)</h3>
+  <div style="display:flex; gap:10px; flex-wrap:wrap;">
+    <a class="btn" href="{% url 'importelab:report_r_aggprezziacq' %}?batch={{ selected_batch.id }}">Report Prezzi di
+      listino</a>
+    <a class="btn" href="{% url 'importelab:report_r_aggean' %}?batch={{ selected_batch.id }}">Report Aggiornamento
+      EAN</a>
+    <a class="btn" href="{% url 'importelab:report_r_agglogistica' %}?batch={{ selected_batch.id }}">Report
+      Aggiornamento Logistica</a>
+  </div>
+  <p style="margin:10px 0 0; color:#666;">Ogni report consente: <strong>Stampa</strong> (browser) oppure <strong>Scarica
+      PDF</strong>.</p>
+</div>
+{% else %}
+<div style="margin-top:16px; padding:12px; border:1px solid #f0c; border-radius:8px; background:#fff7ff;">
+  <strong>Nota:</strong> per vedere i report, seleziona un batch (oppure carica un file .elab).
+</div>
+{% endif %}
+
+{% endblock %}

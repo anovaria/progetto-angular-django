@@ -1,0 +1,31 @@
+﻿<div class="iframe-container">
+  
+  <!-- Loader -->
+  <div class="loader-overlay" *ngIf="isLoading && showLoader">
+    <div class="loader-content">
+      <div class="spinner"></div>
+      <span class="loader-text">{{ title }}</span>
+    </div>
+  </div>
+
+  <!-- Error State -->
+  <div class="error-overlay" *ngIf="hasError">
+    <div class="error-content">
+      <span class="error-icon">âš ï¸</span>
+      <span class="error-text">Impossibile caricare il contenuto</span>
+      <button class="retry-btn" (click)="reload()">Riprova</button>
+    </div>
+  </div>
+
+  <!-- Iframe -->
+  <iframe 
+    *ngIf="iframeUrl && !hasError"
+    [src]="iframeUrl"
+    (load)="onIframeLoad()"
+    (error)="onIframeError()"
+    frameborder="0"
+    class="django-iframe"
+    [class.loading]="isLoading">
+  </iframe>
+
+</div>

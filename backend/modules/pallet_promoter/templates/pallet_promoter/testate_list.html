@@ -1,0 +1,74 @@
+{% extends "pallet_promoter/base.html" %}
+
+{% block title %}Testate - Pallet-Promoter{% endblock %}
+
+{% block content %}
+<h4 class="mb-4">
+    <span class="material-icons" style="vertical-align: middle;">view_column</span>
+    Gestione Testate
+</h4>
+
+<div class="card">
+    <div class="card-header">
+        Seleziona mese e anno
+    </div>
+    <div class="card-body">
+        <form method="get" action="" class="row g-3 align-items-end">
+            <div class="col-auto">
+                <label class="form-label">Mese</label>
+                <select name="mese" class="form-select">
+                    {% for m in mesi %}
+                    <option value="{{ m }}" {% if m == mese %}selected{% endif %}>
+                        {{ m|stringformat:"02d" }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-auto">
+                <label class="form-label">Anno</label>
+                <select name="anno" class="form-select">
+                    {% for a in anni %}
+                    <option value="{{ a }}" {% if a == anno %}selected{% endif %}>{{ a }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-auto">
+                <a href="{% url 'pallet_promoter:testate_griglia' anno mese %}" class="btn btn-primary">
+                    <span class="material-icons" style="vertical-align: middle;">search</span>
+                    Visualizza
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="mt-4">
+    <div class="row">
+        {% for m in mesi %}
+        <div class="col-md-3 col-sm-4 col-6 mb-3">
+            <a href="{% url 'pallet_promoter:testate_griglia' anno m %}" 
+               class="card text-decoration-none {% if m == mese %}border-primary{% endif %}">
+                <div class="card-body text-center">
+                    <h5 class="mb-0 {% if m == mese %}text-primary{% endif %}">
+                        {% if m == 1 %}Gennaio
+                        {% elif m == 2 %}Febbraio
+                        {% elif m == 3 %}Marzo
+                        {% elif m == 4 %}Aprile
+                        {% elif m == 5 %}Maggio
+                        {% elif m == 6 %}Giugno
+                        {% elif m == 7 %}Luglio
+                        {% elif m == 8 %}Agosto
+                        {% elif m == 9 %}Settembre
+                        {% elif m == 10 %}Ottobre
+                        {% elif m == 11 %}Novembre
+                        {% elif m == 12 %}Dicembre
+                        {% endif %}
+                    </h5>
+                    <small class="text-muted">{{ anno }}</small>
+                </div>
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

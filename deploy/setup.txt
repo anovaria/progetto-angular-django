@@ -1,0 +1,96 @@
+# Creare certificato
+$cert = New-SelfSignedCertificate `
+    -DnsName "portale.groscidac.local" `
+    -CertStoreLocation "Cert:\LocalMachine\My" `
+    -KeyAlgorithm RSA `
+    -KeyLength 2048 `
+    -NotAfter (Get-Date).AddDays(365) `
+    -FriendlyName "Portal Intranet SSL"
+
+# Visualizzare thumbprint (salvalo!)
+$cert.Thumbprint
+
+
+#Aggiungere a Trusted Root (per evitare warning browser):
+
+$cert = Get-ChildItem -Path Cert:\LocalMachine\My | Where-Object {$_.Subject -like "*portale.groscidac.local*"}
+$store = New-Object System.Security.Cryptography.X509Certificates.X509Store("Root","LocalMachine")
+$store.Open("ReadWrite")
+$store.Add($cert)
+$store.Close()
+
+
+# Creare Application Pool:
+Import-Module WebAdministration
+
+New-WebAppPool -Name "PortalAppPool"
+Set-ItemProperty "IIS:\AppPools\PortalAppPool" -Name managedRuntimeVersion -Value ""
+Set-ItemProperty "IIS:\AppPools\PortalAppPool" -Name processModel.identityType -Value 4
+
+#Rimuovere Default Web Site (se esiste):
+Remove-Website -Name "Default Web Site" -ErrorAction SilentlyContinue
+
+#Creare nuovo sito:
+New-Website -Name "PortaleIntranet" `
+    -PhysicalPath "C:\inetpub\angular" `
+    -ApplicationPool "PortalAppPool" `
+    -Port 80 `
+    -HostHeader "portale.groscidac.local"
+	
+	
+#Aggiungere binding HTTPS:
+New-WebBinding -Name "PortaleIntranet" `
+    -Protocol https `
+    -Port 443 `
+    -HostHeader "portale.groscidac.local"
+	
+#Associare certificato SSL:
+# Recuperare thumbprint del certificato
+$cert = Get-ChildItem -Path Cert:\LocalMachine\My | Where-Object {$_.Subject -like "*portale.groscidac.local*"}
+$thumbprint = $cert.Thumbprint
+
+# Associare al binding
+$binding = Get-WebBinding -Name "PortaleIntranet" -Protocol https
+$binding.AddSslCertificate($thumbprint, "My")
+----------------------------------------------------------------------
+Riepilogo per aggiungere una nuova app (es. "magazzino"):
+Aggiungi in project_core/urls.py:
+....
+path('app/magazzino/', include('modules.magazzino.urls')),
+...
+
+cd C:\portale\backend
+.\venv\Scripts\python.exe manage.py startapp magazzino modules/magazzino
+
+Questo crea la struttura completa:
+```
+modules/magazzino/
+├── __init__.py
+├── admin.py
+├── apps.py
+├── migrations/
+├── models.py
+├── tests.py
+├── urls.py      ← da creare manualmente
+└── views.py
+
+# modules/magazzino/urls.py
+from django.urls import path
+from . import views
+
+app_name = 'magazzino'
+
+urlpatterns = [
+    path('', views.index, name='index'),
+]
+-------------------------------------------------
+# modules/magazzino/views.py
+from django.shortcuts import render
+
+def index(request):
+    return render(request, 'magazzino/index.html')
+-----------------------------------------------------
+Angular pages/Crea magazzino.ts
+Angular routes Aggiungi route in django-embed.routes.ts
+web.config NIENTE - già coperto da /app/*
+L'URL finale sarà: https://portale.groscidac.local/django/magazzino

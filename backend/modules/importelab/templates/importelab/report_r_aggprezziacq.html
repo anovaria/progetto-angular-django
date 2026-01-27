@@ -1,0 +1,36 @@
+{% extends 'importelab/report_base.html' %}
+{% block report_body %}
+{% regroup rows by dtaaggio as date_groups %}
+{% for dg in date_groups %}
+  <div class="section">
+    <div class="small"><strong>Data Agg.:</strong> {{ dg.grouper }}</div>
+  </div>
+
+  {% regroup dg.list by codfo as groups %}
+  {% for g in groups %}
+    <div class="section">
+      <div class="small mono">CodFo: {{ g.grouper }}{% if g.list.0.descrccom %} — {{ g.list.0.descrccom }}{% endif %}</div>
+
+    {% for r in g.list %}
+      <div class="rowblock">
+        <div class="kv">
+          <div><span class="small">CodArticolo</span><br><strong>{{ r.codart }}</strong></div>
+          <div><span class="small">CodArtFo</span><br><strong class="mono">{{ r.cod_art_fo }}</strong></div>
+          <div><span class="small">Stato</span><br><strong>{{ r.stato }}</strong></div>
+        </div>
+
+        <div class="small" style="margin-top:6px;">Descrizione Art</div>
+        <div><strong>{{ r.descrart }}</strong></div>
+
+        <div class="kv" style="margin-top:10px; align-items:center;">
+          <div><span class="small">Prezzo CIDAC</span><br><strong>{{ r.cidac_prezzo }}</strong></div>
+          <div class="center" style="min-width:70px;"><strong>----&gt;</strong></div>
+          <div><span class="small">Ros PrAcq</span><br><strong class="box">{{ r.ros_pracq }}</strong></div>
+          <div><span class="small">IVA</span><br><strong>{{ r.ros_iva }}</strong></div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% endfor %}
+  {% endfor %}
+{% endblock %}

@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Report {{ tipo }} - Assortimenti</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f5f7fa;
+        }
+        .header-section {
+            {% if tipo == 'BAR' %}
+            background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+            {% else %}
+            background: linear-gradient(135deg, #e91e63 0%, #f06292 100%);
+            {% endif %}
+            color: white;
+            padding: 2rem 0;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .report-container {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        .table thead th {
+            {% if tipo == 'BAR' %}
+            background-color: #764ba2;
+            {% else %}
+            background-color: #e91e63;
+            {% endif %}
+            color: white;
+            border: none;
+            font-size: 0.85rem;
+        }
+        .barcode-cell {
+            text-align: center;
+            padding: 0.5rem;
+        }
+        .btn-export {
+            {% if tipo == 'BAR' %}
+            background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+            {% else %}
+            background: linear-gradient(135deg, #e91e63 0%, #f06292 100%);
+            {% endif %}
+            border: none;
+            color: white;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="header-section">
+        <div class="container">
+            <h1>
+                {% if tipo == 'BAR' %}
+                <span class="material-icons" style="vertical-align: middle; font-size: 2rem;">local_bar</span>
+                {% else %}
+                <span class="material-icons" style="vertical-align: middle; font-size: 2rem;">restaurant</span>
+                {% endif %}
+                Report Reparto {{ tipo }}
+            </h1>
+            <p class="mb-0 opacity-75">Articoli specifici per reparto</p>
+        </div>
+    </div>
+
+    <div class="container mb-5">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <a href="{% url 'asso_articoli:index' %}" class="btn btn-outline-secondary">
+                    <span class="material-icons" style="vertical-align: middle;">arrow_back</span>
+                    Torna alla lista
+                </a>
+            </div>
+            <div>
+                <a href="?export=excel" class="btn btn-export">
+                    <span class="material-icons" style="vertical-align: middle;">file_download</span>
+                    Export Excel
+                </a>
+            </div>
+        </div>
+
+        <div class="report-container">
+            <div class="mb-4">
+                <h4>Report {{ tipo }}</h4>
+                <p><strong>Famiglie incluse:</strong> 8979, 8940, 8943, 8970, 8971, 8942, 8962</p>
+                <p><strong>Totale articoli:</strong> {{ articoli|length }}</p>
+            </div>
+
+            {% if articoli %}
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered table-hover">
+                    <thead>
+                        <tr>
+                            <th>Sett</th>
+                            <th>Rep</th>
+                            <th>SRep</th>
+                            <th>Fam</th>
+                            <th>Famiglia</th>
+                            <th>Fornitore</th>
+                            <th>CCOM</th>
+                            <th>Cod.Art</th>
+                            <th>Descrizione</th>
+                            <th>Stato</th>
+                            <th>EAN</th>
+                            <th class="text-end">Giac.PDV</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for art in articoli %}
+                        <tr>
+                            <td>{{ art.sett }}</td>
+                            <td>{{ art.rep }}</td>
+                            <td>{{ art.srep }}</td>
+                            <td class="fw-bold">{{ art.fam }}</td>
+                            <td>{{ art.descrfam|truncatechars:25 }}</td>
+                            <td>
+                                <small>{{ art.codforn }}</small><br>
+                                <small class="text-muted">{{ art.descforn|truncatechars:25 }}</small>
+                            </td>
+                            <td>
+                                <small>{{ art.ccom }}</small><br>
+                                <small class="text-muted">{{ art.descrccom|truncatechars:25 }}</small>
+                            </td>
+                            <td class="fw-semibold">{{ art.codart }}</td>
+                            <td>{{ art.descrart|truncatechars:40 }}</td>
+                            <td>
+                                {% if art.stato == 'A' %}
+                                    <span class="badge bg-success">A</span>
+                                {% elif art.stato == 'F' %}
+                                    <span class="badge bg-warning">F</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ art.stato }}</span>
+                                {% endif %}
+                            </td>
+                            <td><code>{{ art.ean }}</code></td>
+                            <td class="text-end">
+                                <span class="badge bg-success">{{ art.giacenza_pdv|floatformat:2 }}</span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <span class="material-icons" style="font-size: 4rem; color: #ccc;">inbox</span>
+                <p class="text-muted mt-3">Nessun articolo trovato per questo reparto.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

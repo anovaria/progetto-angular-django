@@ -1,0 +1,29 @@
+<mat-card class="login-card">
+  <mat-card-title class="title">Accesso Portale Intranet</mat-card-title>
+
+  <mat-card-content>
+    <form (ngSubmit)="onLogin()" class="login-form">
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Username</mat-label>
+        <input matInput [(ngModel)]="username" name="username" autocomplete="username" required />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Password</mat-label>
+        <input matInput type="password" [(ngModel)]="password" name="password" autocomplete="current-password"
+          required />
+      </mat-form-field>
+
+      <div class="actions">
+        <button mat-raised-button color="primary" type="submit" [disabled]="!username || !password"
+          class="login-button">
+          Accedi
+        </button>
+      </div>
+
+      <div class="error-message" *ngIf="errorMessage">
+        {{ errorMessage }}
+      </div>
+    </form>
+  </mat-card-content>
+</mat-card>

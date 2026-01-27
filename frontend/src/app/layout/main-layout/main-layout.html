@@ -1,0 +1,129 @@
+<header class="app-header-bar">
+  <div class="logo-container">
+    <h1><img src="/images/LOGO-CIDAC.png" alt="logo"></h1>
+  </div>
+
+  <div class="user-badge" *ngIf="username$ | async as username">
+    <mat-icon>person</mat-icon>
+    <span>{{ username }}</span>
+    <button mat-icon-button class="logout-btn" (click)="logout()">
+      <mat-icon>logout</mat-icon>
+    </button>
+  </div>
+</header>
+
+<mat-sidenav-container class="layout">
+
+  <!-- SIDEBAR -->
+  <mat-sidenav #drawer [mode]="isMobile ? 'over' : 'side'" [(opened)]="opened"
+    [class.collapsed]="isCollapsed && !isMobile" class="sidebar">
+
+    <div class="sidebar-header">
+      <div class="sidebar-title" *ngIf="!isCollapsed">Menu</div>
+      <button mat-icon-button class="collapse-btn" (click)="toggleSidebar()">
+        <mat-icon>{{ isCollapsed ? 'chevron_right' : 'chevron_left' }}</mat-icon>
+      </button>
+    </div>
+
+    <mat-nav-list>
+      <ng-container *ngIf="groups$ | async as groups">
+
+        <!-- PLU - Vendita + Admin -->
+        <a mat-list-item *ngIf="hasGroup(groups, ['Freschi'])" [routerLink]="['/plu']">
+          <mat-icon>qr_code_scanner</mat-icon>
+          <span *ngIf="!isCollapsed">Plu</span>
+        </a>
+
+        <!-- Rossetto - Solo Admin -->
+        <a mat-list-item *ngIf="isAdmin(groups)" routerLink="/django/importelab">
+          <mat-icon>sync</mat-icon>
+          <span *ngIf="!isCollapsed">Rossetto</span>
+        </a>
+
+        <!-- Merchandiser - Admin + Merchandiser Manager -->
+        <a mat-list-item *ngIf="hasGroup(groups, ['merchandiser_manager'])" routerLink="/django/merchandiser">
+          <mat-icon>store</mat-icon>
+          <span *ngIf="!isCollapsed">Merchandiser</span>
+        </a>
+
+        <!-- Pallet Promoter - Admin + Silve/Manager -->
+        <a mat-list-item *ngIf="hasGroup(groups, ['pallet_manager', 'ufficio qualità'])"
+          routerLink="/django/pallet-promoter">
+          <mat-icon>inventory_2</mat-icon>
+          <span *ngIf="!isCollapsed">Pallet-Promoter</span>
+        </a>
+
+        <!-- Alloca Hostess - Admin + Centralino -->
+        <a mat-list-item *ngIf="hasGroup(groups, ['centralino'])" routerLink="/django/alloca-hostess">
+          <mat-icon>people</mat-icon>
+          <span *ngIf="!isCollapsed">Alloca Hostess</span>
+        </a>
+
+        <!-- Punto Info - Admin + Punto Info -->
+        <a mat-list-item *ngIf="hasGroup(groups, ['punto info', 'ufficio qualità'])" routerLink="/django/punto-info">
+          <mat-icon>schedule</mat-icon>
+          <span *ngIf="!isCollapsed">Registrazione Orari</span>
+        </a>
+
+        <!-- Welfare - Menu espandibile - Solo Ufficio Cassa -->
+        <ng-container *ngIf="hasGroup(groups, ['ufficio cassa'])">
+          <a mat-list-item (click)="toggleWelfareMenu()" class="menu-parent">
+            <mat-icon>card_giftcard</mat-icon>
+            <span *ngIf="!isCollapsed">Welfare</span>
+            <mat-icon *ngIf="!isCollapsed" class="expand-icon">
+              {{ welfareExpanded ? 'expand_less' : 'expand_more' }}
+            </mat-icon>
+          </a>
+          <div class="submenu" *ngIf="welfareExpanded && !isCollapsed">
+            <a mat-list-item routerLink="/django/welfare" routerLinkActive="active"
+              [routerLinkActiveOptions]="{exact: true}">
+              <mat-icon>dashboard</mat-icon>
+              <span>Dashboard</span>
+            </a>
+            <a mat-list-item routerLink="/django/welfare-ricerca" routerLinkActive="active">
+              <mat-icon>search</mat-icon>
+              <span>Ricerca Voucher</span>
+            </a>
+            <a mat-list-item routerLink="/django/welfare-cassa" routerLinkActive="active">
+              <mat-icon>point_of_sale</mat-icon>
+              <span>Cassa</span>
+            </a>
+            <a mat-list-item routerLink="/django/welfare-consegne" routerLinkActive="active">
+              <mat-icon>inventory</mat-icon>
+              <span>Da Consegnare</span>
+            </a>
+            <a mat-list-item routerLink="/django/welfare-contabilita" routerLinkActive="active">
+              <mat-icon>analytics</mat-icon>
+              <span>Contabilità</span>
+            </a>
+            <a mat-list-item routerLink="/django/welfare-import" routerLinkActive="active">
+              <mat-icon>email</mat-icon>
+              <span>Import Email</span>
+            </a>
+          </div>
+        </ng-container>
+
+        <!-- Assoarticoli -->
+        <a mat-list-item *ngIf="hasGroup(groups, ['GruppoCED'])" routerLink="/django/assortimenti">
+          <mat-icon>inventory_2</mat-icon>
+          <span *ngIf="!isCollapsed">AssoArticoli</span>
+        </a>
+
+        <!-- Django Admin - Solo Admin -->
+        <a mat-list-item *ngIf="isAdmin(groups)" href="#" (click)="goToDjangoAdmin($event)">
+          <mat-icon>admin_panel_settings</mat-icon>
+          <span *ngIf="!isCollapsed">Django Admin</span>
+        </a>
+
+      </ng-container>
+    </mat-nav-list>
+
+  </mat-sidenav>
+
+  <!-- CONTENT -->
+  <mat-sidenav-content class="main-content-bg">
+    <div class="main-content">
+      <router-outlet></router-outlet>
+    </div>
+  </mat-sidenav-content>
+</mat-sidenav-container>

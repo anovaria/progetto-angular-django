@@ -1,0 +1,31 @@
+// auth.guard.ts
+import { Injectable, inject } from '@angular/core';
+import { CanActivate, Router, ActivatedRouteSnapshot, RouterStateSnapshot, UrlTree } from '@angular/router';
+import { Observable, map, catchError, of, shareReplay } from 'rxjs';
+import { AuthService } from './auth';
+
+@Injectable({ providedIn: 'root' })
+export class AuthGuard implements CanActivate {
+  private auth = inject(AuthService);
+  private router = inject(Router);
+
+  // ✅ Cache per evitare chiamate multiple
+  private authCheck$?: Observable<boolean>;
+
+  canActivate(
+    route: ActivatedRouteSnapshot,
+    state: RouterStateSnapshot
+  ): Observable<boolean | UrlTree> | boolean {
+
+    const isLocalAuth = this.auth.isAuthenticated();
+
+    // ✅ TEMPORANEO: Fidati di localStorage
+    if (isLocalAuth) {
+      console.log('✅ AuthGuard: Accesso consentito (localStorage)');
+      return true;
+    }
+
+    console.log('🚪 AuthGuard: Non autenticato, redirect a login');
+    return of(this.router.createUrlTree(['/login']));
+  }
+}

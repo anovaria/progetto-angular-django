@@ -1,0 +1,98 @@
+{% extends "welfare/base.html" %}
+{% block title %}Da Consegnare{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="mb-0">
+        <span class="material-icons align-middle me-2">inventory</span>
+        Buoni da Consegnare
+    </h4>
+    <span class="badge bg-primary fs-6">{{ richieste.count }} in attesa</span>
+</div>
+
+<!-- Filtri -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label">Nominativo</label>
+                <input type="text" name="nominativo" class="form-control" 
+                       value="{{ filtro_nominativo }}" placeholder="Cerca per nome...">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Azienda</label>
+                <input type="text" name="azienda" class="form-control" 
+                       value="{{ filtro_azienda }}" placeholder="Cerca per azienda...">
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+                <button type="submit" class="btn btn-welfare me-2">
+                    <span class="material-icons align-middle">filter_alt</span>
+                    Filtra
+                </button>
+                <a href="{% url 'welfare:lista_da_consegnare' %}" class="btn btn-outline-secondary">
+                    Reset
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Tabella -->
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover table-welfare mb-0">
+            <thead>
+                <tr>
+                    <th>Voucher</th>
+                    <th>Nominativo</th>
+                    <th>Azienda</th>
+                    <th>Data Richiesta</th>
+                    <th class="text-center">Qta</th>
+                    <th class="text-end">Totale</th>
+                    <th class="text-center">Azioni</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in richieste %}
+                <tr>
+                    <td><code>{{ r.num_richiesta }}</code></td>
+                    <td><strong>{{ r.nominativo }}</strong></td>
+                    <td class="text-muted">{{ r.nome_mittente|default:"-"|truncatechars:25 }}</td>
+                    <td>{{ r.data_creazione|date:"d/m/Y" }}</td>
+                    <td class="text-center">{{ r.qta_buono }}</td>
+                    <td class="text-end"><strong>€ {{ r.totale_buono }}</strong></td>
+                    <td class="text-center">
+                        <a href="{% url 'welfare:ricerca_voucher' %}?voucher={{ r.num_richiesta }}" 
+                           class="btn btn-sm btn-outline-secondary me-1" title="Dettaglio">
+                            <span class="material-icons" style="font-size:16px">visibility</span>
+                        </a>
+                        {% if ruolo.id_ruolo == 2 or ruolo.id_ruolo == 99 %}
+                        <a href="{% url 'welfare:cassa_consegna' %}?voucher={{ r.num_richiesta }}" 
+                           class="btn btn-sm btn-success" title="Consegna">
+                            <span class="material-icons" style="font-size:16px">check</span>
+                        </a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="text-center text-muted py-5">
+                        <span class="material-icons d-block mb-2" style="font-size:48px">inventory_2</span>
+                        Nessun buono in attesa di consegna
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    {% if richieste %}
+    <div class="card-footer bg-white d-flex justify-content-between">
+        <span class="text-muted">Totale: {{ richieste.count }} richieste</span>
+        <span class="text-muted">
+            Valore: <strong>€ {{ totale_valore }}</strong>
+        </span>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

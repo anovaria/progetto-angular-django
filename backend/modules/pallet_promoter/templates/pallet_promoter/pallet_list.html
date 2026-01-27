@@ -1,0 +1,74 @@
+{% extends "pallet_promoter/base.html" %}
+
+{% block title %}Pallet - Pallet-Promoter{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4>
+        <span class="material-icons" style="vertical-align: middle;">grid_view</span>
+        Gestione Pallet
+    </h4>
+    <div>
+        <select id="anno-select" class="form-select" style="width: auto; display: inline-block;"
+                onchange="window.location.href='?anno=' + this.value">
+            {% for a in anni %}
+            <option value="{{ a }}" {% if a == anno_selezionato %}selected{% endif %}>{{ a }}</option>
+            {% endfor %}
+        </select>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        Seleziona un periodo per gestire le assegnazioni
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Codice</th>
+                    <th>Descrizione</th>
+                    <th>Data Inizio</th>
+                    <th>Data Fine</th>
+                    <th>Stato</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for periodo in periodi %}
+                <tr>
+                    <td><strong>{{ periodo.codice }}</strong></td>
+                    <td>{{ periodo.descrizione }}</td>
+                    <td>{{ periodo.data_inizio|date:"d/m/Y" }}</td>
+                    <td>{{ periodo.data_fine|date:"d/m/Y" }}</td>
+                    <td>
+                        {% if periodo.is_corrente %}
+                        <span class="badge bg-success">Attivo</span>
+                        {% elif periodo.data_inizio > today %}
+                        <span class="badge bg-warning">Futuro</span>
+                        {% else %}
+                        <span class="badge bg-secondary">Passato</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{% url 'pallet_promoter:pallet_griglia' periodo.id %}" 
+                           class="btn btn-sm btn-primary">
+                            <span class="material-icons" style="font-size: 16px; vertical-align: middle;">edit</span>
+                            Gestisci
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center text-muted py-4">
+                        <span class="material-icons" style="font-size: 48px;">event_busy</span>
+                        <p>Nessun periodo trovato per l'anno {{ anno_selezionato }}</p>
+                        <p class="small">Importa i periodi da Excel CED</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

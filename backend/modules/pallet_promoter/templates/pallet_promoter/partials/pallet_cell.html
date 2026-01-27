@@ -1,0 +1,19 @@
+{% load pallet_tags %}
+<div class="pallet-cell {% if assegnazione and assegnazione.fornitore %}assegnato{% else %}vuoto{% endif %}"
+     data-bs-toggle="modal" 
+     data-bs-target="#modalAssegna"
+     data-pallet-id="{{ pallet.id }}"
+     data-pallet-codice="{{ pallet.codice }}"
+     data-fornitore-id="{% if assegnazione and assegnazione.fornitore %}{{ assegnazione.fornitore.codice }}{% endif %}"
+     data-fornitore-nome="{% if assegnazione and assegnazione.fornitore %}{{ assegnazione.fornitore.nome }}{% endif %}"
+     data-dettaglio="{% if assegnazione %}{{ assegnazione.dettaglio|default:'' }}{% endif %}">
+    <div class="pallet-code">{{ pallet.codice }}</div>
+    {% if assegnazione and assegnazione.fornitore %}
+    <div class="fornitore-name">{{ assegnazione.fornitore.nome }}</div>
+    {% if assegnazione.dettaglio %}
+    <div class="dettaglio">{{ assegnazione.dettaglio }}</div>
+    {% endif %}
+    {% else %}
+    <div class="empty-label">— vuoto —</div>
+    {% endif %}
+</div>

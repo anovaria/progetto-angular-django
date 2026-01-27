@@ -1,0 +1,49 @@
+{% extends 'importelab/base.html' %}
+{% block content %}
+<style>
+@media print {
+  .no-print { display: none !important; }
+  body { background: #fff; }
+}
+.report-page {
+  max-width: 800px;
+  margin: 0 auto;
+}
+.hdr {
+  display:flex; justify-content:space-between; align-items:flex-end;
+}
+.small { color:#666; font-size: 0.9em; }
+.section { margin-top: 14px; padding-top: 10px; border-top:1px solid #ddd; }
+.rowblock { padding: 10px 0; border-bottom:1px solid #eee; }
+.kv { display:flex; gap:24px; flex-wrap:wrap; }
+.kv div { min-width: 140px; }
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace; }
+.box { display:inline-block; padding:2px 8px; border:1px dashed #999; border-radius:6px; }
+.center { text-align:center; }
+.table-mini td{ padding:2px 6px; }
+</style>
+
+<div class="report-page">
+  <div class="no-print" style="display:flex; gap:10px; margin-bottom:12px; flex-wrap:wrap;">
+    <button class="btn" onclick="window.print()">Stampa</button>
+    <a class="btn" href="{{ pdf_url }}">Scarica PDF</a>
+    <a class="btn" href="{% url 'importelab:dashboard' %}?batch={{ batch.id }}">Torna alla dashboard</a>
+  </div>
+
+  <div class="hdr">
+    <h1 style="margin:0;">{{ title }}</h1>
+    <div class="small">Data stampa: {{ print_date }}</div>
+  </div>
+
+  {% if rows_count == 0 %}
+    <p style="margin-top:18px; color:#b00;">Nessun dato da mostrare per questo batch. Hai rigenerato le query intermedie?</p>
+  {% else %}
+    <div class="small" style="margin-top:6px;">Batch: <strong>{{ batch.filename }}</strong> — caricato il {{ batch.uploaded_at|date:"d/m/Y H:i" }}</div>
+    {% block report_body %}{% endblock %}
+  {% endif %}
+
+  <div class="small" style="margin-top:14px;">
+    Pagina: <span class="mono">1</span> <!-- (browser gestisce paging reale in stampa) -->
+  </div>
+</div>
+{% endblock %}

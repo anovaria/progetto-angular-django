@@ -1,0 +1,7 @@
+{% for f in results %}
+<div class="fornitore-item" data-id="{{ f.id }}" data-nome="{{ f.text }}">
+    {{ f.text }}
+</div>
+{% empty %}
+<div class="fornitore-item text-muted">Nessun risultato</div>
+{% endfor %}

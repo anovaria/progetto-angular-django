@@ -1,0 +1,193 @@
+{% extends "welfare/base.html" %}
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="mb-0">
+        <span class="material-icons align-middle me-2">dashboard</span>
+        Dashboard
+    </h4>
+    <span class="text-muted">{{ oggi|date:"l d F Y" }}</span>
+</div>
+
+<!-- Stats Cards -->
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="card card-stat h-100">
+            <div class="card-body d-flex align-items-center">
+                <div class="stat-icon pronto me-3">
+                    <span class="material-icons">pending</span>
+                </div>
+                <div>
+                    <div class="text-muted small">Da Consegnare</div>
+                    <div class="h3 mb-0">{{ stats.totale_pronto }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card card-stat h-100">
+            <div class="card-body d-flex align-items-center">
+                <div class="stat-icon elaborato me-3">
+                    <span class="material-icons">hourglass_top</span>
+                </div>
+                <div>
+                    <div class="text-muted small">In Elaborazione</div>
+                    <div class="h3 mb-0">{{ stats.totale_elaborato }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card card-stat h-100">
+            <div class="card-body d-flex align-items-center">
+                <div class="stat-icon consegnato me-3">
+                    <span class="material-icons">check_circle</span>
+                </div>
+                <div>
+                    <div class="text-muted small">Consegnati Oggi</div>
+                    <div class="h3 mb-0">{{ stats.consegnati_oggi }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card card-stat h-100">
+            <div class="card-body d-flex align-items-center">
+                <div class="stat-icon consegnato me-3">
+                    <span class="material-icons">euro</span>
+                </div>
+                <div>
+                    <div class="text-muted small">Totale Mese</div>
+                    <div class="h3 mb-0">€ {{ stats.valore_consegnati_mese|floatformat:0 }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Search -->
+<div class="card mb-4">
+    <div class="card-body">
+        <h5 class="card-title mb-3">
+            <span class="material-icons align-middle me-2">search</span>
+            Ricerca Rapida Voucher
+        </h5>
+        <form action="{% url 'welfare:ricerca_voucher' %}" method="get" class="row g-3">
+            <div class="col-md-8">
+                <input type="text" name="voucher" class="form-control form-control-lg" 
+                       placeholder="Inserisci numero voucher (es. 00577148)..." autofocus>
+            </div>
+            <div class="col-md-4">
+                <button type="submit" class="btn btn-welfare btn-lg w-100">
+                    <span class="material-icons align-middle me-1">search</span>
+                    Cerca
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Ultime Richieste -->
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header bg-white py-3">
+                <h5 class="mb-0">
+                    <span class="material-icons align-middle me-2">list</span>
+                    Ultime Richieste da Consegnare
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Voucher</th>
+                                <th>Nominativo</th>
+                                <th>Azienda</th>
+                                <th class="text-end">Totale</th>
+                                <th>Data</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for r in ultime_pronte %}
+                            <tr>
+                                <td><code>{{ r.num_richiesta }}</code></td>
+                                <td>{{ r.nominativo }}</td>
+                                <td class="text-muted">{{ r.nome_mittente|default:"-" }}</td>
+                                <td class="text-end"><strong>€ {{ r.totale_buono }}</strong></td>
+                                <td class="text-muted">{{ r.data_creazione|date:"d/m/Y" }}</td>
+                                <td>
+                                    <a href="{% url 'welfare:ricerca_voucher' %}?voucher={{ r.num_richiesta }}" 
+                                       class="btn btn-sm btn-outline-primary">
+                                        <span class="material-icons" style="font-size:16px">visibility</span>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center text-muted py-4">
+                                    Nessuna richiesta in attesa
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% if ultime_pronte %}
+            <div class="card-footer bg-white">
+                <a href="{% url 'welfare:lista_da_consegnare' %}" class="text-decoration-none">
+                    Vedi tutte le richieste →
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Panel Info -->
+    <div class="col-md-4">
+        {% if stats.provvisori_da_validare > 0 and ruolo.id_ruolo == 99 %}
+        <div class="card border-warning mb-3">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <span class="material-icons text-warning me-2">warning</span>
+                    <div>
+                        <strong>{{ stats.provvisori_da_validare }}</strong> richieste da validare
+                    </div>
+                </div>
+                <a href="{% url 'welfare:import_email' %}" class="btn btn-warning btn-sm mt-2">
+                    Vai a Import
+                </a>
+            </div>
+        </div>
+        {% endif %}
+        
+        <div class="card">
+            <div class="card-header bg-white py-3">
+                <h5 class="mb-0">
+                    <span class="material-icons align-middle me-2">info</span>
+                    Riepilogo Mese
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Consegnati:</span>
+                    <strong>{{ stats.consegnati_mese }}</strong>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Valore totale:</span>
+                    <strong>€ {{ stats.valore_consegnati_mese|floatformat:0 }}</strong>
+                </div>
+                <hr>
+                <div class="d-flex justify-content-between">
+                    <span class="text-muted">In attesa:</span>
+                    <strong class="text-primary">{{ stats.totale_pronto }}</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

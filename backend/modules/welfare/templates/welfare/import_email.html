@@ -1,0 +1,164 @@
+{% extends "welfare/base.html" %}
+{% block title %}Import Email{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="mb-0">
+        <span class="material-icons align-middle me-2">email</span>
+        Import Email Eudaimon
+    </h4>
+</div>
+
+<div class="row g-4">
+    <!-- Form Import -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-white py-3">
+                <h5 class="mb-0">Inserimento Manuale HTML</h5>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    <input type="hidden" name="azione" value="parse_html">
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Contenuto HTML Email</label>
+                        <textarea name="html_content" class="form-control font-monospace" 
+                                  rows="12" placeholder="Incolla qui il contenuto HTML dell'email Eudaimon..."></textarea>
+                        <div class="form-text">
+                            Copia il corpo dell'email dalla casella di posta e incollalo qui.
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-welfare">
+                        <span class="material-icons align-middle me-1">code</span>
+                        Analizza e Importa
+                    </button>
+                </form>
+                
+                {% if risultato_parsing %}
+                <hr>
+                <h6>Risultato Parsing:</h6>
+                {% if risultato_parsing.success %}
+                <div class="alert alert-success">
+                    <strong>Dati estratti:</strong><br>
+                    Voucher: {{ risultato_parsing.num_richiesta }}<br>
+                    Nominativo: {{ risultato_parsing.nominativo }}<br>
+                    Valore: € {{ risultato_parsing.valore_buono }}<br>
+                    Quantità: {{ risultato_parsing.quantita }}<br>
+                    Totale: € {{ risultato_parsing.totale }}
+                </div>
+                {% else %}
+                <div class="alert alert-danger">
+                    <strong>Errore:</strong> {{ risultato_parsing.errore }}
+                </div>
+                {% endif %}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Lista Provvisorie -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Richieste da Validare</h5>
+                <span class="badge bg-warning">{{ provvisorie.count }}</span>
+            </div>
+            <div class="card-body p-0">
+                {% if provvisorie %}
+                <div class="list-group list-group-flush">
+                    {% for p in provvisorie %}
+                    <div class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <strong>{{ p.num_richiesta }}</strong>
+                                <span class="text-muted">- {{ p.nominativo }}</span>
+                                <br>
+                                <small class="text-muted">
+                                    € {{ p.totale_buono }} | Import: {{ p.data_importazione|date:"d/m/Y H:i" }}
+                                </small>
+                                {% if p.errore %}
+                                <br><small class="text-danger">{{ p.errore }}</small>
+                                {% endif %}
+                            </div>
+                            <div class="btn-group">
+                                <button class="btn btn-sm btn-success" 
+                                        onclick="validaProvvisoria({{ p.id }})" title="Valida">
+                                    <span class="material-icons" style="font-size:16px">check</span>
+                                </button>
+                                <button class="btn btn-sm btn-danger" 
+                                        onclick="eliminaProvvisoria({{ p.id }})" title="Elimina">
+                                    <span class="material-icons" style="font-size:16px">delete</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center text-muted py-5">
+                    <span class="material-icons d-block mb-2" style="font-size:48px">inbox</span>
+                    Nessuna richiesta da validare
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Info -->
+        <div class="card mt-3">
+            <div class="card-body">
+                <h6><span class="material-icons align-middle me-1">info</span> Formato Email Eudaimon</h6>
+                <small class="text-muted">
+                    L'email deve contenere i seguenti campi:<br>
+                    • Codice richiesta: XXXXXXXX (8 cifre)<br>
+                    • Punto vendita<br>
+                    • Valore del buono<br>
+                    • Quantità<br>
+                    • Prezzo totale
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function validaProvvisoria(id) {
+    if (!confirm('Confermi la validazione?')) return;
+    
+    fetch(`/app/welfare/import/valida/${id}/`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'}
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert(`Richiesta ${data.num_richiesta} validata!`);
+            location.reload();
+        } else {
+            alert('Errore: ' + (data.error || 'Sconosciuto'));
+        }
+    })
+    .catch(e => alert('Errore: ' + e));
+}
+
+function eliminaProvvisoria(id) {
+    if (!confirm('Eliminare questa richiesta provvisoria?')) return;
+    
+    fetch(`/app/welfare/import/elimina/${id}/`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'}
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Errore');
+        }
+    })
+    .catch(e => alert('Errore: ' + e));
+}
+</script>
+{% endblock %}

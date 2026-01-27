@@ -1,0 +1,384 @@
+{% extends "pallet_promoter/base.html" %}
+{% load pallet_tags %}
+
+{% block title %}Pallet {{ periodo.codice }} - Pallet-Promoter{% endblock %}
+
+{% block extra_css %}
+<style>
+    .buyer-section {
+        margin-bottom: 30px;
+    }
+
+    .buyer-header {
+        background: linear-gradient(135deg, #1976d2, #1565c0);
+        color: white;
+        padding: 10px 15px;
+        border-radius: 8px 8px 0 0;
+        font-weight: 600;
+    }
+
+    .pallet-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 15px;
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-top: none;
+        border-radius: 0 0 8px 8px;
+    }
+
+    .pallet-cell {
+        width: 140px;
+        min-height: 80px;
+        border: 2px solid #ddd;
+        border-radius: 6px;
+        padding: 8px;
+        background: white;
+        cursor: pointer;
+        transition: all 0.2s;
+        position: relative;
+    }
+
+    .pallet-cell:hover {
+        border-color: #1976d2;
+        box-shadow: 0 2px 8px rgba(25, 118, 210, 0.3);
+        transform: translateY(-2px);
+    }
+
+    .pallet-cell.assegnato {
+        background: #e8f5e9;
+        border-color: #4caf50;
+    }
+
+    .pallet-cell.vuoto {
+        background: #fff8e1;
+        border-color: #ffc107;
+    }
+
+    .pallet-code {
+        font-weight: bold;
+        font-size: 1em;
+        color: #1976d2;
+        margin-bottom: 5px;
+    }
+
+    .fornitore-name {
+        font-size: 0.75em;
+        color: #333;
+        line-height: 1.2;
+        max-height: 2.4em;
+        overflow: hidden;
+    }
+
+    .dettaglio {
+        font-size: 0.7em;
+        color: #666;
+        font-style: italic;
+        margin-top: 3px;
+    }
+
+    .empty-label {
+        font-size: 0.8em;
+        color: #999;
+    }
+
+    /* Modal */
+    .fornitore-search {
+        position: relative;
+    }
+
+    .fornitore-results {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        max-height: 200px;
+        overflow-y: auto;
+        z-index: 1000;
+        display: block;
+    }
+
+    .fornitore-item {
+        padding: 8px 12px;
+        cursor: pointer;
+        border-bottom: 1px solid #eee;
+    }
+
+    .fornitore-item:hover {
+        background: #e3f2fd;
+    }
+
+    .fornitore-item:last-child {
+        border-bottom: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <a href="{% url 'pallet_promoter:pallet_list' %}" class="btn btn-outline-secondary btn-sm mb-2">
+            <span class="material-icons" style="font-size: 16px; vertical-align: middle;">arrow_back</span>
+            Torna alla lista
+        </a>
+        <h4 class="mb-0">
+            <span class="material-icons" style="vertical-align: middle;">grid_view</span>
+            Pallet - {{ periodo.codice }}
+        </h4>
+        <p class="text-muted mb-0">
+            {{ periodo.data_inizio|date:"d/m/Y" }} - {{ periodo.data_fine|date:"d/m/Y" }}
+        </p>
+    </div>
+    <div class="d-flex align-items-center gap-3">
+        {% if mostra_dropdown %}
+        <div>
+            <label class="form-label small mb-1">Buyer</label>
+            <select class="form-select" id="buyer-select" onchange="window.location.href='?buyer=' + this.value">
+                {% for buyer in buyer_list %}
+                <option value="{{ buyer.id }}" {% if buyer.is_selected %}selected{% endif %}>{{ buyer.nominativo }}
+                </option> {% endfor %}
+            </select>
+        </div>
+        {% else %}
+        <div>
+            <span class="badge bg-primary fs-6">{{ buyer_selezionato.nominativo }}</span>
+        </div>
+        {% endif %}
+        <button class="btn btn-outline-primary" onclick="window.print()">
+            <span class="material-icons" style="vertical-align: middle;">print</span>
+            Stampa
+        </button>
+    </div>
+</div>
+
+{% for buyer, data in pallet_per_buyer.items %}
+<div class="buyer-section">
+    <div class="buyer-header">
+        <span class="material-icons" style="vertical-align: middle;">person</span>
+        {{ buyer.nominativo }}
+        <span class="badge bg-light text-dark ms-2">{{ data.pallet.count }} pallet</span>
+    </div>
+    <div class="pallet-grid">
+        {% for pallet in data.pallet %}
+        {% with assegn=data.assegnazioni|get_item:pallet.id %}
+        <div class="pallet-cell {% if assegn and assegn.fornitore %}assegnato{% else %}vuoto{% endif %}"
+            data-bs-toggle="modal" data-bs-target="#modalAssegna" data-pallet-id="{{ pallet.id }}"
+            data-pallet-codice="{{ pallet.codice }}"
+            data-fornitore-id="{% if assegn and assegn.fornitore %}{{ assegn.fornitore.codice }}{% endif %}"
+            data-fornitore-nome="{% if assegn and assegn.fornitore %}{{ assegn.fornitore.nome }}{% endif %}"
+            data-dettaglio="{% if assegn %}{{ assegn.dettaglio|default:'' }}{% endif %}">
+            <div class="pallet-code">{{ pallet.codice }}</div>
+            {% if assegn and assegn.fornitore %}
+            <div class="fornitore-name">{{ assegn.fornitore.nome }}</div>
+            {% if assegn.dettaglio %}
+            <div class="dettaglio">{{ assegn.dettaglio }}</div>
+            {% endif %}
+            {% else %}
+            <div class="empty-label">— vuoto —</div>
+            {% endif %}
+        </div>
+        {% endwith %}
+        {% endfor %}
+    </div>
+</div>
+{% empty %}
+<div class="alert alert-info">
+    <span class="material-icons" style="vertical-align: middle;">info</span>
+    Nessun buyer selezionato.
+</div>
+{% endfor %}
+
+<!-- Modal Assegnazione -->
+<div class="modal fade" id="modalAssegna" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <span class="material-icons" style="vertical-align: middle;">edit</span>
+                    Assegna Pallet <span id="modal-pallet-codice"></span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="form-assegna" hx-post="{% url 'pallet_promoter:assegna_pallet' %}" hx-swap="none">
+                    {% csrf_token %}
+                    <input type="hidden" name="pallet_id" id="input-pallet-id">
+                    <input type="hidden" name="periodo_id" value="{{ periodo.id }}">
+                    <input type="hidden" name="fornitore_id" id="input-fornitore-id">
+
+                    <div class="mb-3">
+                        <label class="form-label">Fornitore</label>
+                        <div class="fornitore-search">
+                            <input type="text" class="form-control" id="input-fornitore-search" name="q"
+                                placeholder="Cerca fornitore..." autocomplete="off">
+                            <div class="fornitore-results" id="fornitore-results"></div>
+                        </div>
+                        <div id="fornitore-selezionato" class="mt-2"></div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Dettaglio / Note</label>
+                        <input type="text" class="form-control" name="dettaglio" id="input-dettaglio"
+                            placeholder="Es: isola TUC, promo Natale...">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-danger" id="btn-rimuovi" style="margin-right: auto;">
+                    <span class="material-icons" style="vertical-align: middle;">delete</span>
+                    Rimuovi
+                </button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                <button type="button" class="btn btn-primary" id="btn-salva">
+                    <span class="material-icons" style="vertical-align: middle;">save</span>
+                    Salva
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const modal = document.getElementById('modalAssegna');
+        const inputPalletId = document.getElementById('input-pallet-id');
+        const inputFornitoreId = document.getElementById('input-fornitore-id');
+        const inputFornitoreSearch = document.getElementById('input-fornitore-search');
+        const inputDettaglio = document.getElementById('input-dettaglio');
+        const modalPalletCodice = document.getElementById('modal-pallet-codice');
+        const fornitoreSelezionato = document.getElementById('fornitore-selezionato');
+        const fornitoreResults = document.getElementById('fornitore-results');
+
+        // Apri modal con dati del pallet
+        modal.addEventListener('show.bs.modal', function (event) {
+            const cell = event.relatedTarget;
+            const palletId = cell.dataset.palletId;
+            const palletCodice = cell.dataset.palletCodice;
+            const fornitoreId = cell.dataset.fornitoreId;
+            const fornitoreNome = cell.dataset.fornitoreNome;
+            const dettaglio = cell.dataset.dettaglio;
+
+            inputPalletId.value = palletId;
+            modalPalletCodice.textContent = palletCodice;
+            inputDettaglio.value = dettaglio;
+
+            if (fornitoreId) {
+                inputFornitoreId.value = fornitoreId;
+                inputFornitoreSearch.value = '';
+                fornitoreSelezionato.innerHTML = `
+                <span class="badge bg-success">
+                    ${fornitoreNome}
+                    <span class="ms-1" style="cursor:pointer" onclick="clearFornitore()">×</span>
+                </span>`;
+            } else {
+                inputFornitoreId.value = '';
+                inputFornitoreSearch.value = '';
+                fornitoreSelezionato.innerHTML = '';
+            }
+            fornitoreResults.innerHTML = '';
+        });
+
+        // Ricerca fornitore con JS puro
+        let searchTimeout;
+        inputFornitoreSearch.addEventListener('keyup', function () {
+            clearTimeout(searchTimeout);
+            const q = this.value;
+
+            if (q.length < 2) {
+                fornitoreResults.innerHTML = '';
+                return;
+            }
+
+            searchTimeout = setTimeout(function () {
+                fetch(`{% url 'pallet_promoter:cerca_fornitore' %}?q=${encodeURIComponent(q)}`)
+                    .then(response => response.text())
+                    .then(html => {
+                        fornitoreResults.innerHTML = html;
+                    });
+            }, 300);
+        });
+
+        // Click su fornitore nei risultati
+        fornitoreResults.addEventListener('click', function (event) {
+            const item = event.target.closest('.fornitore-item');
+            if (item) {
+                inputFornitoreId.value = item.dataset.id;
+                fornitoreSelezionato.innerHTML = `
+                <span class="badge bg-success">
+                    ${item.dataset.nome}
+                    <span class="ms-1" style="cursor:pointer" onclick="clearFornitore()">×</span>
+                </span>`;
+                fornitoreResults.innerHTML = '';  // Chiudi dropdown
+                inputFornitoreSearch.value = '';
+            }
+        });
+
+        // Nascondi risultati quando clicchi fuori
+        document.addEventListener('click', function (event) {
+            if (!event.target.closest('.fornitore-search')) {
+                fornitoreResults.innerHTML = '';  // Chiudi dropdown
+            }
+        });
+
+        // Salva
+        document.getElementById('btn-salva').addEventListener('click', function () {
+            const form = document.getElementById('form-assegna');
+            const formData = new FormData(form);
+            const btn = this;
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Salvataggio...';
+
+            fetch(form.getAttribute('hx-post'), {
+                method: 'POST',
+                body: formData
+            }).then(response => {
+                if (response.ok) {
+                    // Chiudi modal e ricarica pagina
+                    bootstrap.Modal.getInstance(modal).hide();
+                    location.reload();
+                } else {
+                    btn.disabled = false;
+                    btn.innerHTML = '<span class="material-icons" style="vertical-align: middle;">save</span> Salva';
+                    alert('Errore durante il salvataggio');
+                }
+            }).catch(err => {
+                btn.disabled = false;
+                btn.innerHTML = '<span class="material-icons" style="vertical-align: middle;">save</span> Salva';
+                alert('Errore di connessione');
+            });
+        });
+
+        // Rimuovi
+        document.getElementById('btn-rimuovi').addEventListener('click', function () {
+            inputFornitoreId.value = '';
+            const form = document.getElementById('form-assegna');
+            const formData = new FormData(form);
+            const btn = this;
+
+            btn.disabled = true;
+
+            fetch(form.getAttribute('hx-post'), {
+                method: 'POST',
+                body: formData
+            }).then(response => {
+                if (response.ok) {
+                    bootstrap.Modal.getInstance(modal).hide();
+                    location.reload();
+                }
+            });
+        });
+    });
+
+    function clearFornitore() {
+        document.getElementById('input-fornitore-id').value = '';
+        document.getElementById('fornitore-selezionato').innerHTML = '';
+    }
+</script>
+{% endblock %}
