@@ -1,0 +1,120 @@
+{% extends 'merchandiser/base_minimal.html' %}
+
+{% block title %}{% if hostess %}Modifica{% else %}Nuova{% endif %} Hostess{% endblock %}
+
+{% block content %}
+<div class="card mb-4">
+    <div class="card-body">
+        <h4 class="mb-0">
+            <span class="material-icons" style="vertical-align: middle; font-size: 28px;">
+                {% if hostess %}edit{% else %}add{% endif %}
+            </span>
+            {% if hostess %}Modifica Hostess{% else %}Nuova Hostess{% endif %}
+        </h4>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form id="hostess-form" method="post">
+            {% csrf_token %}
+            
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label class="form-label">Nominativo <span class="text-danger">*</span></label>
+                    <input type="text" 
+                           class="form-control" 
+                           name="nominativo" 
+                           value="{% if hostess %}{{ hostess.nominativo }}{% endif %}"
+                           required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Ruolo</label>
+                    <input type="text" 
+                           class="form-control" 
+                           name="ruolo" 
+                           value="{% if hostess %}{{ hostess.ruolo }}{% endif %}"
+                           placeholder="Es: Promoter, Hostess">
+                </div>
+            </div>
+            
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label class="form-label">Scadenza Libretto Sanitario</label>
+                    <input type="date" 
+                           class="form-control" 
+                           name="scadenza_libretto_sanitario" 
+                           value="{% if hostess and hostess.scadenza_libretto_sanitario %}{{ hostess.scadenza_libretto_sanitario|date:'Y-m-d' }}{% endif %}">
+                    <small class="text-muted">Lascia vuoto se non applicabile</small>
+                </div>
+            </div>
+            
+            <div class="mb-3">
+                <label class="form-label">Note</label>
+                <textarea class="form-control" 
+                          name="nota" 
+                          rows="3"
+                          placeholder="Note opzionali...">{% if hostess %}{{ hostess.nota }}{% endif %}</textarea>
+            </div>
+            
+            <div class="mb-3">
+                <div class="form-check">
+                    <input type="checkbox" 
+                           class="form-check-input" 
+                           name="attiva" 
+                           id="attiva"
+                           {% if not hostess or hostess.attiva %}checked{% endif %}>
+                    <label class="form-check-label" for="attiva">
+                        Attiva
+                    </label>
+                </div>
+            </div>
+            
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-merchandiser">
+                    <span class="material-icons" style="vertical-align: middle;">save</span>
+                    Salva
+                </button>
+                <a href="{% url 'merchandiser:hostess_list' %}" class="btn btn-outline-secondary">
+                    <span class="material-icons" style="vertical-align: middle;">cancel</span>
+                    Annulla
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('hostess-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const btn = this.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Salvataggio...';
+    
+    fetch(this.action || window.location.href, {
+        method: 'POST',
+        body: formData
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            window.location.href = '{% url "merchandiser:hostess_list" %}';
+        } else {
+            alert(data.error || 'Errore durante il salvataggio');
+            btn.disabled = false;
+            btn.innerHTML = '<span class="material-icons" style="vertical-align: middle;">save</span> Salva';
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        alert('Errore durante il salvataggio');
+        btn.disabled = false;
+        btn.innerHTML = '<span class="material-icons" style="vertical-align: middle;">save</span> Salva';
+    });
+});
+</script>
+{% endblock %}

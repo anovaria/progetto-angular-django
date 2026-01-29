@@ -1,4 +1,4 @@
-{% extends "pallet_promoter/base.html" %}
+{% extends 'pallet_promoter/base_minimal.html' %}
 
 {% block title %}Presenze - Pallet-Promoter{% endblock %}
 
@@ -11,56 +11,64 @@
     
     .presence-row {
         background: white;
-        border-radius: 8px;
-        padding: 15px;
-        margin-bottom: 10px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 15px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        transition: all 0.2s;
     }
     
     .presence-row:hover {
-        box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
     }
     
     .slot-badge {
-        width: 30px;
-        height: 30px;
+        width: 40px;
+        height: 40px;
         border-radius: 50%;
-        background: #1976d2;
+        background: linear-gradient(135deg, #1976d2, #1565c0);
         color: white;
         display: flex;
         align-items: center;
         justify-content: center;
         font-weight: bold;
+        font-size: 1.1rem;
     }
     
     .time-block {
         background: #f8f9fa;
-        border-radius: 4px;
-        padding: 8px 12px;
+        border-radius: 8px;
+        padding: 12px;
     }
     
     .time-block.mattino {
-        border-left: 3px solid #ff9800;
+        border-left: 4px solid #ff9800;
     }
     
     .time-block.pomeriggio {
-        border-left: 3px solid #2196f3;
+        border-left: 4px solid #2196f3;
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-        <h4 class="mb-0">
-            <span class="material-icons" style="vertical-align: middle;">schedule</span>
-            Presenze Hostess
-        </h4>
-        <p class="text-muted mb-0">{{ giorno|date:"l d F Y" }}</p>
-    </div>
-    <div>
-        <input type="date" class="form-control" value="{{ giorno|date:'Y-m-d' }}" 
-               onchange="window.location.href='?data=' + this.value">
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h4 class="mb-0">
+                    <span class="material-icons" style="vertical-align: middle; font-size: 28px;">schedule</span>
+                    Presenze Hostess
+                </h4>
+                <p class="text-muted mb-0 mt-1">{{ giorno|date:"l d F Y" }}</p>
+            </div>
+            <div>
+                <label class="form-label mb-1">Seleziona Data:</label>
+                <input type="date" class="form-control" value="{{ giorno|date:'Y-m-d' }}" 
+                       onchange="window.location.href='?data=' + this.value">
+            </div>
+        </div>
     </div>
 </div>
 
@@ -71,14 +79,23 @@
         <div class="presence-row">
             <div class="d-flex align-items-center mb-3">
                 <div class="slot-badge me-3">{{ presenza.slot }}</div>
-                <div>
-                    <strong>{% if presenza.hostess %}{{ presenza.hostess.nominativo }}{% else %}—{% endif %}</strong>
+                <div class="flex-grow-1">
+                    <strong class="d-block">
+                        {% if presenza.hostess %}
+                            {{ presenza.hostess.nominativo }}
+                        {% else %}
+                            <span class="text-muted">Nessuna hostess assegnata</span>
+                        {% endif %}
+                    </strong>
                     {% if presenza.agenzia %}
-                    <br><small class="text-muted">{{ presenza.agenzia.descrizione }}</small>
+                    <small class="text-muted">
+                        <span class="material-icons" style="font-size: 14px; vertical-align: middle;">business</span>
+                        {{ presenza.agenzia.descrizione }}
+                    </small>
                     {% endif %}
                 </div>
                 <div class="ms-auto">
-                    <span class="badge {% if presenza.tipo == 'FAB' %}bg-warning{% else %}bg-primary{% endif %}">
+                    <span class="badge {% if presenza.tipo == 'FAB' %}bg-warning text-dark{% else %}bg-primary{% endif %}">
                         {{ presenza.get_tipo_display }}
                     </span>
                 </div>
@@ -87,28 +104,50 @@
             <div class="row g-2">
                 <div class="col-6">
                     <div class="time-block mattino">
-                        <small class="text-muted d-block">Mattino</small>
-                        <span>
-                            {% if presenza.ingresso_mattino %}{{ presenza.ingresso_mattino|time:"H:i" }}{% else %}—{% endif %}
+                        <small class="text-muted d-block mb-1">
+                            <span class="material-icons" style="font-size: 14px; vertical-align: middle;">wb_sunny</span>
+                            Mattino
+                        </small>
+                        <strong>
+                            {% if presenza.ingresso_mattino %}
+                                {{ presenza.ingresso_mattino|time:"H:i" }}
+                            {% else %}
+                                —
+                            {% endif %}
                             -
-                            {% if presenza.uscita_mattino %}{{ presenza.uscita_mattino|time:"H:i" }}{% else %}—{% endif %}
-                        </span>
+                            {% if presenza.uscita_mattino %}
+                                {{ presenza.uscita_mattino|time:"H:i" }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </strong>
                     </div>
                 </div>
                 <div class="col-6">
                     <div class="time-block pomeriggio">
-                        <small class="text-muted d-block">Pomeriggio</small>
-                        <span>
-                            {% if presenza.ingresso_pomeriggio %}{{ presenza.ingresso_pomeriggio|time:"H:i" }}{% else %}—{% endif %}
+                        <small class="text-muted d-block mb-1">
+                            <span class="material-icons" style="font-size: 14px; vertical-align: middle;">wb_twilight</span>
+                            Pomeriggio
+                        </small>
+                        <strong>
+                            {% if presenza.ingresso_pomeriggio %}
+                                {{ presenza.ingresso_pomeriggio|time:"H:i" }}
+                            {% else %}
+                                —
+                            {% endif %}
                             -
-                            {% if presenza.uscita_pomeriggio %}{{ presenza.uscita_pomeriggio|time:"H:i" }}{% else %}—{% endif %}
-                        </span>
+                            {% if presenza.uscita_pomeriggio %}
+                                {{ presenza.uscita_pomeriggio|time:"H:i" }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </strong>
                     </div>
                 </div>
             </div>
             
             {% if presenza.nota %}
-            <div class="mt-2">
+            <div class="mt-3 p-2 bg-light rounded">
                 <small class="text-muted">
                     <span class="material-icons" style="font-size: 14px; vertical-align: middle;">note</span>
                     {{ presenza.nota }}
@@ -120,12 +159,15 @@
     {% endfor %}
 </div>
 {% else %}
-<div class="text-center py-5">
-    <span class="material-icons text-muted" style="font-size: 64px;">event_busy</span>
-    <p class="text-muted mt-3">Nessuna presenza registrata per {{ giorno|date:"d/m/Y" }}</p>
-    <a href="{% url 'pallet_promoter:hostess_planning' %}" class="btn btn-primary">
-        Vai al Planning
-    </a>
+<div class="card">
+    <div class="card-body text-center py-5">
+        <span class="material-icons text-muted" style="font-size: 64px;">event_busy</span>
+        <p class="text-muted mt-3 mb-3">Nessuna presenza registrata per {{ giorno|date:"d/m/Y" }}</p>
+        <a href="{% url 'pallet_promoter:hostess_planning' %}" class="btn btn-pallet">
+            <span class="material-icons" style="vertical-align: middle;">calendar_today</span>
+            Vai al Planning
+        </a>
+    </div>
 </div>
 {% endif %}
 {% endblock %}

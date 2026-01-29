@@ -1,31 +1,45 @@
-{% extends "merchandiser/base.html" %}
+{% extends 'merchandiser/base_minimal.html' %}
 
-{% block title %}Attività - Merchandiser{% endblock %}
+{% block title %}Gestione Attività{% endblock %}
 
 {% block content %}
-<h4 class="mb-4">
-    <span class="material-icons" style="vertical-align: middle;">work</span>
-    Elenco Attività
-</h4>
+<div class="card mb-4">
+    <div class="card-body">
+        <h4 class="mb-0">
+            <span class="material-icons" style="vertical-align: middle; font-size: 28px;">assignment</span>
+            Gestione Attività
+        </h4>
+    </div>
+</div>
 
 <div class="card">
-    <div class="card-body p-0">
-        <table class="table table-hover mb-0">
+    <div class="card-body">
+        <table class="table table-hover">
             <thead>
                 <tr>
-                    <th>ID</th>
+                    <th>Codice</th>
                     <th>Descrizione</th>
+                    <th>Categoria</th>
+                    <th>Stato</th>
                 </tr>
             </thead>
             <tbody>
-                {% for a in attivita_list %}
+                {% for attivita in attivita_list %}
                 <tr>
-                    <td>{{ a.id }}</td>
-                    <td><strong>{{ a.descrizione }}</strong></td>
+                    <td><strong>{{ attivita.codice }}</strong></td>
+                    <td>{{ attivita.descrizione }}</td>
+                    <td>{{ attivita.categoria|default:"-" }}</td>
+                    <td>
+                        {% if attivita.attiva %}
+                        <span class="badge bg-success">Attiva</span>
+                        {% else %}
+                        <span class="badge bg-secondary">Non Attiva</span>
+                        {% endif %}
+                    </td>
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="2" class="text-center text-muted py-4">
+                    <td colspan="4" class="text-center text-muted py-5">
                         Nessuna attività trovata
                     </td>
                 </tr>
@@ -33,9 +47,5 @@
             </tbody>
         </table>
     </div>
-</div>
-
-<div class="mt-3 text-muted">
-    Totale: {{ attivita_list|length }} attività
 </div>
 {% endblock %}

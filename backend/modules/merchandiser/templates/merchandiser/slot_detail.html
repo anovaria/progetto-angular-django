@@ -1,4 +1,4 @@
-{% extends "merchandiser/base.html" %}
+{% extends "merchandiser/base_minimal.html" %}
 
 {% block title %}Slot {{ slot.id }} - Merchandiser{% endblock %}
 
@@ -72,6 +72,38 @@
         border-radius: 8px;
         margin-bottom: 15px;
     }
+.fornitore-search-wrapper-slot {
+    position: relative;
+}
+
+.fornitore-results-slot {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000;
+    display: none;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.fornitore-results-slot.show {
+    display: block;
+}
+
+.fornitore-item-slot {
+    padding: 8px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid #eee;
+}
+
+.fornitore-item-slot:hover {
+    background: #f5f5f5;
+}    
 </style>
 {% endblock %}
 
@@ -95,10 +127,6 @@
         <div class="slot-info-item">
             <label>Merchandiser</label>
             <strong>{{ slot.merchandiser.nominativo }}</strong>
-        </div>
-        <div class="slot-info-item">
-            <label>Referente</label>
-            <strong>{{ slot.utente.nominativo|default:"-" }}</strong>
         </div>
         <div class="slot-info-item">
             <label>Periodo</label>
@@ -125,14 +153,161 @@
             <strong>{{ slot.badge|default:"-" }}</strong>
         </div>
     </div>
-    {% if slot.note %}
+    <!-- Note modificabili -->
     <div class="mt-3">
-        <label class="text-muted" style="font-size: 0.8em;">Note</label>
-        <p class="mb-0">{{ slot.note }}</p>
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <label class="text-muted mb-0" style="font-size: 0.8em;">Note</label>
+            <button type="button" class="btn btn-sm btn-outline-primary" id="edit-note-btn" onclick="toggleNoteEdit()">
+                <span class="material-icons" style="font-size: 16px;">edit</span>
+                Modifica
+            </button>
+        </div>
+        
+        <div id="note-display">
+            <p class="mb-0">{{ slot.note|default:"Nessuna nota" }}</p>
+        </div>
+        
+        <div id="note-edit" style="display: none;">
+            <textarea class="form-control" id="note-textarea" rows="3">{{ slot.note }}</textarea>
+            <div class="mt-2">
+                <button type="button" class="btn btn-sm btn-success" onclick="saveNote()">
+                    <span class="material-icons" style="font-size: 16px;">save</span>
+                    Salva
+                </button>
+                <button type="button" class="btn btn-sm btn-secondary" onclick="cancelNoteEdit()">
+                    Annulla
+                </button>
+            </div>
+        </div>
     </div>
-    {% endif %}
+
+</div>
+<!-- Gestione Fornitori -->
+<div class="card mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>
+            <span class="material-icons" style="vertical-align: middle;">business</span>
+            Gestione Fornitori
+        </span>
+        <button type="button" class="btn btn-sm btn-success" onclick="toggleFornitoreForm()">
+            <span class="material-icons" style="font-size: 16px;">add</span>
+            Aggiungi Fornitore
+        </button>
+    </div>
+    <div class="card-body">
+        
+        <!-- Form Aggiungi Fornitore (nascosto di default) -->
+        <div id="fornitore-form" style="display: none;" class="mb-3 p-3 border rounded bg-light">
+            <h6 class="mb-3">Aggiungi Nuovo Fornitore</h6>
+            <div class="row g-2">
+                <div class="col-md-3">
+                    <label class="form-label">Fornitore <span class="text-danger">*</span></label>
+                    <div class="fornitore-search-wrapper-slot">
+                        <input type="text" 
+                               class="form-control fornitore-search-slot" 
+                               placeholder="Cerca fornitore..."
+                               autocomplete="off">
+                        <div class="fornitore-results-slot"></div>
+                    </div>
+                    <input type="hidden" id="new-fornitore-id">
+                    <small class="text-muted" id="selected-fornitore-name"></small>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Agenzia</label>
+                    <select class="form-select" id="new-agenzia-id">
+                        <option value="">-- Seleziona --</option>
+                        {% for a in agenzie %}
+                        <option value="{{ a.id }}">{{ a.descrizione|truncatechars:30 }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Attività</label>
+                    <select class="form-select" id="new-attivita-id">
+                        <option value="">-- Seleziona --</option>
+                        {% for att in attivita %}
+                        <option value="{{ att.id }}">{{ att.descrizione|truncatechars:30 }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Buyer</label>
+                    <select class="form-select" id="new-buyer-id">
+                        <option value="">-- Seleziona --</option>
+                        {% for b in buyer_list %}
+                        <option value="{{ b.id }}">{{ b.nominativo|truncatechars:30 }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Note</label>
+                    <input type="text" class="form-control" id="new-note" placeholder="Note opzionali">
+                </div>
+                <div class="col-md-1 d-flex align-items-end">
+                    <button type="button" class="btn btn-success w-100" onclick="salvaFornitore()">
+                        <span class="material-icons" style="font-size: 16px;">save</span>
+                    </button>
+                    <button type="button" class="btn btn-secondary w-100 ms-1" onclick="toggleFornitoreForm()">
+                        <span class="material-icons" style="font-size: 16px;">close</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Lista Fornitori Assegnati -->
+        <div id="fornitori-list">
+            {% if slot_fornitori %}
+            <table class="table table-sm table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Fornitore</th>
+                        <th>Agenzia</th>
+                        <th>Attività</th>
+                        <th>Buyer</th>
+                        <th>Note</th>
+                        <th style="width: 60px;"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for sf in slot_fornitori %}
+                    <tr>
+                        <td>
+                            <strong>
+                                {% if sf.fornitore_id %}
+                                    {{ sf.fornitore_id }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </strong>
+                        </td>
+                        <td>{{ sf.agenzia.descrizione|default:"-" }}</td>
+                        <td>{{ sf.attivita.descrizione|default:"-" }}</td>
+                        <td>{{ sf.buyer.nominativo|default:"-" }}</td>
+                        <td>{{ sf.note|default:"-"|truncatechars:30 }}</td>
+                        <td>
+                            <button type="button" 
+                                    class="btn btn-sm btn-outline-danger" 
+                                    onclick="eliminaFornitore({{ sf.id }})"
+                                    title="Elimina">
+                                <span class="material-icons" style="font-size: 16px;">delete</span>
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p class="text-muted text-center py-3 mb-0">
+                <span class="material-icons" style="font-size: 48px; opacity: 0.3;">business_center</span>
+                <br>Nessun fornitore assegnato a questo slot
+            </p>
+            {% endif %}
+        </div>
+    </div>
 </div>
 
+
+</style>
 <!-- Filtro date -->
 <div class="date-filter">
     <form method="get" class="row g-2 align-items-end">
@@ -267,6 +442,194 @@ function salvaRiga(btn) {
     .catch(err => {
         btn.innerHTML = '<span class="material-icons" style="font-size: 16px;">error</span>';
         btn.disabled = false;
+    });
+}
+
+function toggleNoteEdit() {
+    document.getElementById('note-display').style.display = 'none';
+    document.getElementById('note-edit').style.display = 'block';
+    document.getElementById('edit-note-btn').style.display = 'none';
+    document.getElementById('note-textarea').focus();
+}
+
+function cancelNoteEdit() {
+    document.getElementById('note-display').style.display = 'block';
+    document.getElementById('note-edit').style.display = 'none';
+    document.getElementById('edit-note-btn').style.display = 'block';
+}
+
+function saveNote() {
+    const nota = document.getElementById('note-textarea').value;
+    const slotId = {{ slot.id }};
+    
+    const formData = new FormData();
+    formData.append('slot_id', slotId);
+    formData.append('note', nota);
+    formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+    
+    fetch("{% url 'merchandiser:salva_note_slot' %}", {
+        method: 'POST',
+        body: formData
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('note-display').innerHTML = 
+                '<p class="mb-0">' + (nota || 'Nessuna nota') + '</p>';
+            cancelNoteEdit();
+            
+            const btn = document.getElementById('edit-note-btn');
+            btn.innerHTML = '<span class="material-icons" style="font-size: 16px;">check</span> Salvato!';
+            btn.classList.add('btn-success');
+            btn.classList.remove('btn-outline-primary');
+            setTimeout(() => {
+                btn.innerHTML = '<span class="material-icons" style="font-size: 16px;">edit</span> Modifica';
+                btn.classList.remove('btn-success');
+                btn.classList.add('btn-outline-primary');
+            }, 2000);
+        } else {
+            alert('Errore durante il salvataggio');
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        alert('Errore durante il salvataggio');
+    });
+}
+// Toggle form aggiungi fornitore
+function toggleFornitoreForm() {
+    const form = document.getElementById('fornitore-form');
+    if (form.style.display === 'none') {
+        form.style.display = 'block';
+        // Reset campi
+        document.querySelector('.fornitore-search-slot').value = '';
+        document.getElementById('new-fornitore-id').value = '';
+        document.getElementById('new-agenzia-id').value = '';
+        document.getElementById('new-attivita-id').value = '';
+        document.getElementById('new-buyer-id').value = '';
+        document.getElementById('new-note').value = '';
+        document.getElementById('selected-fornitore-name').textContent = '';
+    } else {
+        form.style.display = 'none';
+    }
+}
+
+// Ricerca fornitore per nuova assegnazione
+const fornitoreSearchSlot = document.querySelector('.fornitore-search-slot');
+const fornitoreResultsSlot = document.querySelector('.fornitore-results-slot');
+
+if (fornitoreSearchSlot) {
+    let timeout;
+    
+    fornitoreSearchSlot.addEventListener('input', function() {
+        clearTimeout(timeout);
+        const query = this.value.trim();
+        
+        if (query.length < 2) {
+            fornitoreResultsSlot.innerHTML = '';
+            fornitoreResultsSlot.classList.remove('show');
+            return;
+        }
+        
+        timeout = setTimeout(() => {
+            fetch(`{% url 'merchandiser:cerca_fornitore' %}?q=${encodeURIComponent(query)}`)
+                .then(r => r.text())
+                .then(html => {
+                    // Sostituisci le classi nel template
+                    html = html.replace(/fornitore-item/g, 'fornitore-item-slot');
+                    fornitoreResultsSlot.innerHTML = html;
+                    fornitoreResultsSlot.classList.add('show');
+                })
+                .catch(error => console.error('Errore:', error));
+        }, 300);
+    });
+    
+    fornitoreResultsSlot.addEventListener('click', function(e) {
+        const item = e.target.closest('.fornitore-item-slot');
+        if (item) {
+            const id = item.dataset.id;
+            const nome = item.dataset.nome;
+            
+            document.getElementById('new-fornitore-id').value = id;
+            document.getElementById('selected-fornitore-name').textContent = `✓ ${nome}`;
+            fornitoreSearchSlot.value = '';
+            fornitoreResultsSlot.classList.remove('show');
+        }
+    });
+}
+
+// Chiudi dropdown quando clicchi fuori
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.fornitore-search-wrapper-slot')) {
+        if (fornitoreResultsSlot) {
+            fornitoreResultsSlot.classList.remove('show');
+        }
+    }
+});
+
+// Salva nuovo fornitore
+function salvaFornitore() {
+    const fornitoreId = document.getElementById('new-fornitore-id').value;
+    const agenziaId = document.getElementById('new-agenzia-id').value;
+    const attivitaId = document.getElementById('new-attivita-id').value;
+    const buyerId = document.getElementById('new-buyer-id').value;
+    const note = document.getElementById('new-note').value;
+    
+    if (!fornitoreId) {
+        alert('Seleziona un fornitore!');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('slot_id', {{ slot.id }});
+    formData.append('fornitore_id', fornitoreId);
+    formData.append('agenzia_id', agenziaId);
+    formData.append('attivita_id', attivitaId);
+    formData.append('buyer_id', buyerId);
+    formData.append('note', note);
+    formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+    
+    fetch("{% url 'merchandiser:salva_slot_fornitore' %}", {
+        method: 'POST',
+        body: formData
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Errore durante il salvataggio');
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        alert('Errore durante il salvataggio');
+    });
+}
+
+// Elimina fornitore
+function eliminaFornitore(id) {
+    if (!confirm('Sei sicuro di voler eliminare questa assegnazione?')) {
+        return;
+    }
+    
+    fetch(`{% url 'merchandiser:elimina_slot_fornitore' 0 %}`.replace('/0/', `/${id}/`), {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}'
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Errore durante l\'eliminazione');
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        alert('Errore durante l\'eliminazione');
     });
 }
 </script>

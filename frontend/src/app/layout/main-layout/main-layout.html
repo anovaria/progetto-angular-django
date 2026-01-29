@@ -40,32 +40,111 @@
           <span *ngIf="!isCollapsed">Rossetto</span>
         </a>
 
-        <!-- Merchandiser - Admin + Merchandiser Manager -->
-        <a mat-list-item *ngIf="hasGroup(groups, ['merchandiser_manager'])" routerLink="/django/merchandiser">
-          <mat-icon>store</mat-icon>
-          <span *ngIf="!isCollapsed">Merchandiser</span>
-        </a>
+        <!-- PALLET-PROMOTER - Menu espandibile -->
+        <ng-container *ngIf="hasGroup(groups, ['pallet_manager', 'Ufficio Qualita', 'commerciale'])">
+          <a mat-list-item (click)="togglePalletMenu()" class="menu-parent">
+            <mat-icon>inventory_2</mat-icon>
+            <span *ngIf="!isCollapsed">Pallet-Promoter</span>
+            <mat-icon *ngIf="!isCollapsed" class="expand-icon">
+              {{ palletExpanded ? 'expand_less' : 'expand_more' }}
+            </mat-icon>
+          </a>
+          <div class="submenu" *ngIf="palletExpanded && !isCollapsed">
+            <a mat-list-item routerLink="/django/pallet-promoter" routerLinkActive="active"
+              [routerLinkActiveOptions]="{exact: true}">
+              <mat-icon>dashboard</mat-icon>
+              <span>Dashboard</span>
+            </a>
+            <a mat-list-item routerLink="/django/pallet-promoter-pallet" routerLinkActive="active">
+              <mat-icon>grid_view</mat-icon>
+              <span>Gestione Pallet</span>
+            </a>
+            <a mat-list-item routerLink="/django/pallet-promoter-testate" routerLinkActive="active">
+              <mat-icon>view_column</mat-icon>
+              <span>Gestione Testate</span>
+            </a>
+            <a mat-list-item routerLink="/django/pallet-promoter-hostess" routerLinkActive="active">
+              <mat-icon>people</mat-icon>
+              <span>Individuazione Hostess</span>
+            </a>
+            <a mat-list-item routerLink="/django/pallet-promoter-scelta-fornitore" routerLinkActive="active">
+              <mat-icon>grid_on</mat-icon>
+              <span>Scelta Fornitore</span>
+            </a>
+            <a mat-list-item routerLink="/django/pallet-promoter-presenze" routerLinkActive="active">
+              <mat-icon>schedule</mat-icon>
+              <span>Presenze</span>
+            </a>
+          </div>
+        </ng-container>
 
-        <!-- Pallet Promoter - Admin + Silve/Manager -->
-        <a mat-list-item *ngIf="hasGroup(groups, ['pallet_manager', 'ufficio qualità'])"
-          routerLink="/django/pallet-promoter">
-          <mat-icon>inventory_2</mat-icon>
-          <span *ngIf="!isCollapsed">Pallet-Promoter</span>
-        </a>
+        <!-- MERCHANDISER - Menu espandibile -->
+        <ng-container *ngIf="hasGroup(groups, ['merchandiser_manager', 'Ufficio Qualita'])">
+          <a mat-list-item (click)="toggleMerchandiserMenu()" class="menu-parent">
+            <mat-icon>store</mat-icon>
+            <span *ngIf="!isCollapsed">Merchandiser</span>
+            <mat-icon *ngIf="!isCollapsed" class="expand-icon">
+              {{ merchandiserExpanded ? 'expand_less' : 'expand_more' }}
+            </mat-icon>
+          </a>
+          <div class="submenu" *ngIf="merchandiserExpanded && !isCollapsed">
+            <a mat-list-item routerLink="/django/merchandiser" routerLinkActive="active"
+              [routerLinkActiveOptions]="{exact: true}">
+              <mat-icon>dashboard</mat-icon>
+              <span>Dashboard</span>
+            </a>
+            <a mat-list-item routerLink="/django/merchandiser-slot" routerLinkActive="active">
+              <mat-icon>event_available</mat-icon>
+              <span>Gestione Slot</span>
+            </a>
+            <a mat-list-item routerLink="/django/merchandiser-anagrafiche" routerLinkActive="active">
+              <mat-icon>people</mat-icon>
+              <span>Anagrafiche Merchandiser</span>
+            </a>
+            <a mat-list-item routerLink="/django/merchandiser-hostess" routerLinkActive="active">
+              <mat-icon>people</mat-icon>
+              <span>Anagrafica Hostess</span>
+            </a>
+            <a mat-list-item routerLink="/django/merchandiser-attivita" routerLinkActive="active">
+              <mat-icon>assignment</mat-icon>
+              <span>Gestione Attività</span>
+            </a>
+          </div>
+        </ng-container>
 
-        <!-- Alloca Hostess - Admin + Centralino -->
-        <a mat-list-item *ngIf="hasGroup(groups, ['centralino'])" routerLink="/django/alloca-hostess">
-          <mat-icon>people</mat-icon>
-          <span *ngIf="!isCollapsed">Alloca Hostess</span>
-        </a>
+        <!-- ALLOCA HOSTESS - Menu espandibile -->
+        <ng-container *ngIf="hasGroup(groups, ['centralino', 'Ufficio Qualita'])">
+          <a mat-list-item (click)="toggleAllocaMenu()" class="menu-parent">
+            <mat-icon>people</mat-icon>
+            <span *ngIf="!isCollapsed">Hostess</span>
+            <mat-icon *ngIf="!isCollapsed" class="expand-icon">
+              {{ allocaExpanded ? 'expand_less' : 'expand_more' }}
+            </mat-icon>
+          </a>
+          <div class="submenu" *ngIf="allocaExpanded && !isCollapsed">
+            <a mat-list-item routerLink="/django/alloca-hostess" routerLinkActive="active"
+              [routerLinkActiveOptions]="{exact: true}">
+              <mat-icon>dashboard</mat-icon>
+              <span>Dashboard</span>
+            </a>
+            <a mat-list-item routerLink="/django/alloca-hostess-individuazione" routerLinkActive="active">
+              <mat-icon>person_search</mat-icon>
+              <span>Gestione Slot</span>
+            </a>
+            <a mat-list-item routerLink="/django/alloca-hostess-hostess" routerLinkActive="active">
+              <mat-icon>badge</mat-icon>
+              <span>Lista Hostess</span>
+            </a>
+          </div>
+        </ng-container>
 
         <!-- Punto Info - Admin + Punto Info -->
-        <a mat-list-item *ngIf="hasGroup(groups, ['punto info', 'ufficio qualità'])" routerLink="/django/punto-info">
+        <a mat-list-item *ngIf="hasGroup(groups, ['punto info', 'Ufficio Qualita'])" routerLink="/django/punto-info">
           <mat-icon>schedule</mat-icon>
           <span *ngIf="!isCollapsed">Registrazione Orari</span>
         </a>
 
-        <!-- Welfare - Menu espandibile - Solo Ufficio Cassa -->
+        <!-- WELFARE - Menu espandibile -->
         <ng-container *ngIf="hasGroup(groups, ['ufficio cassa'])">
           <a mat-list-item (click)="toggleWelfareMenu()" class="menu-parent">
             <mat-icon>card_giftcard</mat-icon>

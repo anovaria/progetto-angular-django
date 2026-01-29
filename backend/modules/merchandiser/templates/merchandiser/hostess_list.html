@@ -1,25 +1,25 @@
 {% extends 'merchandiser/base_minimal.html' %}
 
-{% block title %}Anagrafiche Merchandiser{% endblock %}
+{% block title %}Anagrafica Hostess{% endblock %}
 
 {% block content %}
 <div class="card mb-4">
     <div class="card-body">
         <div class="d-flex justify-content-between align-items-center">
             <h4 class="mb-0">
-                <span class="material-icons" style="vertical-align: middle; font-size: 28px;">people</span>
-                Anagrafiche Merchandiser
+                <span class="material-icons" style="vertical-align: middle; font-size: 28px;">badge</span>
+                Anagrafica Hostess
             </h4>
             <div>
-                <a href="{% url 'merchandiser:merchandiser_add' %}" class="btn btn-merchandiser">
+                <a href="{% url 'merchandiser:hostess_add' %}" class="btn btn-merchandiser">
                     <span class="material-icons" style="vertical-align: middle;">add</span>
-                    Nuovo Merchandiser
+                    Nuova Hostess
                 </a>
-                <a href="?attivi=0" class="btn btn-sm {% if not solo_attivi %}btn-merchandiser{% else %}btn-outline-secondary{% endif %}">
-                    Tutti
+                <a href="?attive=0" class="btn btn-sm {% if not solo_attive %}btn-merchandiser{% else %}btn-outline-secondary{% endif %}">
+                    Tutte
                 </a>
-                <a href="?attivi=1" class="btn btn-sm {% if solo_attivi %}btn-merchandiser{% else %}btn-outline-secondary{% endif %}">
-                    Solo Attivi
+                <a href="?attive=1" class="btn btn-sm {% if solo_attive %}btn-merchandiser{% else %}btn-outline-secondary{% endif %}">
+                    Solo Attive
                 </a>
             </div>
         </div>
@@ -32,57 +32,60 @@
             <thead>
                 <tr>
                     <th>Nominativo</th>
-                    <th>Email</th>
-                    <th>Telefono</th>
-                    <th style="min-width: 200px;">Note</th>
+                    <th>Ruolo</th>
+                    <th>Libretto Sanitario</th>
+                    <th>Note</th>
                     <th style="width: 100px;">Stato</th>
                     <th style="width: 150px;">Azioni</th>
                 </tr>
             </thead>
             <tbody>
-                {% for merchandiser in merchandiser_list %}
+                {% for hostess in hostess_list %}
                 <tr>
+                    <td><strong>{{ hostess.nominativo }}</strong></td>
                     <td>
-                        <strong>{{ merchandiser.cognome }} {{ merchandiser.nome }}</strong>
-                    </td>
-                    <td>
-                        {% if merchandiser.email %}
-                            <a href="mailto:{{ merchandiser.email }}">{{ merchandiser.email }}</a>
+                        {% if hostess.ruolo %}
+                            {{ hostess.ruolo }}
                         {% else %}
                             <span class="text-muted">-</span>
                         {% endif %}
                     </td>
                     <td>
-                        {% if merchandiser.telefono %}
-                            {{ merchandiser.telefono }}
+                        {% if hostess.scadenza_libretto_sanitario %}
+                            {{ hostess.scadenza_libretto_sanitario|date:"d/m/Y" }}
+                            {% if hostess.scadenza_libretto_sanitario < today %}
+                                <span class="badge bg-danger">Scaduto</span>
+                            {% elif hostess.scadenza_libretto_sanitario < warning_date %}
+                                <span class="badge bg-warning">In scadenza</span>
+                            {% endif %}
                         {% else %}
                             <span class="text-muted">-</span>
                         {% endif %}
                     </td>
                     <td>
-                        {% if merchandiser.note %}
-                            <small style="white-space: pre-line;">{{ merchandiser.note }}</small>
+                        {% if hostess.nota %}
+                            <small>{{ hostess.nota|truncatechars:50 }}</small>
                         {% else %}
                             <span class="text-muted">-</span>
                         {% endif %}
                     </td>
                     <td>
-                        {% if merchandiser.attivo %}
-                        <span class="badge bg-success">Attivo</span>
+                        {% if hostess.attiva %}
+                        <span class="badge bg-success">Attiva</span>
                         {% else %}
-                        <span class="badge bg-secondary">Non Attivo</span>
+                        <span class="badge bg-secondary">Non Attiva</span>
                         {% endif %}
                     </td>
                     <td>
-                        <a href="{% url 'merchandiser:merchandiser_edit' merchandiser.id %}" 
+                        <a href="{% url 'merchandiser:hostess_edit' hostess.id %}" 
                            class="btn btn-sm btn-outline-primary"
                            title="Modifica">
                             <span class="material-icons" style="font-size: 16px;">edit</span>
                         </a>
-                        {% if merchandiser.attivo %}
+                        {% if hostess.attiva %}
                         <button type="button" 
                                 class="btn btn-sm btn-outline-danger"
-                                onclick="deleteMerchandiser({{ merchandiser.id }}, '{{ merchandiser.cognome }} {{ merchandiser.nome }}')"
+                                onclick="deleteHostess({{ hostess.id }}, '{{ hostess.nominativo }}')"
                                 title="Disattiva">
                             <span class="material-icons" style="font-size: 16px;">delete</span>
                         </button>
@@ -94,10 +97,10 @@
                     <td colspan="6" class="text-center text-muted py-5">
                         <span class="material-icons" style="font-size: 48px;">person_off</span>
                         <p class="mt-2">
-                            {% if solo_attivi %}
-                                Nessun merchandiser attivo trovato
+                            {% if solo_attive %}
+                                Nessuna hostess attiva trovata
                             {% else %}
-                                Nessun merchandiser trovato
+                                Nessuna hostess trovata
                             {% endif %}
                         </p>
                     </td>
@@ -111,28 +114,20 @@
 <div class="mt-3">
     <p class="text-muted">
         <span class="material-icons" style="font-size: 16px; vertical-align: middle;">info</span>
-        Totale: <strong>{{ merchandiser_list.count }}</strong> merchandiser
-        {% if solo_attivi %}(solo attivi){% endif %}
+        Totale: <strong>{{ hostess_list.count }}</strong> hostess
+        {% if solo_attive %}(solo attive){% endif %}
     </p>
 </div>
-
-<style>
-td small {
-    display: block;
-    max-width: 300px;
-    word-wrap: break-word;
-}
-</style>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-function deleteMerchandiser(id, nome) {
+function deleteHostess(id, nome) {
     if (!confirm(`Sei sicuro di voler disattivare "${nome}"?`)) {
         return;
     }
     
-    fetch(`{% url 'merchandiser:merchandiser_delete' 0 %}`.replace('/0/', `/${id}/`), {
+    fetch(`{% url 'merchandiser:hostess_delete' 0 %}`.replace('/0/', `/${id}/`), {
         method: 'POST',
         headers: {
             'X-CSRFToken': '{{ csrf_token }}'

@@ -6,6 +6,12 @@ import os
 
 # Definizioni di base
 SETTINGS_DIR = Path(__file__).resolve().parent
+LANGUAGE_CODE = 'it-IT'  # Cambia da 'en-us' a 'it-IT'
+TIME_ZONE = 'Europe/Rome'
+
+USE_I18N = True
+USE_L10N = True
+USE_TZ = True
 
 # 2. Definisce la cartella 'project_core'
 PROJECT_CORE_DIR = SETTINGS_DIR.parent

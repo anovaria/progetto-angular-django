@@ -1,4 +1,20 @@
 """
+-- Svuota tabelle welfare (ordine corretto per foreign key)
+DELETE FROM welfare.dettaglio_buoni;
+DELETE FROM welfare.richieste_provvisorie;
+DELETE FROM welfare.email_importate;
+DELETE FROM welfare.verifica_eudaimon;
+DELETE FROM welfare.richieste;
+DELETE FROM welfare.utenti;
+
+-- Reset identity (opzionale, riparte da 1)
+DBCC CHECKIDENT ('welfare.dettaglio_buoni', RESEED, 0);
+DBCC CHECKIDENT ('welfare.richieste_provvisorie', RESEED, 0);
+DBCC CHECKIDENT ('welfare.email_importate', RESEED, 0);
+DBCC CHECKIDENT ('welfare.verifica_eudaimon', RESEED, 0);
+DBCC CHECKIDENT ('welfare.richieste', RESEED, 0);
+DBCC CHECKIDENT ('welfare.utenti', RESEED, 0);
+------------------------------------------------------------------------
 Script di migrazione dati da MS Access (wellfare_.accdb) a Django/MSSQL
 
 LETTURA DIRETTA DA FILE .ACCDB via pyodbc
@@ -9,9 +25,12 @@ Uso:
     python modules\\welfare\\migrate_welfare_data.py --init-only
 
 Dalla shell Django:
+    
+    cd C:\inetpub\PortaleTest\django o C:\inetpub\PortaleIntranet\django  o C:\portale\backend
     python manage.py shell
     >>> from modules.welfare.migrate_welfare_data import migrate_from_access
-    >>> migrate_from_access(r"C:\\path\\to\\wellfare_.accdb")
+    >>> migrate_from_access(r'C:\temp\wellfare.accdb', dry_run=True)
+    >>> migrate_from_access(r'C:\wellfare.accdb') 
 
 Prerequisiti:
     - pyodbc installato: pip install pyodbc

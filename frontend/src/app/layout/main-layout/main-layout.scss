@@ -11,10 +11,10 @@
 .logo-container {
   h1 {
     margin: 0;
-    line-height: 1;
+    line-height: 0;
 
     img {
-      height: 40px;
+      height: 60px;
       width: auto;
     }
   }
@@ -24,10 +24,10 @@
   display: inline-flex;
   align-items: center;
   background: rgb(245, 243, 243);
-  padding: 0.35rem 0.5rem 0.35rem 0.75rem;
-  border-radius: 24px;
-  font-size: 0.875rem;
-  gap: 8px;
+  padding: 0.20rem 0.5rem 0.20rem 0.5rem;
+  border-radius: 20px;
+  font-size: 1.0rem;
+  gap: 6px;
   color: #054585;
 
   mat-icon {
@@ -177,6 +177,9 @@ mat-nav-list {
 // Content area
 .main-content-bg {
   background: #f8fafc;
+  background-image: url('/images/sfondo.jpg');
+  background-size: cover;
+  background-position: center;
 }
 
 .main-content {

@@ -42,7 +42,7 @@ def get_current_user(request):
 # ============================================
 # DASHBOARD
 # ============================================
-
+@csrf_exempt
 def index(request):
     """Dashboard principale Pallet-Promoter."""
     oggi = timezone.now().date()
@@ -78,7 +78,7 @@ def index(request):
 # ============================================
 # PALLET
 # ============================================
-
+@csrf_exempt
 def pallet_list(request):
     """Lista periodi per selezione."""
     anno_corrente = timezone.now().year
@@ -96,7 +96,7 @@ def pallet_list(request):
     }
     return render(request, 'pallet_promoter/pallet_list.html', context)
 
-
+@csrf_exempt
 def pallet_griglia(request, periodo_id):
     """Griglia assegnazioni pallet per un periodo."""
     periodo = get_object_or_404(Periodo, pk=periodo_id)
@@ -166,7 +166,7 @@ def pallet_griglia(request, periodo_id):
 # ============================================
 # TESTATE
 # ============================================
-
+@csrf_exempt
 def testate_list(request):
     """Lista mesi/anni per selezione testate."""
     anno_corrente = timezone.now().year
@@ -180,7 +180,7 @@ def testate_list(request):
     }
     return render(request, 'pallet_promoter/testate_list.html', context)
 
-
+@csrf_exempt
 def testate_griglia(request, anno, mese):
     """Griglia assegnazioni testate per mese/anno."""
     testate = Testata.objects.all().order_by('id')
@@ -205,7 +205,7 @@ def testate_griglia(request, anno, mese):
 # ============================================
 # HOSTESS
 # ============================================
-
+@csrf_exempt
 def hostess_planning(request):
     """Planning settimanale hostess - Individuazione Hostess."""
     from datetime import timedelta
@@ -295,7 +295,7 @@ def hostess_planning(request):
     }
     return render(request, 'pallet_promoter/hostess_planning.html', context)
 
-
+@csrf_exempt
 def presenze_list(request):
     """Lista presenze/timbrature."""
     oggi = timezone.now().date()
@@ -310,7 +310,7 @@ def presenze_list(request):
     }
     return render(request, 'pallet_promoter/presenze_list.html', context)
 
-
+@csrf_exempt
 def scelta_fornitore_hostess(request):
     """Scelta Fornitore per Hostess - Griglia settimanale."""
     from datetime import timedelta
@@ -367,7 +367,7 @@ def scelta_fornitore_hostess(request):
 # ============================================
 # API HTMX
 # ============================================
-
+@csrf_exempt
 @require_http_methods(["POST"])
 def assegna_pallet(request):
     """Assegna un pallet a un fornitore (HTMX)."""
@@ -540,7 +540,7 @@ def salva_tutte_presenze(request):
     
     return JsonResponse({'success': True, 'saved': saved})
 
-
+@csrf_exempt
 def cerca_fornitore(request):
     """Ricerca fornitore per autocomplete (HTMX)."""
     q = request.GET.get('q', '')

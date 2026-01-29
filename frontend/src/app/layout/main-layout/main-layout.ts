@@ -40,6 +40,11 @@ export class MainLayoutComponent implements AfterViewInit {
   opened = true;
   isCollapsed = false;
   isMobile = false;
+
+  // Menu espandibili
+  palletExpanded = false;
+  merchandiserExpanded = false;
+  allocaExpanded = false;
   welfareExpanded = false;
 
   djangoRoutes = DJANGO_EMBED_ROUTES;
@@ -59,10 +64,8 @@ export class MainLayoutComponent implements AfterViewInit {
       this.isCollapsed = false;
     });
 
-    // Espandi automaticamente Welfare se siamo su una sua pagina
-    if (this.router.url.startsWith('/django/welfare')) {
-      this.welfareExpanded = true;
-    }
+    // Espandi automaticamente il menu corretto in base all'URL corrente
+    this.expandMenuBasedOnUrl();
   }
 
   ngAfterViewInit() {
@@ -71,22 +74,83 @@ export class MainLayoutComponent implements AfterViewInit {
     });
   }
 
+  /**
+   * Espande automaticamente il menu in base all'URL corrente
+   */
+  private expandMenuBasedOnUrl() {
+    const url = this.router.url;
+
+    if (url.startsWith('/django/pallet-promoter')) {
+      this.palletExpanded = true;
+    } else if (url.startsWith('/django/merchandiser')) {
+      this.merchandiserExpanded = true;
+    } else if (url.startsWith('/django/alloca-hostess')) {
+      this.allocaExpanded = true;
+    } else if (url.startsWith('/django/welfare')) {
+      this.welfareExpanded = true;
+    }
+  }
+
   toggleSidebar() {
     if (this.isMobile) {
       this.opened = !this.opened;
     } else {
       this.isCollapsed = !this.isCollapsed;
       if (this.isCollapsed) {
+        // Chiudi tutti i submenu quando si collassa la sidebar
+        this.palletExpanded = false;
+        this.merchandiserExpanded = false;
+        this.allocaExpanded = false;
         this.welfareExpanded = false;
       }
     }
     this.forceLayoutUpdate();
   }
 
+  /**
+   * Toggle menu Pallet-Promoter
+   */
+  togglePalletMenu() {
+    if (!this.isCollapsed) {
+      this.palletExpanded = !this.palletExpanded;
+    } else {
+      // Se sidebar è collassata, vai alla dashboard
+      this.router.navigate(['/django/pallet-promoter']);
+    }
+  }
+
+  /**
+   * Toggle menu Merchandiser
+   */
+  toggleMerchandiserMenu() {
+    if (!this.isCollapsed) {
+      this.merchandiserExpanded = !this.merchandiserExpanded;
+    } else {
+      // Se sidebar è collassata, vai alla dashboard
+      this.router.navigate(['/django/merchandiser']);
+    }
+  }
+
+  /**
+   * Toggle menu Alloca Hostess
+   */
+  toggleAllocaMenu() {
+    if (!this.isCollapsed) {
+      this.allocaExpanded = !this.allocaExpanded;
+    } else {
+      // Se sidebar è collassata, vai alla dashboard
+      this.router.navigate(['/django/alloca-hostess']);
+    }
+  }
+
+  /**
+   * Toggle menu Welfare
+   */
   toggleWelfareMenu() {
     if (!this.isCollapsed) {
       this.welfareExpanded = !this.welfareExpanded;
     } else {
+      // Se sidebar è collassata, vai alla dashboard
       this.router.navigate(['/django/welfare']);
     }
   }

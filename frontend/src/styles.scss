@@ -1,8 +1,13 @@
 /* ALL'INTERNO DEL FILE GLOBALE (E NON IN app.scss o app.css) */
+html {
+    font-size: 13px; // Riduci da 16px default
+}
+
 body {
     background-repeat: no-repeat;
     background-position: center center;
     background-size: cover;
     background-attachment: fixed;
     background-color: #f0f0f0;
+    //zoom: 0.9; // 90% della dimensione
 }

@@ -1,4 +1,4 @@
-{% extends "merchandiser/base.html" %}
+{% extends "merchandiser/base_minimal.html" %}
 
 {% block title %}Slot - Merchandiser{% endblock %}
 
@@ -21,17 +21,6 @@
                     {% for m in merchandiser_list %}
                     <option value="{{ m.id }}" {% if filtro_merchandiser == m.id|stringformat:"s" %}selected{% endif %}>
                         {{ m.nominativo }}
-                    </option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-md-3">
-                <label class="form-label">Referente</label>
-                <select name="utente" class="form-select">
-                    <option value="">Tutti</option>
-                    {% for u in utenti_list %}
-                    <option value="{{ u.id }}" {% if filtro_utente == u.id|stringformat:"s" %}selected{% endif %}>
-                        {{ u.nominativo }}
                     </option>
                     {% endfor %}
                 </select>
@@ -61,7 +50,6 @@
                 <tr>
                     <th>ID</th>
                     <th>Merchandiser</th>
-                    <th>Referente</th>
                     <th>Inizio</th>
                     <th>Fine</th>
                     <th>Giorni</th>
@@ -74,7 +62,6 @@
                 <tr class="{% if slot.data_inizio <= oggi and slot.data_fine >= oggi %}table-success{% endif %}">
                     <td>{{ slot.id }}</td>
                     <td><strong>{{ slot.merchandiser.nominativo }}</strong></td>
-                    <td>{{ slot.utente.nominativo|default:"-" }}</td>
                     <td>{{ slot.data_inizio|date:"d/m/Y" }}</td>
                     <td>{{ slot.data_fine|date:"d/m/Y" }}</td>
                     <td>{{ slot.giorni_attivi }}</td>
@@ -87,7 +74,7 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="8" class="text-center text-muted py-4">
+                    <td colspan="7" class="text-center text-muted py-4">
                         Nessuno slot trovato
                     </td>
                 </tr>

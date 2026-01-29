@@ -1,71 +1,54 @@
-{% extends "alloca_hostess/base.html" %}
+{% extends 'alloca_hostess/base_minimal.html' %}
 
-{% block title %}Elenco Hostess - Alloca Hostess{% endblock %}
+{% block title %}Anagrafica Hostess{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h4 class="mb-0">
-        <span class="material-icons" style="vertical-align: middle;">badge</span>
-        Elenco Hostess
-    </h4>
-    <div class="d-flex gap-2">
-        <div class="form-check form-switch">
-            <input class="form-check-input" type="checkbox" id="filtroAttive" 
-                   {% if solo_attive %}checked{% endif %}
-                   onchange="window.location.href='?attive=' + (this.checked ? '1' : '0')">
-            <label class="form-check-label" for="filtroAttive">Solo attive</label>
-        </div>
+<div class="card mb-4">
+    <div class="card-body">
+        <h4 class="mb-0">
+            <span class="material-icons" style="vertical-align: middle; font-size: 28px;">badge</span>
+            Anagrafica Hostess
+        </h4>
     </div>
 </div>
 
 <div class="card">
-    <div class="card-body p-0">
-        <table class="table table-hover mb-0">
+    <div class="card-body">
+        <table class="table table-hover">
             <thead>
                 <tr>
-                    <th>ID</th>
                     <th>Nominativo</th>
-                    <th>Ruolo</th>
+                    <th>Agenzia</th>
+                    <th>Telefono</th>
+                    <th>Email</th>
                     <th>Stato</th>
-                    <th>Scadenza Lib. Sanitario</th>
-                    <th>Note</th>
                 </tr>
             </thead>
             <tbody>
-                {% for h in hostess_list %}
+                {% for hostess in hostess_list %}
                 <tr>
-                    <td>{{ h.id }}</td>
-                    <td><strong>{{ h.nominativo }}</strong></td>
-                    <td>{{ h.ruolo|default:"-" }}</td>
+                    <td><strong>{{ hostess.nominativo }}</strong></td>
+                    <td>{{ hostess.agenzia.descrizione|default:"-" }}</td>
+                    <td>{{ hostess.telefono|default:"-" }}</td>
+                    <td>{{ hostess.email|default:"-" }}</td>
                     <td>
-                        {% if h.attiva %}
+                        {% if hostess.attiva %}
                         <span class="badge bg-success">Attiva</span>
                         {% else %}
-                        <span class="badge bg-secondary">Inattiva</span>
+                        <span class="badge bg-secondary">Non Attiva</span>
                         {% endif %}
                     </td>
-                    <td>
-                        {% if h.scadenza_libretto_sanitario %}
-                            {{ h.scadenza_libretto_sanitario|date:"d/m/Y" }}
-                        {% else %}
-                            -
-                        {% endif %}
-                    </td>
-                    <td>{{ h.nota|default:"-"|truncatechars:50 }}</td>
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="6" class="text-center text-muted py-4">
-                        Nessuna hostess trovata
+                    <td colspan="5" class="text-center text-muted py-5">
+                        <span class="material-icons" style="font-size: 48px;">person_off</span>
+                        <p class="mt-2">Nessuna hostess trovata</p>
                     </td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
-</div>
-
-<div class="mt-3 text-muted">
-    Totale: {{ hostess_list|length }} hostess
 </div>
 {% endblock %}

@@ -5,11 +5,12 @@ from django.utils import timezone
 from django.db.models import Q, Sum
 from datetime import timedelta, datetime
 from django.views.decorators.csrf import csrf_exempt
+from django.db import models
 
 from .models import (
     Attivita, Utente, Merchandiser, Slot, SlotFornitore, SlotIngressoUscita, SottoReparto
 )
-from modules.pallet_promoter.models import Agenzia, Fornitore, Buyer
+from modules.pallet_promoter.models import Agenzia, Fornitore, Buyer, Hostess
 
 
 def get_current_user(request):
@@ -217,6 +218,7 @@ def slot_detail(request, slot_id):
     agenzie = Agenzia.objects.all().order_by('descrizione')
     attivita = Attivita.objects.all().order_by('descrizione')
     buyer_list = Buyer.objects.all().order_by('nominativo')
+    hostess_list = Hostess.objects.filter(attiva=True).order_by('nominativo')
     
     context = {
         'slot': slot,
@@ -227,6 +229,7 @@ def slot_detail(request, slot_id):
         'slot_fornitori': slot_fornitori,
         'agenzie': agenzie,
         'attivita': attivita,
+        'hostess_list': hostess_list,
         'buyer_list': buyer_list,
         'current_user': get_current_user(request),
     }
@@ -338,7 +341,7 @@ def cerca_fornitore(request):
     
     return render(request, 'merchandiser/partials/fornitore_results.html', {'fornitori': fornitori})
 
-
+@csrf_exempt
 @require_http_methods(["POST"])
 def salva_slot_fornitore(request):
     """Salva assegnazione fornitore a slot."""
@@ -366,10 +369,237 @@ def salva_slot_fornitore(request):
     
     return JsonResponse({'success': True, 'id': sf.id})
 
-
+@csrf_exempt
 @require_http_methods(["POST"])
 def elimina_slot_fornitore(request, sf_id):
     """Elimina assegnazione fornitore."""
     sf = get_object_or_404(SlotFornitore, pk=sf_id)
     sf.delete()
     return JsonResponse({'success': True})
+# ============================================
+# MERCHANDISER CRUD
+# ============================================
+
+def merchandiser_add(request):
+    """Aggiungi nuovo merchandiser."""
+    if request.method == 'POST':
+        cognome = request.POST.get('cognome', '').strip()
+        nome = request.POST.get('nome', '').strip()
+        telefono = request.POST.get('telefono', '').strip()
+        email = request.POST.get('email', '').strip()
+        note = request.POST.get('note', '').strip()
+        attivo = request.POST.get('attivo') == 'on'
+        
+        if not cognome:
+            return JsonResponse({'success': False, 'error': 'Il cognome è obbligatorio'})
+        
+        merchandiser = Merchandiser.objects.create(
+            cognome=cognome,
+            nome=nome,
+            telefono=telefono,
+            email=email,
+            note=note,
+            attivo=attivo
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'merchandiser': {
+                'id': merchandiser.id,
+                'cognome': merchandiser.cognome,
+                'nome': merchandiser.nome,
+                'telefono': merchandiser.telefono,
+                'email': merchandiser.email,
+                'note': merchandiser.note,
+                'attivo': merchandiser.attivo
+            }
+        })
+    
+    context = {
+        'current_user': get_current_user(request),
+    }
+    return render(request, 'merchandiser/merchandiser_form.html', context)
+
+
+def merchandiser_edit(request, merchandiser_id):
+    """Modifica merchandiser esistente."""
+    merchandiser = get_object_or_404(Merchandiser, pk=merchandiser_id)
+    
+    if request.method == 'POST':
+        merchandiser.cognome = request.POST.get('cognome', '').strip()
+        merchandiser.nome = request.POST.get('nome', '').strip()
+        merchandiser.telefono = request.POST.get('telefono', '').strip()
+        merchandiser.email = request.POST.get('email', '').strip()
+        merchandiser.note = request.POST.get('note', '').strip()
+        merchandiser.attivo = request.POST.get('attivo') == 'on'
+        
+        if not merchandiser.cognome:
+            return JsonResponse({'success': False, 'error': 'Il cognome è obbligatorio'})
+        
+        merchandiser.save()
+        
+        return JsonResponse({
+            'success': True,
+            'merchandiser': {
+                'id': merchandiser.id,
+                'cognome': merchandiser.cognome,
+                'nome': merchandiser.nome,
+                'telefono': merchandiser.telefono,
+                'email': merchandiser.email,
+                'note': merchandiser.note,
+                'attivo': merchandiser.attivo
+            }
+        })
+    
+    context = {
+        'merchandiser': merchandiser,
+        'current_user': get_current_user(request),
+    }
+    return render(request, 'merchandiser/merchandiser_form.html', context)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def merchandiser_delete(request, merchandiser_id):
+    """Elimina (soft delete) merchandiser."""
+    merchandiser = get_object_or_404(Merchandiser, pk=merchandiser_id)
+    merchandiser.attivo = False
+    merchandiser.save()
+    
+    return JsonResponse({'success': True})
+
+
+# ============================================
+# HOSTESS CRUD
+# ============================================
+
+def hostess_list(request):
+    """Lista hostess."""
+    solo_attive = request.GET.get('attive', '1') == '1'
+    
+    hostess_qs = Hostess.objects.all().order_by('nominativo')
+    if solo_attive:
+        hostess_qs = hostess_qs.filter(attiva=True)
+    
+    context = {
+        'hostess_list': hostess_qs,
+        'solo_attive': solo_attive,
+        'current_user': get_current_user(request),
+    }
+    return render(request, 'merchandiser/hostess_list.html', context)
+
+
+def hostess_add(request):
+    """Aggiungi nuova hostess."""
+    if request.method == 'POST':
+        nominativo = request.POST.get('nominativo', '').strip()
+        ruolo = request.POST.get('ruolo', '').strip()
+        nota = request.POST.get('nota', '').strip()
+        scadenza = request.POST.get('scadenza_libretto_sanitario', '').strip()
+        attiva = request.POST.get('attiva') == 'on'
+        
+        if not nominativo:
+            return JsonResponse({'success': False, 'error': 'Il nominativo è obbligatorio'})
+        
+        # Trova ID disponibile
+        max_id = Hostess.objects.aggregate(models.Max('id'))['id__max'] or 0
+        new_id = max_id + 1
+        
+        hostess = Hostess.objects.create(
+            id=new_id,
+            nominativo=nominativo,
+            ruolo=ruolo,
+            nota=nota,
+            scadenza_libretto_sanitario=scadenza if scadenza else None,
+            attiva=attiva
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'hostess': {
+                'id': hostess.id,
+                'nominativo': hostess.nominativo,
+                'ruolo': hostess.ruolo,
+                'nota': hostess.nota,
+                'scadenza_libretto_sanitario': str(hostess.scadenza_libretto_sanitario) if hostess.scadenza_libretto_sanitario else '',
+                'attiva': hostess.attiva
+            }
+        })
+    
+    context = {
+        'current_user': get_current_user(request),
+    }
+    return render(request, 'merchandiser/hostess_form.html', context)
+
+
+def hostess_edit(request, hostess_id):
+    """Modifica hostess esistente."""
+    hostess = get_object_or_404(Hostess, pk=hostess_id)
+    
+    if request.method == 'POST':
+        hostess.nominativo = request.POST.get('nominativo', '').strip()
+        hostess.ruolo = request.POST.get('ruolo', '').strip()
+        hostess.nota = request.POST.get('nota', '').strip()
+        scadenza = request.POST.get('scadenza_libretto_sanitario', '').strip()
+        hostess.scadenza_libretto_sanitario = scadenza if scadenza else None
+        hostess.attiva = request.POST.get('attiva') == 'on'
+        
+        if not hostess.nominativo:
+            return JsonResponse({'success': False, 'error': 'Il nominativo è obbligatorio'})
+        
+        hostess.save()
+        
+        return JsonResponse({
+            'success': True,
+            'hostess': {
+                'id': hostess.id,
+                'nominativo': hostess.nominativo,
+                'ruolo': hostess.ruolo,
+                'nota': hostess.nota,
+                'scadenza_libretto_sanitario': hostess.scadenza_libretto_sanitario.strftime('%Y-%m-%d') if hostess.scadenza_libretto_sanitario else '',
+                'attiva': hostess.attiva
+            }
+        })
+    
+    context = {
+        'hostess': hostess,
+        'current_user': get_current_user(request),
+    }
+    return render(request, 'merchandiser/hostess_form.html', context)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def hostess_delete(request, hostess_id):
+    """Elimina (soft delete) hostess."""
+    hostess = get_object_or_404(Hostess, pk=hostess_id)
+    hostess.attiva = False
+    hostess.save()
+    
+    return JsonResponse({'success': True})
+@csrf_exempt
+@require_http_methods(["POST"])
+def salva_note_slot(request):
+    """Salva note dello slot."""
+    slot_id = request.POST.get('slot_id')
+    note = request.POST.get('note', '').strip()
+    
+    try:
+        slot = Slot.objects.get(pk=slot_id)
+        slot.note = note
+        slot.save()
+        
+        return JsonResponse({
+            'success': True,
+            'note': note
+        })
+    except Slot.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'error': 'Slot non trovato'
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        })

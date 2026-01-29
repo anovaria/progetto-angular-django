@@ -41,7 +41,6 @@ def require_auth(view_func):
         return view_func(request, *args, **kwargs)
     return wrapper
 
-
 # ============================================================
 # DASHBOARD PRINCIPALE
 # ============================================================
@@ -155,7 +154,7 @@ def cassa_consegna(request):
             richiesta = get_object_or_404(RichiestaWelfare, pk=richiesta_id)
             
             if azione == 'consegna':
-                richiesta.segna_consegnato(username)
+                richiesta.segna_consegnato('punto.info')
                 messages.success(request, f'Voucher {richiesta.num_richiesta} consegnato!')
                 return redirect('welfare:cassa_consegna')
             
@@ -239,6 +238,8 @@ def contabilita(request):
     oggi = timezone.now().date()
     anno = int(request.GET.get('anno', oggi.year))
     mese = int(request.GET.get('mese', oggi.month))
+    giorno_param = request.GET.get('giorno', '')
+    giorno = int(giorno_param) if giorno_param else None
     
     mostra_pronto = request.GET.get('pronto', '') == '1'
     mostra_elaborato = request.GET.get('elaborato', '') == '1'
@@ -262,7 +263,13 @@ def contabilita(request):
         stato__in=stati_filtro,
         data_consegna__year=anno,
         data_consegna__month=mese
-    ).order_by('-data_consegna')
+    )
+    
+    # Filtro giorno (opzionale)
+    if giorno:
+        richieste = richieste.filter(data_consegna__day=giorno)
+    
+    richieste = richieste.order_by('-data_consegna')
     
     totali = richieste.aggregate(
         num_richieste=Count('id'),
@@ -278,6 +285,7 @@ def contabilita(request):
         'richieste': richieste,
         'anno': anno,
         'mese': mese,
+        'giorno': giorno,
         'mostra_pronto': mostra_pronto,
         'mostra_elaborato': mostra_elaborato,
         'mostra_consegnato': mostra_consegnato,
@@ -285,6 +293,7 @@ def contabilita(request):
         'totali': totali,
         'anni_disponibili': [d.year for d in anni_disponibili],
         'mesi': range(1, 13),
+        'giorni': range(1, 32),
     }
     
     return render(request, 'welfare/contabilita.html', context)
@@ -351,17 +360,30 @@ def import_email(request):
             risultato_parsing = parse_email_eudaimon(html_content)
             
             if risultato_parsing.get('success'):
-                RichiestaProvvisoria.objects.create(
-                    data_creazione=timezone.now(),
-                    num_richiesta=risultato_parsing['num_richiesta'],
-                    nominativo=risultato_parsing['nominativo'],
-                    valore_buono=str(risultato_parsing['valore_buono']),
-                    qta_buono=str(risultato_parsing['quantita']),
-                    totale_buono=str(risultato_parsing['totale']),
-                    mittente='import_manuale',
-                    nome_mittente=risultato_parsing.get('punto_vendita', ''),
-                )
-                messages.success(request, 'Richiesta importata in area provvisoria')
+                num_richiesta = risultato_parsing['num_richiesta']
+                
+                # Controlla duplicati in richieste definitive
+                if RichiestaWelfare.objects.filter(num_richiesta=num_richiesta).exists():
+                    messages.warning(request, f'Richiesta {num_richiesta} già presente nel sistema')
+                    risultato_parsing['errore'] = 'Duplicato in archivio definitivo'
+                
+                # Controlla duplicati in richieste provvisorie non processate
+                elif RichiestaProvvisoria.objects.filter(num_richiesta=num_richiesta, processato=False).exists():
+                    messages.warning(request, f'Richiesta {num_richiesta} già in attesa di validazione')
+                    risultato_parsing['errore'] = 'Duplicato in area provvisoria'
+                
+                else:
+                    RichiestaProvvisoria.objects.create(
+                        data_creazione=timezone.now(),
+                        num_richiesta=num_richiesta,
+                        nominativo=risultato_parsing.get('nominativo', ''),
+                        valore_buono=str(risultato_parsing['valore_buono']),
+                        qta_buono=str(risultato_parsing['quantita']),
+                        totale_buono=str(risultato_parsing['totale']),
+                        mittente='import_manuale',
+                        nome_mittente=risultato_parsing.get('punto_vendita', ''),
+                    )
+                    messages.success(request, f'Richiesta {num_richiesta} importata in area provvisoria')
     
     provvisorie = RichiestaProvvisoria.objects.filter(
         processato=False
@@ -389,8 +411,8 @@ def parse_email_eudaimon(html_content):
         if match_codice:
             risultato['num_richiesta'] = match_codice.group(1)
         
-        # Pattern per punto vendita
-        match_pv = re.search(r'Punto vendita[:\s]*([^<\n]+)', html_content, re.IGNORECASE)
+        # Pattern per punto vendita (prende tutto fino a "- Valore")
+        match_pv = re.search(r'Punto vendita[:\s]*(.+?)\s*-\s*Valore', html_content, re.IGNORECASE)
         if match_pv:
             risultato['punto_vendita'] = match_pv.group(1).strip()
         

@@ -1,14 +1,18 @@
-{% extends "pallet_promoter/base.html" %}
+{% extends 'pallet_promoter/base_minimal.html' %}
 
 {% block title %}Testate - Pallet-Promoter{% endblock %}
 
 {% block content %}
-<h4 class="mb-4">
-    <span class="material-icons" style="vertical-align: middle;">view_column</span>
-    Gestione Testate
-</h4>
+<div class="card mb-4">
+    <div class="card-body">
+        <h4 class="mb-0">
+            <span class="material-icons" style="vertical-align: middle; font-size: 28px;">view_column</span>
+            Gestione Testate
+        </h4>
+    </div>
+</div>
 
-<div class="card">
+<div class="card mb-4">
     <div class="card-header">
         Seleziona mese e anno
     </div>
@@ -33,7 +37,7 @@
                 </select>
             </div>
             <div class="col-auto">
-                <a href="{% url 'pallet_promoter:testate_griglia' anno mese %}" class="btn btn-primary">
+                <a href="{% url 'pallet_promoter:testate_griglia' anno mese %}" class="btn btn-pallet">
                     <span class="material-icons" style="vertical-align: middle;">search</span>
                     Visualizza
                 </a>
@@ -42,14 +46,14 @@
     </div>
 </div>
 
-<div class="mt-4">
-    <div class="row">
-        {% for m in mesi %}
-        <div class="col-md-3 col-sm-4 col-6 mb-3">
-            <a href="{% url 'pallet_promoter:testate_griglia' anno m %}" 
-               class="card text-decoration-none {% if m == mese %}border-primary{% endif %}">
+<div class="row g-3">
+    {% for m in mesi %}
+    <div class="col-md-3 col-sm-4 col-6">
+        <a href="{% url 'pallet_promoter:testate_griglia' anno m %}" 
+           class="text-decoration-none">
+            <div class="card h-100 month-card {% if m == mese %}active{% endif %}">
                 <div class="card-body text-center">
-                    <h5 class="mb-0 {% if m == mese %}text-primary{% endif %}">
+                    <h5 class="mb-0">
                         {% if m == 1 %}Gennaio
                         {% elif m == 2 %}Febbraio
                         {% elif m == 3 %}Marzo
@@ -66,9 +70,30 @@
                     </h5>
                     <small class="text-muted">{{ anno }}</small>
                 </div>
-            </a>
-        </div>
-        {% endfor %}
+            </div>
+        </a>
     </div>
+    {% endfor %}
 </div>
+
+<style>
+.month-card {
+    transition: all 0.2s;
+    cursor: pointer;
+}
+
+.month-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+}
+
+.month-card.active {
+    border: 2px solid #1976d2;
+    background: #e3f2fd;
+}
+
+.month-card.active h5 {
+    color: #1976d2;
+}
+</style>
 {% endblock %}

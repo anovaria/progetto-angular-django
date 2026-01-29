@@ -1,0 +1,9 @@
+{% extends 'pallet_promoter/base_minimal.html' %}
+
+{% block content %}
+<h1>TEST PERIODO</h1>
+<p>Periodo ID: {{ periodo.id }}</p>
+<p>Data Inizio: {{ periodo.data_inizio|date:"d/m/Y" }}</p>
+<p>Data Fine: {{ periodo.data_fine|date:"d/m/Y" }}</p>
+<p>DEBUG RAW: {{ periodo }}</p>
+{% endblock %}

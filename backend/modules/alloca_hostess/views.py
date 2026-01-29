@@ -6,6 +6,7 @@ from django.utils import timezone
 from modules.pallet_promoter.models import (
     Agenzia, Hostess, Fornitore, Periodo, PresenzaHostess
 )
+from django.views.decorators.csrf import csrf_exempt
 
 
 def get_current_user(request):
@@ -68,7 +69,7 @@ def agenzie_list(request):
     }
     return render(request, 'alloca_hostess/agenzie_list.html', context)
 
-
+@csrf_exempt
 def individuazione(request):
     """Individuazione/Coordinamento Hostess - Form principale."""
     from datetime import timedelta
@@ -154,7 +155,7 @@ def individuazione(request):
     }
     return render(request, 'alloca_hostess/individuazione.html', context)
 
-
+@csrf_exempt
 @require_http_methods(["GET"])
 def cerca_fornitore(request):
     """API ricerca fornitore."""

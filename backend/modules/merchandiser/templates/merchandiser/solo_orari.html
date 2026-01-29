@@ -79,11 +79,6 @@
         font-weight: 600;
     }
     
-    .referente-name {
-        font-size: 0.85em;
-        color: #666;
-    }
-    
     .ore-cell {
         font-weight: bold;
         color: #4caf50;
@@ -148,7 +143,6 @@
             <tr data-slot="{{ item.slot.id }}" data-data="{{ data|date:'Y-m-d' }}">
                 <td>
                     <div class="merchandiser-name">{{ item.slot.merchandiser.nominativo }}</div>
-                    <div class="referente-name">Ref: {{ item.slot.utente.nominativo|default:"-" }}</div>
                 </td>
                 <td>
                     <input type="time" name="ingresso_1" 

@@ -1,4 +1,4 @@
-{% extends "merchandiser/base.html" %}
+{% extends "merchandiser/base_minimal.html" %}
 
 {% block title %}Dashboard - Merchandiser{% endblock %}
 
@@ -81,7 +81,6 @@
             <thead>
                 <tr>
                     <th>Merchandiser</th>
-                    <th>Referente</th>
                     <th>Periodo</th>
                     <th>Giorni</th>
                     <th></th>
@@ -91,7 +90,6 @@
                 {% for slot in slot_oggi %}
                 <tr>
                     <td><strong>{{ slot.merchandiser.nominativo }}</strong></td>
-                    <td>{{ slot.utente.nominativo|default:"-" }}</td>
                     <td>{{ slot.data_inizio|date:"d/m/Y" }} - {{ slot.data_fine|date:"d/m/Y" }}</td>
                     <td>{{ slot.giorni_attivi }}</td>
                     <td>
@@ -102,7 +100,7 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="5" class="text-center text-muted py-4">
+                    <td colspan="4" class="text-center text-muted py-4">
                         Nessuno slot attivo oggi
                     </td>
                 </tr>

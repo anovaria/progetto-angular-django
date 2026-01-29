@@ -1,4 +1,4 @@
-{% extends "pallet_promoter/base.html" %}
+{% extends "pallet_promoter/base_minimal.html" %}
 
 {% block title %}Dashboard - Pallet-Promoter{% endblock %}
 
@@ -19,12 +19,12 @@
                         <h5 class="card-title mb-1">Periodo Corrente</h5>
                         <h3 class="text-primary mb-0">{{ periodo_corrente.codice }}</h3>
                         <p class="text-muted mb-0">
-                            {{ periodo_corrente.data_inizio|date:"d/m/Y" }} - {{ periodo_corrente.data_fine|date:"d/m/Y" }}
+                            {{ periodo_corrente.data_inizio|date:"d/m/Y" }} - {{ periodo_corrente.data_fine|date:"d/m/Y"}}
                         </p>
                     </div>
                     <div>
-                        <a href="{% url 'pallet_promoter:pallet_griglia' periodo_corrente.id %}" 
-                           class="btn btn-primary btn-lg">
+                        <a href="{% url 'pallet_promoter:pallet_griglia' periodo_corrente.id %}"
+                            class="btn btn-primary btn-lg">
                             <span class="material-icons">edit</span>
                             Gestisci Pallet
                         </a>
@@ -108,8 +108,8 @@
                             <td>{{ periodo.data_inizio|date:"d/m/Y" }}</td>
                             <td>{{ periodo.data_fine|date:"d/m/Y" }}</td>
                             <td>
-                                <a href="{% url 'pallet_promoter:pallet_griglia' periodo.id %}" 
-                                   class="btn btn-sm btn-outline-primary">
+                                <a href="{% url 'pallet_promoter:pallet_griglia' periodo.id %}"
+                                    class="btn btn-sm btn-outline-primary">
                                     Gestisci
                                 </a>
                             </td>
