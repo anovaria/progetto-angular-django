@@ -17,4 +17,7 @@ urlpatterns = [
     # API
     path('api/cerca-fornitore/', views.cerca_fornitore, name='cerca_fornitore'),
     path('api/salva-presenze/', views.salva_presenze, name='salva_presenze'),
+    # Orari Hostess
+    path('orari-hostess/', views.orari_hostess, name='orari_hostess'),
+    path('api/salva-orario-hostess/', views.salva_orario_hostess, name='salva_orario_hostess'),
 ]

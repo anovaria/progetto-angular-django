@@ -3,11 +3,14 @@ from django.urls import reverse
 from django.http import HttpResponse
 from django.utils import timezone
 from django.db.models import Q
+from django.db import connections
 from django.conf import settings
 from datetime import datetime
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
 import os
+import csv
+from pathlib import Path
 
 # Email draft (.eml) generation for environments without Outlook
 from email.message import EmailMessage
@@ -76,6 +79,326 @@ from .models import (
 
 def _ensure_dir(path: str) -> None:
     os.makedirs(path, exist_ok=True)
+
+
+def _format_ddmmyyyy_to_yyyymmdd(value) -> str:
+    """Format dates like Access: from 'dd/mm/yyyy' (or similar) to 'yyyymmdd'.
+
+    The legacy Access queries used Mid(DATA_ORDINE,7,4)&Mid(...,4,2)&Mid(...,1,2).
+    If the input is already a date/datetime or an ISO string, we try to normalize.
+    Returns 8 chars; if cannot parse, returns '00000000'.
+    """
+    if value is None:
+        return "00000000"
+    # datetime/date
+    try:
+        if hasattr(value, "strftime"):
+            return value.strftime("%Y%m%d")
+    except Exception:
+        pass
+    s = str(value).strip()
+    if not s:
+        return "00000000"
+
+    # common legacy format dd/mm/yyyy
+    if len(s) >= 10 and s[2] in ("/", "-") and s[5] in ("/", "-"):
+        dd = s[0:2]
+        mm = s[3:5]
+        yyyy = s[6:10]
+        if yyyy.isdigit() and mm.isdigit() and dd.isdigit():
+            return f"{yyyy}{mm}{dd}"
+
+    # ISO yyyy-mm-dd or yyyy/mm/dd
+    if len(s) >= 10 and s[4] in ("-", "/") and s[7] in ("-", "/"):
+        yyyy = s[0:4]
+        mm = s[5:7]
+        dd = s[8:10]
+        if yyyy.isdigit() and mm.isdigit() and dd.isdigit():
+            return f"{yyyy}{mm}{dd}"
+
+    # already yyyymmdd
+    if len(s) >= 8 and s[:8].isdigit():
+        return s[:8]
+    return "00000000"
+
+
+def _safe_str(value) -> str:
+    return "" if value is None else str(value)
+
+
+
+def _fetch_ordini_rossetto_rows_from_txt(txt_path: str):
+    """Read a TXT export of dbo_t_OrdiniRossetto and return rows as dicts.
+
+    Supports:
+    - header row (preferred) with column names, delimited by ;,|,tab,comma
+    - NO header (your current file): uses deterministic fixed positions for the Rossetto export
+      (CSV with delimiter ';' and quotechar '"').
+
+    Required keys returned: CODARTFO, COLLIORD, DATA_ORDINE, DATA_CONSEGNA, DCDCEXCDE
+    """
+    import csv
+    import re
+
+    def norm(s: str) -> str:
+        return re.sub(r"[^A-Z0-9_]", "", (s or "").strip().upper())
+
+    # Read all non-empty lines first
+    with open(txt_path, "r", encoding="utf-8", errors="replace", newline="") as fp:
+        raw = fp.read()
+
+    raw_lines = [ln for ln in raw.splitlines() if ln.strip() != ""]
+    if not raw_lines:
+        return []
+
+    sample = raw_lines[0]
+    likely_semicolon = sample.count(";") >= 3
+
+    if likely_semicolon:
+        with open(txt_path, "r", encoding="utf-8", errors="replace", newline="") as fp:
+            reader = csv.reader(fp, delimiter=";", quotechar='"')
+            rows = [r for r in reader if any((c or "").strip() for c in r)]
+
+        if not rows:
+            return []
+
+        required = {"CODARTFO", "COLLIORD", "DATA_ORDINE", "DATA_CONSEGNA", "DCDCEXCDE"}
+        first_norm = [norm(c) for c in rows[0]]
+        has_header = any(h in required for h in first_norm)
+
+        if has_header:
+            idx = {first_norm[i]: i for i in range(len(first_norm))}
+            missing = [c for c in required if c not in idx]
+            if missing:
+                raise ValueError(f"Header TXT mancante colonne: {missing}. Header letto: {first_norm}")
+
+            out = []
+            for parts in rows[1:]:
+                out.append({
+                    "CODARTFO": parts[idx["CODARTFO"]].strip() if idx["CODARTFO"] < len(parts) else "",
+                    "COLLIORD": parts[idx["COLLIORD"]].strip() if idx["COLLIORD"] < len(parts) else "",
+                    "DATA_ORDINE": parts[idx["DATA_ORDINE"]].strip() if idx["DATA_ORDINE"] < len(parts) else "",
+                    "DATA_CONSEGNA": parts[idx["DATA_CONSEGNA"]].strip() if idx["DATA_CONSEGNA"] < len(parts) else "",
+                    "DCDCEXCDE": parts[idx["DCDCEXCDE"]].strip() if idx["DCDCEXCDE"] < len(parts) else "",
+                })
+            return out
+
+        # NO header: deterministic mapping for your export (verified on dbo_t_OrdiniRossetto_giovedi.txt)
+        def safe(parts, i):
+            return parts[i].strip() if i < len(parts) else ""
+
+        out = []
+        for parts in rows:
+            out.append({
+                "DATA_ORDINE": safe(parts, 2),
+                "DATA_CONSEGNA": safe(parts, 3),
+                "CODARTFO": safe(parts, 9),
+                "DCDCEXCDE": safe(parts, 10),
+                "COLLIORD": safe(parts, 11),
+            })
+        return out
+
+    # Fallback: delimiter detection without quotes
+    delimiter = None
+    for d in ["	", "|", ","]:
+        if sample.count(d) >= 3:
+            delimiter = d
+            break
+    if delimiter is None:
+        raise ValueError("Separatore TXT non riconosciuto. Attesi ';' (consigliato), tab, '|', ','.")
+
+    required_list = ["CODARTFO", "COLLIORD", "DATA_ORDINE", "DATA_CONSEGNA", "DCDCEXCDE"]
+    first_parts = [c.strip() for c in raw_lines[0].split(delimiter)]
+    first_norm = [norm(p) for p in first_parts]
+    has_header = any(h in set(required_list) for h in first_norm)
+
+    rows_out = []
+    if has_header:
+        idx = {first_norm[i]: i for i in range(len(first_norm))}
+        missing = [c for c in required_list if c not in idx]
+        if missing:
+            raise ValueError(f"Header TXT mancante colonne: {missing}. Header letto: {first_norm}")
+        for ln in raw_lines[1:]:
+            parts = [c.strip() for c in ln.split(delimiter)]
+            rows_out.append({
+                "CODARTFO": parts[idx["CODARTFO"]] if idx["CODARTFO"] < len(parts) else "",
+                "COLLIORD": parts[idx["COLLIORD"]] if idx["COLLIORD"] < len(parts) else "",
+                "DATA_ORDINE": parts[idx["DATA_ORDINE"]] if idx["DATA_ORDINE"] < len(parts) else "",
+                "DATA_CONSEGNA": parts[idx["DATA_CONSEGNA"]] if idx["DATA_CONSEGNA"] < len(parts) else "",
+                "DCDCEXCDE": parts[idx["DCDCEXCDE"]] if idx["DCDCEXCDE"] < len(parts) else "",
+            })
+        return rows_out
+
+    raise ValueError("TXT senza header non supportato per questo formato. Usa export con ';' e virgolette oppure aggiungi header.")
+    # No header: try heuristic mapping on first data row
+    parts0 = first_parts
+    date_idxs = [i for i, v in enumerate(parts0) if looks_like_date(v)]
+    cod_idxs = [i for i, v in enumerate(parts0) if looks_like_codartfo(v)]
+    colli_idxs = [i for i, v in enumerate(parts0) if (v or "").strip().isdigit()]
+
+    if not cod_idxs or len(date_idxs) < 2:
+        raise ValueError("Impossibile inferire le colonne dal TXT senza header. Aggiungi la riga di intestazione con i nomi dei campi.")
+
+    cod_i = cod_idxs[0]
+    colli_i = None
+    for i in colli_idxs:
+        if i not in date_idxs and i != cod_i:
+            colli_i = i
+            break
+    if colli_i is None:
+        for i in range(len(parts0)):
+            if i != cod_i and parts0[i].strip().isdigit():
+                colli_i = i
+                break
+
+    d1_i, d2_i = date_idxs[0], date_idxs[1]
+
+    candidates = [(i, len(parts0[i].strip())) for i in range(len(parts0)) if i not in {cod_i, colli_i, d1_i, d2_i} and parts0[i].strip()]
+    dcdc_i = max(candidates, key=lambda x: x[1])[0] if candidates else 0
+
+    def map_parts(parts):
+        return {
+            "CODARTFO": parts[cod_i] if cod_i < len(parts) else "",
+            "COLLIORD": parts[colli_i] if colli_i < len(parts) else "",
+            "DATA_ORDINE": parts[d1_i] if d1_i < len(parts) else "",
+            "DATA_CONSEGNA": parts[d2_i] if d2_i < len(parts) else "",
+            "DCDCEXCDE": parts[dcdc_i] if dcdc_i < len(parts) else "",
+        }
+
+    rows_out.append(map_parts(parts0))
+    for ln in raw_lines[1:]:
+        rows_out.append(map_parts(split_row(ln)))
+    return rows_out
+
+def _fetch_ordini_rossetto_rows():
+    """Fetch rows for Rossetto order export.
+
+    Priority:
+    1) Offline test TXT (if present in ELAB_SOURCE_DIR)
+    2) GoldReport connection (connections['goldreport'])
+
+    Returns list[dict] with keys CODARTFO, COLLIORD, DATA_ORDINE, DATA_CONSEGNA, DCDCEXCDE.
+    """
+    # 1) Optional offline test mode
+    txt_name = getattr(settings, "ORDINI_TXT_TEST_FILE", "dbo_t_OrdiniRossetto_giovedi.txt")
+    source_dir = getattr(settings, "ELAB_SOURCE_DIR", "")
+    if source_dir:
+        txt_path = Path(source_dir) / txt_name
+        if txt_path.exists():
+            return _fetch_ordini_rossetto_rows_from_txt(str(txt_path))
+
+    # 2) GoldReport
+    candidates = [
+        getattr(settings, "ORDINI_ROSSETTO_TABLE", ""),
+        "dbo_t_OrdiniRossetto",
+        "dbo.t_OrdiniRossetto",
+        "dbo.dbo_t_OrdiniRossetto",
+    ]
+    candidates = [c for c in candidates if c]
+
+    wanted = ["CODARTFO", "COLLIORD", "DATA_ORDINE", "DATA_CONSEGNA", "DCDCEXCDE"]
+
+    last_err = None
+    with connections["goldreport"].cursor() as cur:
+        for table in candidates:
+            # attempt explicit projection
+            try:
+                cur.execute(
+                    f"SELECT CODARTFO, COLLIORD, DATA_ORDINE, DATA_CONSEGNA, DCDCEXCDE FROM {table}"
+                )
+                rows = cur.fetchall()
+                out = []
+                for r in rows:
+                    out.append({
+                        "CODARTFO": r[0],
+                        "COLLIORD": r[1],
+                        "DATA_ORDINE": r[2],
+                        "DATA_CONSEGNA": r[3],
+                        "DCDCEXCDE": r[4],
+                    })
+                return out
+            except Exception as e:
+                last_err = e
+
+            # fallback: select * and map by column name
+            try:
+                cur.execute(f"SELECT * FROM {table}")
+                cols = [c[0] for c in cur.description]
+                idx = {c.upper(): i for i, c in enumerate(cols)}
+                missing = [w for w in wanted if w not in idx]
+                if missing:
+                    raise RuntimeError(
+                        f"Tabella {table}: colonne mancanti {missing} (trovate: {cols})"
+                    )
+                rows = cur.fetchall()
+                out = []
+                for r in rows:
+                    out.append({k: r[idx[k]] for k in wanted})
+                return out
+            except Exception as e:
+                last_err = e
+
+    raise RuntimeError(
+        f"Impossibile leggere dbo_t_OrdiniRossetto su connessione goldreport. Ultimo errore: {last_err}"
+    )
+
+
+def generate_ordine_ext_file(destination_dir: str) -> str:
+    """Generate the Ordine.ext file (legacy Rossetto format) into destination_dir.
+
+    Output record is 95 chars (as in legacy Access export):
+      5 spaces + 0060235 + CODARTFO(7) + 32 spaces + COLLIORD(5 zero-pad)
+      + DATA_ORDINE(yyyymmdd) + DATA_CONSEGNA(yyyymmdd) + DCDCEXCDE(6)
+      + DATA_ORDINE(yyyymmdd) + progressivo(9 zero-pad)
+    """
+    os.makedirs(destination_dir, exist_ok=True)
+    output_name = getattr(settings, "ORDER_EXT_FILENAME", "Ordine.ext")
+    output_path = os.path.join(destination_dir, output_name)
+
+    rows = _fetch_ordini_rossetto_rows()
+
+    fixed_espr1 = " " * 5
+    fixed_espr2 = "0060235"
+    fixed_espr4 = " " * 32
+
+    lines = []
+    for i, r in enumerate(rows, start=1):
+        codartfo = _safe_str(r.get("CODARTFO"))
+        colliord = _safe_str(r.get("COLLIORD"))
+        data_ordine = _format_ddmmyyyy_to_yyyymmdd(r.get("DATA_ORDINE"))
+        data_consegna = _format_ddmmyyyy_to_yyyymmdd(r.get("DATA_CONSEGNA"))
+        dcdcexcde = _safe_str(r.get("DCDCEXCDE"))
+
+        espr3 = codartfo[:7]
+        espr5 = colliord.strip()
+        espr5 = espr5.zfill(5) if espr5.isdigit() else espr5.rjust(5, "0")[-5:]
+
+        # Mid(DCDCEXCDE, 8, 6) in Access => python [7:13]
+        espr8 = dcdcexcde[7:13].ljust(6)
+
+        espr11 = str(i).zfill(9)
+
+        line = (
+            fixed_espr1 +
+            fixed_espr2 +
+            espr3 +
+            fixed_espr4 +
+            espr5 +
+            data_ordine +
+            data_consegna +
+            espr8 +
+            data_ordine +
+            espr11
+        )
+        lines.append(line)
+
+    # Write with CRLF, like legacy exports
+    with open(output_path, "w", encoding="utf-8", newline="") as fp:
+        for line in lines:
+            fp.write(line)
+            fp.write("\r\n")
+
+    return output_path
 
 def _save_uploaded_file_to_batch_folder(file_obj, batch_id: int) -> tuple[str, str]:
     """Salva una copia del file caricato in una cartella server-side per il batch.
@@ -767,7 +1090,8 @@ def ordine_email_view(request):
 
     In assenza di Outlook installato, genera un file .eml scaricabile (non invia nulla).
 
-    Per ora usa (o crea) il file di test: prova_Ordine.ext.
+    In versione portale l'allegato è il file reale <Ordine.ext>, generato (se necessario)
+    direttamente da GoldReport senza tabelle di transito (versione A).
     La cartella di riferimento è quella configurata in settings.py (ELAB_SOURCE_DIR),
     che corrisponde alla cartella di lavoro dell'operatore (es. C:\\Paolo).
     """
@@ -792,23 +1116,17 @@ def ordine_email_view(request):
     source_dir = os.path.abspath(source_dir)
     os.makedirs(source_dir, exist_ok=True)
 
-    default_name = "prova_Ordine.ext"
-    candidates = [os.path.join(source_dir, default_name)]
+    # In versione portale: l'allegato deve essere il vero file Ordine.ext
+    # generato a partire da dbo_t_OrdiniRossetto su connessione 'goldreport'.
+    order_name = getattr(settings, "ORDER_EXT_FILENAME", "Ordine.ext")
+    attachment_path = os.path.join(source_dir, order_name)
 
-    attachment_path = None
-    for c in candidates:
-        if os.path.exists(c):
-            attachment_path = c
-            break
-
-    # se non esiste, crea un file finto nella cartella sorgente
-    if attachment_path is None:
-        attachment_path = os.path.join(source_dir, default_name)
+    # Se il file non esiste ancora, lo generiamo ora (versione A: niente tabelle transito)
+    if not os.path.exists(attachment_path):
         try:
-            with open(attachment_path, "wb") as fp:
-                fp.write(b"TEST ORDINE - FILE SIMULATO\r\n")
+            attachment_path = generate_ordine_ext_file(source_dir)
         except Exception as e:
-            error = f"Impossibile creare il file di test '{default_name}' in {source_dir}: {e}"
+            error = f"Impossibile generare '{order_name}' da GoldReport: {e}"
             form = OrderEmailForm()
             return render(request, "importelab/ordine_email.html", {"form": form, "message": message, "error": error})
 

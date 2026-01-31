@@ -1,0 +1,185 @@
+{% extends 'merchandiser/base_minimal.html' %}
+
+{% block title %}{% if slot %}Modifica{% else %}Nuovo{% endif %} Slot{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <a href="{% url 'merchandiser:slot_list' %}" class="btn btn-outline-secondary btn-sm">
+        <span class="material-icons" style="font-size: 16px; vertical-align: middle;">arrow_back</span>
+        Torna alla Lista
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">
+            <span class="material-icons" style="vertical-align: middle;">event_note</span>
+            {% if slot %}Modifica Slot #{{ slot.id }}{% else %}Nuovo Slot{% endif %}
+        </h5>
+    </div>
+    <div class="card-body">
+        <form id="slot-form" method="post">
+            {% csrf_token %}
+            
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="merchandiser_id" class="form-label">
+                        Merchandiser <span class="text-danger">*</span>
+                    </label>
+                    <select class="form-select" id="merchandiser_id" name="merchandiser_id" required>
+                        <option value="">-- Seleziona Merchandiser --</option>
+                        {% for m in merchandiser_list %}
+                        <option value="{{ m.id }}" 
+                            {% if slot and slot.merchandiser.id == m.id %}selected{% endif %}>
+                            {{ m.cognome }} {{ m.nome }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="col-md-3 mb-3">
+                    <label for="data_inizio" class="form-label">
+                        Data Inizio <span class="text-danger">*</span>
+                    </label>
+                    <input type="date" 
+                           class="form-control" 
+                           id="data_inizio" 
+                           name="data_inizio" 
+                           value="{% if slot %}{{ slot.data_inizio|date:'Y-m-d' }}{% endif %}"
+                           required>
+                </div>
+                
+                <div class="col-md-3 mb-3">
+                    <label for="data_fine" class="form-label">
+                        Data Fine <span class="text-danger">*</span>
+                    </label>
+                    <input type="date" 
+                           class="form-control" 
+                           id="data_fine" 
+                           name="data_fine" 
+                           value="{% if slot %}{{ slot.data_fine|date:'Y-m-d' }}{% endif %}"
+                           required>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Giorni Lavorativi <span class="text-danger">*</span></label>
+                    <div class="d-flex gap-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="lun" id="lun"
+                                {% if slot and slot.lun %}checked{% endif %}>
+                            <label class="form-check-label" for="lun">Lun</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="mar" id="mar"
+                                {% if slot and slot.mar %}checked{% endif %}>
+                            <label class="form-check-label" for="mar">Mar</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="mer" id="mer"
+                                {% if slot and slot.mer %}checked{% endif %}>
+                            <label class="form-check-label" for="mer">Mer</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="gio" id="gio"
+                                {% if slot and slot.gio %}checked{% endif %}>
+                            <label class="form-check-label" for="gio">Gio</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="ven" id="ven"
+                                {% if slot and slot.ven %}checked{% endif %}>
+                            <label class="form-check-label" for="ven">Ven</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="sab" id="sab"
+                                {% if slot and slot.sab %}checked{% endif %}>
+                            <label class="form-check-label" for="sab">Sab</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="dom" id="dom"
+                                {% if slot and slot.dom %}checked{% endif %}>
+                            <label class="form-check-label" for="dom">Dom</label>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-3 mb-3">
+                    <label for="plafond_ore" class="form-label">Plafond Ore</label>
+                    <input type="number" 
+                           class="form-control" 
+                           id="plafond_ore" 
+                           name="plafond_ore" 
+                           step="0.01"
+                           value="{% if slot %}{{ slot.plafond_ore }}{% else %}0{% endif %}">
+                </div>
+                
+                <div class="col-md-3 mb-3">
+                    <label for="badge" class="form-label">Badge</label>
+                    <input type="text" 
+                           class="form-control" 
+                           id="badge" 
+                           name="badge" 
+                           maxlength="10"
+                           value="{% if slot %}{{ slot.badge }}{% endif %}"
+                           placeholder="Es: 12345">
+                </div>
+            </div>
+            
+            <div class="mb-3">
+                <label for="note" class="form-label">Note</label>
+                <textarea class="form-control" 
+                          id="note" 
+                          name="note" 
+                          rows="3">{% if slot %}{{ slot.note }}{% endif %}</textarea>
+            </div>
+            
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">
+                    <span class="material-icons" style="font-size: 16px; vertical-align: middle;">save</span>
+                    Salva Slot
+                </button>
+                <a href="{% url 'merchandiser:slot_list' %}" class="btn btn-secondary">
+                    Annulla
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('slot-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const form = this;
+    const formData = new FormData(form);
+    const submitBtn = form.querySelector('button[type="submit"]');
+    
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Salvataggio...';
+    
+    fetch(form.action || window.location.href, {
+        method: 'POST',
+        body: formData
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            window.location.href = "{% url 'merchandiser:slot_detail' 0 %}".replace('/0/', `/${data.slot_id}/`);
+        } else {
+            alert(data.error || 'Errore durante il salvataggio');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<span class="material-icons" style="font-size: 16px; vertical-align: middle;">save</span> Salva Slot';
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        alert('Errore durante il salvataggio');
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<span class="material-icons" style="font-size: 16px; vertical-align: middle;">save</span> Salva Slot';
+    });
+});
+</script>
+{% endblock %}

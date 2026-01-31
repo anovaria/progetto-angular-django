@@ -1,0 +1,92 @@
+{% extends 'merchandiser/base_minimal.html' %}
+
+{% block title %}Agenzie{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="mb-0">
+        <span class="material-icons" style="vertical-align: middle;">business</span>
+        Agenzie
+    </h4>
+    <a href="{% url 'merchandiser:agenzia_add' %}" class="btn btn-success">
+        <span class="material-icons" style="font-size: 16px; vertical-align: middle;">add</span>
+        Nuova Agenzia
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Descrizione</th>
+                    <th>Nota</th>
+                    <th style="width: 120px;">Azioni</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for agenzia in agenzie_list %}
+                <tr>
+                    <td>{{ agenzia.id }}</td>
+                    <td><strong>{{ agenzia.descrizione }}</strong></td>
+                    <td>{{ agenzia.nota|default:"-" }}</td>
+                    <td>
+                        <a href="{% url 'merchandiser:agenzia_edit' agenzia.id %}" 
+                           class="btn btn-sm btn-outline-primary" 
+                           title="Modifica">
+                            <span class="material-icons" style="font-size: 16px;">edit</span>
+                        </a>
+                        <button type="button" 
+                                class="btn btn-sm btn-outline-danger" 
+                                onclick="deleteAgenzia({{ agenzia.id }}, '{{ agenzia.descrizione|escapejs }}')"
+                                title="Elimina">
+                            <span class="material-icons" style="font-size: 16px;">delete</span>
+                        </button>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4" class="text-center text-muted py-4">
+                        Nessuna agenzia trovata
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="mt-3 text-muted">
+    Totale: {{ agenzie_list|length }} agenzie
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function deleteAgenzia(id, descrizione) {
+    if (!confirm(`Sei sicuro di voler eliminare l'agenzia "${descrizione}"?`)) {
+        return;
+    }
+    
+    fetch(`{% url 'merchandiser:agenzia_delete' 0 %}`.replace('/0/', `/${id}/`), {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}'
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Errore durante l\'eliminazione');
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        alert('Errore durante l\'eliminazione');
+    });
+}
+</script>
+{% endblock %}

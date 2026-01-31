@@ -1,5 +1,5 @@
 from django.shortcuts import render, get_object_or_404
-from django.http import JsonResponse, HttpResponse
+from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.utils import timezone
 from django.db.models import Q
@@ -9,7 +9,7 @@ from django.views.decorators.csrf import csrf_exempt
 from .models import (
     Periodo, Pallet, Testata, Fornitore, Buyer, Agenzia,
     AssegnazionePallet, AssegnazioneTestata,
-    Hostess, PianificazioneHostess, PresenzaHostess,
+    Hostess, PresenzaHostess,
     UtenteBuyer
 )
 
@@ -20,13 +20,6 @@ def get_current_user(request):
     Compatibile con Windows Auth e JWT.
     """
     username = None
-    
-    # DEBUG - rimuovi dopo
-    print(f"DEBUG META keys: {[k for k in request.META.keys() if 'USER' in k or 'AUTH' in k]}")
-    print(f"DEBUG request.user: {request.user}, authenticated: {request.user.is_authenticated if hasattr(request, 'user') else 'N/A'}")
-    print(f"DEBUG request.user: {getattr(request, 'user', 'NO USER')}")
-    print(f"DEBUG is_authenticated: {request.user.is_authenticated if hasattr(request, 'user') else 'N/A'}")
-    print(f"DEBUG REMOTE_USER: {request.META.get('REMOTE_USER', 'NONE')}")
 
     # Windows Auth
     if hasattr(request, 'META') and 'REMOTE_USER' in request.META:
@@ -42,7 +35,7 @@ def get_current_user(request):
 # ============================================
 # DASHBOARD
 # ============================================
-@csrf_exempt
+
 def index(request):
     """Dashboard principale Pallet-Promoter."""
     oggi = timezone.now().date()
@@ -78,7 +71,7 @@ def index(request):
 # ============================================
 # PALLET
 # ============================================
-@csrf_exempt
+
 def pallet_list(request):
     """Lista periodi per selezione."""
     anno_corrente = timezone.now().year
@@ -96,7 +89,7 @@ def pallet_list(request):
     }
     return render(request, 'pallet_promoter/pallet_list.html', context)
 
-@csrf_exempt
+
 def pallet_griglia(request, periodo_id):
     """Griglia assegnazioni pallet per un periodo."""
     periodo = get_object_or_404(Periodo, pk=periodo_id)
@@ -166,7 +159,7 @@ def pallet_griglia(request, periodo_id):
 # ============================================
 # TESTATE
 # ============================================
-@csrf_exempt
+
 def testate_list(request):
     """Lista mesi/anni per selezione testate."""
     anno_corrente = timezone.now().year
@@ -180,7 +173,7 @@ def testate_list(request):
     }
     return render(request, 'pallet_promoter/testate_list.html', context)
 
-@csrf_exempt
+
 def testate_griglia(request, anno, mese):
     """Griglia assegnazioni testate per mese/anno."""
     testate = Testata.objects.all().order_by('id')
@@ -205,7 +198,7 @@ def testate_griglia(request, anno, mese):
 # ============================================
 # HOSTESS
 # ============================================
-@csrf_exempt
+
 def hostess_planning(request):
     """Planning settimanale hostess - Individuazione Hostess."""
     from datetime import timedelta
@@ -252,8 +245,8 @@ def hostess_planning(request):
     giorno_prec = giorno - timedelta(days=1) if giorno > periodo.data_inizio else None
     giorno_succ = giorno + timedelta(days=1) if giorno < periodo.data_fine else None
     
-    # Numero slot attivi (da NHostess del periodo, max 9)
-    num_slots = min(periodo.num_hostess or 8, 9)
+    # Numero slot attivi (da NHostess del periodo, max 13)
+    num_slots = min(periodo.num_hostess or 12, 13)
     
     # Carica presenze per il giorno selezionato
     presenze = {}
@@ -295,7 +288,7 @@ def hostess_planning(request):
     }
     return render(request, 'pallet_promoter/hostess_planning.html', context)
 
-@csrf_exempt
+
 def presenze_list(request):
     """Lista presenze/timbrature."""
     oggi = timezone.now().date()
@@ -310,7 +303,7 @@ def presenze_list(request):
     }
     return render(request, 'pallet_promoter/presenze_list.html', context)
 
-@csrf_exempt
+
 def scelta_fornitore_hostess(request):
     """Scelta Fornitore per Hostess - Griglia settimanale."""
     from datetime import timedelta
@@ -333,7 +326,7 @@ def scelta_fornitore_hostess(request):
         return render(request, 'pallet_promoter/hostess_no_periodo.html')
     
     # Numero slot
-    num_slots = min(periodo.num_hostess or 8, 9)
+    num_slots = min(periodo.num_hostess or 12, 13)
     
     # Costruisci griglia giorni
     giorni = []
@@ -367,7 +360,7 @@ def scelta_fornitore_hostess(request):
 # ============================================
 # API HTMX
 # ============================================
-@csrf_exempt
+
 @require_http_methods(["POST"])
 def assegna_pallet(request):
     """Assegna un pallet a un fornitore (HTMX)."""
@@ -540,7 +533,7 @@ def salva_tutte_presenze(request):
     
     return JsonResponse({'success': True, 'saved': saved})
 
-@csrf_exempt
+
 def cerca_fornitore(request):
     """Ricerca fornitore per autocomplete (HTMX)."""
     q = request.GET.get('q', '')

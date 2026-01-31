@@ -1,0 +1,232 @@
+{% extends 'merchandiser/base_minimal.html' %}
+
+{% block title %}Registrazione Orari Hostess{% endblock %}
+
+{% block extra_css %}
+<style>
+    .date-nav {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        justify-content: center;
+        margin-bottom: 20px;
+    }
+    
+    .orari-table {
+        font-size: 0.9em;
+    }
+    
+    .orari-table th {
+        background: #9c27b0;
+        color: white;
+        text-align: center;
+        padding: 12px 8px;
+        font-weight: 500;
+    }
+    
+    .orari-table td {
+        text-align: center;
+        vertical-align: middle;
+        padding: 8px 5px;
+    }
+    
+    .orari-table input[type="time"] {
+        width: 85px;
+        padding: 4px 6px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 0.85em;
+    }
+    
+    .orari-table input[type="time"]:focus {
+        border-color: #9c27b0;
+        outline: none;
+    }
+    
+    .slot-number {
+        font-weight: 600;
+        color: #9c27b0;
+    }
+    
+    .hostess-name {
+        font-weight: 600;
+    }
+    
+    .ore-cell {
+        font-weight: bold;
+        color: #4caf50;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="mb-0">
+        <span class="material-icons" style="vertical-align: middle;">access_time</span>
+        Registrazione Orari Hostess
+    </h4>
+</div>
+
+<!-- Navigazione Data -->
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="date-nav">
+            <a href="?data={{ data_prec|date:'Y-m-d' }}" class="btn btn-outline-secondary">
+                <span class="material-icons">chevron_left</span>
+            </a>
+            
+            <div>
+                <h5 class="mb-0">{{ data|date:"l d F Y"|upper }}</h5>
+                <form method="get" class="d-inline">
+                    <input type="date" 
+                           name="data" 
+                           value="{{ data|date:'Y-m-d' }}" 
+                           class="form-control form-control-sm mt-2"
+                           onchange="this.form.submit()">
+                </form>
+            </div>
+            
+            <a href="?data={{ data_succ|date:'Y-m-d' }}" class="btn btn-outline-secondary">
+                <span class="material-icons">chevron_right</span>
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Tabella Orari -->
+<div class="card">
+    <div class="card-header">
+        <span class="material-icons" style="vertical-align: middle;">schedule</span>
+        Orari Giornalieri - {{ presenze_hostess|length }} Slot
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-bordered orari-table mb-0">
+            <thead>
+                <tr>
+                    <th style="width: 60px;">Slot</th>
+                    <th>Hostess</th>
+                    <th>Agenzia</th>
+                    <th>I.Mattino</th>
+                    <th>U.Mattino</th>
+                    <th>I.Pomeriggio</th>
+                    <th>U.Pomeriggio</th>
+                    <th style="width: 60px;">Ore</th>
+                    <th style="width: 60px;"></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in presenze_hostess %}
+                <tr data-slot="{{ item.slot }}" data-data="{{ data|date:'Y-m-d' }}">
+                    <td class="slot-number">{{ item.slot }}</td>
+                    <td>
+                        {% if item.presenza.hostess %}
+                            <div class="hostess-name">{{ item.presenza.hostess.nominativo }}</div>
+                        {% else %}
+                            <span class="text-muted">-</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if item.presenza.agenzia %}
+                            {{ item.presenza.agenzia.descrizione|truncatechars:20 }}
+                        {% else %}
+                            <span class="text-muted">-</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <input type="time" 
+                               class="orario-input" 
+                               name="ingresso_mattino" 
+                               value="{% if item.presenza.ingresso_mattino %}{{ item.presenza.ingresso_mattino|time:'H:i' }}{% endif %}">
+                    </td>
+                    <td>
+                        <input type="time" 
+                               class="orario-input" 
+                               name="uscita_mattino" 
+                               value="{% if item.presenza.uscita_mattino %}{{ item.presenza.uscita_mattino|time:'H:i' }}{% endif %}">
+                    </td>
+                    <td>
+                        <input type="time" 
+                               class="orario-input" 
+                               name="ingresso_pomeriggio" 
+                               value="{% if item.presenza.ingresso_pomeriggio %}{{ item.presenza.ingresso_pomeriggio|time:'H:i' }}{% endif %}">
+                    </td>
+                    <td>
+                        <input type="time" 
+                               class="orario-input" 
+                               name="uscita_pomeriggio" 
+                               value="{% if item.presenza.uscita_pomeriggio %}{{ item.presenza.uscita_pomeriggio|time:'H:i' }}{% endif %}">
+                    </td>
+                    <td class="ore-cell">
+                        <span class="ore-value">-</span>
+                    </td>
+                    <td>
+                        <button type="button" 
+                                class="btn btn-sm btn-outline-success btn-salva" 
+                                onclick="salvaRiga(this)">
+                            <span class="material-icons" style="font-size: 16px;">save</span>
+                        </button>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="9" class="text-center text-muted py-4">
+                        Nessuna presenza per questa data
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function salvaRiga(btn) {
+    const row = btn.closest('tr');
+    const slot = row.dataset.slot;
+    const giorno = row.dataset.data;
+    
+    const formData = new FormData();
+    formData.append('slot', slot);
+    formData.append('giorno', giorno);
+    formData.append('ingresso_mattino', row.querySelector('[name="ingresso_mattino"]').value);
+    formData.append('uscita_mattino', row.querySelector('[name="uscita_mattino"]').value);
+    formData.append('ingresso_pomeriggio', row.querySelector('[name="ingresso_pomeriggio"]').value);
+    formData.append('uscita_pomeriggio', row.querySelector('[name="uscita_pomeriggio"]').value);
+    formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+    
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+    
+    fetch("{% url 'alloca_hostess:salva_orario_hostess' %}", {
+        method: 'POST',
+        body: formData
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            row.querySelector('.ore-value').textContent = data.ore_lavorate || '-';
+            btn.innerHTML = '<span class="material-icons" style="font-size: 16px;">check</span>';
+            btn.classList.remove('btn-outline-success');
+            btn.classList.add('btn-success');
+            setTimeout(() => {
+                btn.innerHTML = '<span class="material-icons" style="font-size: 16px;">save</span>';
+                btn.classList.remove('btn-success');
+                btn.classList.add('btn-outline-success');
+                btn.disabled = false;
+            }, 1500);
+        } else {
+            alert(data.error || 'Errore durante il salvataggio');
+            btn.innerHTML = '<span class="material-icons" style="font-size: 16px;">error</span>';
+            btn.disabled = false;
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        btn.innerHTML = '<span class="material-icons" style="font-size: 16px;">error</span>';
+        btn.disabled = false;
+    });
+}
+</script>
+{% endblock %}

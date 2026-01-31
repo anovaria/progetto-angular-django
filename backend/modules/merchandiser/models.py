@@ -117,9 +117,10 @@ class Slot(models.Model):
     documento = models.CharField(max_length=50, blank=True, null=True)
     badge = models.CharField(max_length=10, blank=True, null=True)
     plafond_ore = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    attivo = models.BooleanField(default=True)  # <-- AGGIUNGI QUESTO
     creato_il = models.DateTimeField(auto_now_add=True)
     modificato_il = models.DateTimeField(auto_now=True)
-
+    
     class Meta:
         managed = False
         db_table = 'shared.slot'

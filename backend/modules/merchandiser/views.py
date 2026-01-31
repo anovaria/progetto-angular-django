@@ -8,9 +8,9 @@ from django.views.decorators.csrf import csrf_exempt
 from django.db import models
 
 from .models import (
-    Attivita, Utente, Merchandiser, Slot, SlotFornitore, SlotIngressoUscita, SottoReparto
+    Attivita, Utente, Merchandiser, Slot, SlotFornitore, SlotIngressoUscita
 )
-from modules.pallet_promoter.models import Agenzia, Fornitore, Buyer, Hostess
+from modules.pallet_promoter.models import Agenzia, Fornitore, Buyer, Hostess, PresenzaHostess
 
 
 def get_current_user(request):
@@ -140,9 +140,12 @@ def slot_list(request):
     if utente_id:
         slots = slots.filter(utente_id=utente_id)
     if solo_attivi:
-        slots = slots.filter(data_fine__gte=oggi)
+        slots = slots.filter(attivo=True, data_fine__gte=oggi)
     
     slots = slots.order_by('-data_inizio')[:100]
+    
+    for s in slots[:3]:  # Mostra primi 3
+        print(f"    Slot {s.id}: attivo={s.attivo}, data_fine={s.data_fine}")
     
     # Liste per filtri
     merchandiser_list = Merchandiser.objects.filter(attivo=True).order_by('cognome')
@@ -603,3 +606,263 @@ def salva_note_slot(request):
             'success': False,
             'error': str(e)
         })
+# ============================================
+# AGENZIE CRUD
+# ============================================
+
+def agenzia_list(request):
+    """Lista agenzie."""
+    from datetime import timedelta
+    
+    agenzie_qs = Agenzia.objects.all().order_by('descrizione')
+    
+    context = {
+        'agenzie_list': agenzie_qs,
+        'current_user': get_current_user(request),
+    }
+    return render(request, 'merchandiser/agenzia_list.html', context)
+
+@csrf_exempt
+def agenzia_add(request):
+    """Aggiungi agenzia."""
+    from django.db.models import Max
+    
+    if request.method == 'POST':
+        descrizione = request.POST.get('descrizione', '').strip()
+        nota = request.POST.get('nota', '').strip()
+        
+        # Validazione
+        if not descrizione:
+            return JsonResponse({
+                'success': False,
+                'error': 'La descrizione è obbligatoria'
+            })
+        
+        if len(descrizione) > 50:
+            return JsonResponse({
+                'success': False,
+                'error': 'La descrizione non può superare i 50 caratteri'
+            })
+        
+        # Calcola prossimo ID
+        max_id = Agenzia.objects.aggregate(Max('id'))['id__max'] or 0
+        next_id = max_id + 1
+        
+        # Crea agenzia con ID manuale
+        agenzia = Agenzia.objects.create(
+            id=next_id,
+            descrizione=descrizione,
+            nota=nota if nota else None
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'agenzia': {
+                'id': agenzia.id,
+                'descrizione': agenzia.descrizione,
+                'nota': agenzia.nota
+            }
+        })
+    
+    context = {
+        'current_user': get_current_user(request),
+    }
+    return render(request, 'merchandiser/agenzia_form.html', context)
+
+@csrf_exempt
+def agenzia_edit(request, agenzia_id):
+    """Modifica agenzia."""
+    agenzia = get_object_or_404(Agenzia, pk=agenzia_id)
+    
+    if request.method == 'POST':
+        descrizione = request.POST.get('descrizione', '').strip()
+        nota = request.POST.get('nota', '').strip()
+        
+        # Validazione
+        if not descrizione:
+            return JsonResponse({
+                'success': False,
+                'error': 'La descrizione è obbligatoria'
+            })
+        
+        if len(descrizione) > 50:
+            return JsonResponse({
+                'success': False,
+                'error': 'La descrizione non può superare i 50 caratteri'
+            })
+        
+        # Aggiorna
+        agenzia.descrizione = descrizione
+        agenzia.nota = nota if nota else None
+        agenzia.save()
+        
+        return JsonResponse({
+            'success': True,
+            'agenzia': {
+                'id': agenzia.id,
+                'descrizione': agenzia.descrizione,
+                'nota': agenzia.nota
+            }
+        })
+    
+    context = {
+        'agenzia': agenzia,
+        'current_user': get_current_user(request),
+    }
+    return render(request, 'merchandiser/agenzia_form.html', context)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def agenzia_delete(request, agenzia_id):
+    """Elimina agenzia."""
+    agenzia = get_object_or_404(Agenzia, pk=agenzia_id)
+    agenzia.delete()
+    
+    return JsonResponse({'success': True})
+
+@csrf_exempt
+def slot_add(request):
+    """Aggiungi nuovo slot."""
+    if request.method == 'POST':
+        merchandiser_id = request.POST.get('merchandiser_id')
+        data_inizio = request.POST.get('data_inizio')
+        data_fine = request.POST.get('data_fine')
+        plafond_ore = request.POST.get('plafond_ore', 0)
+        badge = request.POST.get('badge', '').strip()
+        note = request.POST.get('note', '').strip()
+        
+        # Giorni
+        lun = request.POST.get('lun') == 'on'
+        mar = request.POST.get('mar') == 'on'
+        mer = request.POST.get('mer') == 'on'
+        gio = request.POST.get('gio') == 'on'
+        ven = request.POST.get('ven') == 'on'
+        sab = request.POST.get('sab') == 'on'
+        dom = request.POST.get('dom') == 'on'
+        
+        # Validazione
+        if not merchandiser_id:
+            return JsonResponse({'success': False, 'error': 'Seleziona un merchandiser'})
+        
+        if not data_inizio or not data_fine:
+            return JsonResponse({'success': False, 'error': 'Inserisci data inizio e fine'})
+        
+        try:
+            data_i = datetime.strptime(data_inizio, '%Y-%m-%d').date()
+            data_f = datetime.strptime(data_fine, '%Y-%m-%d').date()
+            
+            if data_f < data_i:
+                return JsonResponse({'success': False, 'error': 'La data fine deve essere >= data inizio'})
+        except:
+            return JsonResponse({'success': False, 'error': 'Date non valide'})
+        
+        # Crea slot
+        slot = Slot.objects.create(
+            merchandiser_id=merchandiser_id,
+            data_inizio=data_i,
+            data_fine=data_f,
+            lun=lun, mar=mar, mer=mer, gio=gio, ven=ven, sab=sab, dom=dom,
+            plafond_ore=plafond_ore,
+            badge=badge if badge else None,
+            note=note if note else None
+        )
+        
+        return JsonResponse({'success': True, 'slot_id': slot.id})
+    
+    # GET
+    merchandiser_list = Merchandiser.objects.filter(attivo=True).order_by('cognome')
+    
+    context = {
+        'merchandiser_list': merchandiser_list,
+        'current_user': get_current_user(request),
+    }
+    return render(request, 'merchandiser/slot_form.html', context)
+
+@csrf_exempt
+def slot_edit(request, slot_id):
+    """Modifica slot."""
+    slot = get_object_or_404(Slot, pk=slot_id)
+    
+    if request.method == 'POST':
+        merchandiser_id = request.POST.get('merchandiser_id')
+        data_inizio = request.POST.get('data_inizio')
+        data_fine = request.POST.get('data_fine')
+        plafond_ore = request.POST.get('plafond_ore', 0)
+        badge = request.POST.get('badge', '').strip()
+        note = request.POST.get('note', '').strip()
+        
+        # Giorni
+        lun = request.POST.get('lun') == 'on'
+        mar = request.POST.get('mar') == 'on'
+        mer = request.POST.get('mer') == 'on'
+        gio = request.POST.get('gio') == 'on'
+        ven = request.POST.get('ven') == 'on'
+        sab = request.POST.get('sab') == 'on'
+        dom = request.POST.get('dom') == 'on'
+        
+        # Validazione
+        if not merchandiser_id:
+            return JsonResponse({'success': False, 'error': 'Seleziona un merchandiser'})
+        
+        if not data_inizio or not data_fine:
+            return JsonResponse({'success': False, 'error': 'Inserisci data inizio e fine'})
+        
+        try:
+            data_i = datetime.strptime(data_inizio, '%Y-%m-%d').date()
+            data_f = datetime.strptime(data_fine, '%Y-%m-%d').date()
+            
+            if data_f < data_i:
+                return JsonResponse({'success': False, 'error': 'La data fine deve essere >= data inizio'})
+        except:
+            return JsonResponse({'success': False, 'error': 'Date non valide'})
+        
+        # Aggiorna
+        slot.merchandiser_id = merchandiser_id
+        slot.data_inizio = data_i
+        slot.data_fine = data_f
+        slot.lun = lun
+        slot.mar = mar
+        slot.mer = mer
+        slot.gio = gio
+        slot.ven = ven
+        slot.sab = sab
+        slot.dom = dom
+        slot.plafond_ore = plafond_ore
+        slot.badge = badge if badge else None
+        slot.note = note if note else None
+        slot.save()
+        
+        return JsonResponse({'success': True, 'slot_id': slot.id})
+    
+    # GET
+    merchandiser_list = Merchandiser.objects.filter(attivo=True).order_by('cognome')
+    
+    context = {
+        'slot': slot,
+        'merchandiser_list': merchandiser_list,
+        'current_user': get_current_user(request),
+    }
+    return render(request, 'merchandiser/slot_form.html', context)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def slot_delete(request, slot_id):
+    """Disattiva slot (soft delete)."""
+    
+    slot = get_object_or_404(Slot, pk=slot_id)
+    
+    slot.attivo = False
+    slot.save()
+    
+    return JsonResponse({'success': True})
+@csrf_exempt
+@require_http_methods(["POST"])
+def slot_restore(request, slot_id):
+    """Riattiva slot (annulla soft delete)."""
+    slot = get_object_or_404(Slot, pk=slot_id)
+    slot.attivo = True
+    slot.save()
+    
+    return JsonResponse({'success': True})

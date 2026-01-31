@@ -16,27 +16,26 @@ export const DJANGO_EMBED_ROUTES: Routes = [
   {
     path: 'pallet-promoter-pallet',
     loadComponent: () => import('./pages/pallet-promoter-pallet').then(m => m.PalletPromoterPalletComponent),
-    data: { groups: ['itd', 'Commerciale', 'Pallet'] }
+    data: {
+      menu: { label: 'Gestione Pallet' },
+      groups: ['itd', 'Commerciale', 'Pallet']
+    }
   },
   {
     path: 'pallet-promoter-testate',
     loadComponent: () => import('./pages/pallet-promoter-testate').then(m => m.PalletPromoterTestateComponent),
-    data: { groups: ['itd', 'Commerciale', 'Pallet'] }
-  },
-  {
-    path: 'pallet-promoter-hostess',
-    loadComponent: () => import('./pages/pallet-promoter-hostess').then(m => m.PalletPromoterHostessComponent),
-    data: { groups: ['itd', 'Commerciale', 'Pallet'] }
+    data: {
+      menu: { label: 'Gestione Testate' },
+      groups: ['itd', 'Commerciale', 'Pallet']
+    }
   },
   {
     path: 'pallet-promoter-scelta-fornitore',
     loadComponent: () => import('./pages/pallet-promoter-scelta-fornitore').then(m => m.PalletPromoterSceltaFornitoreComponent),
-    data: { groups: ['itd', 'Commerciale', 'Pallet'] }
-  },
-  {
-    path: 'pallet-promoter-presenze',
-    loadComponent: () => import('./pages/pallet-promoter-presenze').then(m => m.PalletPromoterPresenzeComponent),
-    data: { groups: ['itd', 'Commerciale', 'Pallet'] }
+    data: {
+      menu: { label: 'Scelta Fornitore' },
+      groups: ['itd', 'Commerciale', 'Pallet']
+    }
   },
 
   // ========================================
@@ -59,6 +58,14 @@ export const DJANGO_EMBED_ROUTES: Routes = [
     path: 'merchandiser-anagrafiche',
     loadComponent: () => import('./pages/merchandiser-anagrafiche').then(m => m.MerchandiserAnagraficheComponent),
     data: { groups: ['itd', 'Pallet'] }
+  },
+  {
+    path: 'merchandiser-agenzie',
+    loadComponent: () => import('./pages/merchandiser-agenzie').then(m => m.MerchandiserAgenzieComponent),
+    data: {
+      menu: { label: 'Agenzie' },
+      groups: ['itd', 'Pallet']
+    }
   },
   // ========================================
   // NUOVA ROUTE: Anagrafica Hostess
@@ -98,6 +105,14 @@ export const DJANGO_EMBED_ROUTES: Routes = [
     path: 'alloca-hostess-hostess',
     loadComponent: () => import('./pages/alloca-hostess-hostess').then(m => m.AllocaHostessHostessComponent),
     data: { groups: ['itd', 'Centralino', 'Pallet'] }
+  },
+  {
+    path: 'alloca-hostess-orari',
+    loadComponent: () => import('./pages/alloca-hostess-orari').then(m => m.AllocaHostessOrariComponent),
+    data: {
+      menu: { label: 'Registrazione Orari' },
+      groups: ['itd', 'Pallet', 'Centralino']
+    }
   },
 
   // ========================================

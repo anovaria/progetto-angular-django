@@ -1,11 +1,10 @@
-from django.shortcuts import render, get_object_or_404
+from datetime import datetime, timedelta
+from django.shortcuts import render
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.utils import timezone
 
-from modules.pallet_promoter.models import (
-    Agenzia, Hostess, Fornitore, Periodo, PresenzaHostess
-)
+from modules.pallet_promoter.models import Agenzia, Fornitore, Hostess, Periodo, PresenzaHostess
 from django.views.decorators.csrf import csrf_exempt
 
 
@@ -115,7 +114,7 @@ def individuazione(request):
     giorno_succ = giorno + timedelta(days=1) if giorno < periodo.data_fine else None
     
     # Slot attivi
-    num_slots = min(periodo.num_hostess or 8, 9)
+    num_slots = min(periodo.num_hostess or 12, 13)
     
     # Presenze del giorno
     presenze = {}
@@ -219,3 +218,89 @@ def salva_presenze(request):
         saved += 1
     
     return JsonResponse({'success': True, 'saved': saved})
+def orari_hostess(request):
+    """Registrazione orari giornalieri hostess - Vista semplificata."""
+    oggi = timezone.now().date()
+    
+    # Filtro data
+    data_str = request.GET.get('data')
+    if data_str:
+        try:
+            data = datetime.strptime(data_str, '%Y-%m-%d').date()
+        except:
+            data = oggi
+    else:
+        data = oggi
+    
+    # Date per navigazione
+    data_prec = data - timedelta(days=1)
+    data_succ = data + timedelta(days=1)
+    
+    # Trova tutte le presenze hostess per questa data (slot 1-12)
+    presenze_hostess = []
+    for slot_num in range(1, 13):  # 12 slot
+        presenza = PresenzaHostess.objects.filter(giorno=data, slot=slot_num).select_related('hostess', 'agenzia').first()
+        if not presenza:
+            # Crea oggetto vuoto (non salvato)
+            presenza = PresenzaHostess(giorno=data, slot=slot_num)
+        
+        presenze_hostess.append({
+            'slot': slot_num,
+            'presenza': presenza,
+        })
+    
+    context = {
+        'data': data,
+        'data_prec': data_prec,
+        'data_succ': data_succ,
+        'presenze_hostess': presenze_hostess,
+        'current_user': get_current_user(request),
+    }
+    return render(request, 'alloca_hostess/orari_hostess.html', context)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def salva_orario_hostess(request):
+    """Salva orari hostess per uno slot in un giorno."""
+    giorno_str = request.POST.get('giorno')
+    slot = request.POST.get('slot')
+    
+    try:
+        giorno = datetime.strptime(giorno_str, '%Y-%m-%d').date()
+    except:
+        return JsonResponse({'success': False, 'error': 'Data non valida'})
+    
+    # Prendi o crea presenza
+    presenza, created = PresenzaHostess.objects.get_or_create(
+        giorno=giorno,
+        slot=slot
+    )
+    
+    # Aggiorna orari
+    ingresso_m = request.POST.get('ingresso_mattino')
+    uscita_m = request.POST.get('uscita_mattino')
+    ingresso_p = request.POST.get('ingresso_pomeriggio')
+    uscita_p = request.POST.get('uscita_pomeriggio')
+    
+    presenza.ingresso_mattino = ingresso_m if ingresso_m else None
+    presenza.uscita_mattino = uscita_m if uscita_m else None
+    presenza.ingresso_pomeriggio = ingresso_p if ingresso_p else None
+    presenza.uscita_pomeriggio = uscita_p if uscita_p else None
+    
+    presenza.save()
+    
+    # Calcola ore lavorate (opzionale, se vuoi mostrarle)
+    ore_lavorate = 0
+    if presenza.ingresso_mattino and presenza.uscita_mattino:
+        delta_m = datetime.combine(giorno, presenza.uscita_mattino) - datetime.combine(giorno, presenza.ingresso_mattino)
+        ore_lavorate += delta_m.total_seconds() / 3600
+    
+    if presenza.ingresso_pomeriggio and presenza.uscita_pomeriggio:
+        delta_p = datetime.combine(giorno, presenza.uscita_pomeriggio) - datetime.combine(giorno, presenza.ingresso_pomeriggio)
+        ore_lavorate += delta_p.total_seconds() / 3600
+    
+    return JsonResponse({
+        'success': True,
+        'ore_lavorate': round(ore_lavorate, 2)
+    })

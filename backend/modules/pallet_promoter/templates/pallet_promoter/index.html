@@ -22,13 +22,14 @@
                             {{ periodo_corrente.data_inizio|date:"d/m/Y" }} - {{ periodo_corrente.data_fine|date:"d/m/Y"}}
                         </p>
                     </div>
-                    <div>
+                    <!--<div>
                         <a href="{% url 'pallet_promoter:pallet_griglia' periodo_corrente.id %}"
                             class="btn btn-primary btn-lg">
                             <span class="material-icons">edit</span>
                             Gestisci Pallet
                         </a>
                     </div>
+                -->
                 </div>
                 {% else %}
                 <div class="text-center text-muted py-3">

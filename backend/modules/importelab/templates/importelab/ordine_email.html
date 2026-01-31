@@ -4,9 +4,9 @@
 <h2>Invio ordine via Outlook (simulazione)</h2>
 
 <p class="muted">
-  In questa fase il file allegato è fisso: <code>prova_Ordine.ext</code>.<br>
-  La cartella di riferimento è quella configurata in <code>ELAB_SOURCE_DIR</code> (cartella di lavoro).<br>
-  Se il file non esiste, il sistema ne crea uno di test automaticamente.
+  L'allegato è il file reale: <code>Ordine.ext</code> (nome configurabile con <code>ORDER_EXT_FILENAME</code>).<br>
+  Se il file non esiste ancora, l'app lo genera automaticamente leggendo i dati da GoldReport (<code>dbo_t_OrdiniRossetto</code>).<br>
+  La cartella di riferimento è quella configurata in <code>ELAB_SOURCE_DIR</code> (cartella di lavoro).
 </p>
 
 {% if last_batch %}

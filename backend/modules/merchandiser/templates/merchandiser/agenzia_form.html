@@ -1,0 +1,96 @@
+{% extends 'merchandiser/base_minimal.html' %}
+
+{% block title %}{% if agenzia %}Modifica{% else %}Nuova{% endif %} Agenzia{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <a href="{% url 'merchandiser:agenzia_list' %}" class="btn btn-outline-secondary btn-sm">
+        <span class="material-icons" style="font-size: 16px; vertical-align: middle;">arrow_back</span>
+        Torna alla Lista
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">
+            <span class="material-icons" style="vertical-align: middle;">business</span>
+            {% if agenzia %}Modifica Agenzia{% else %}Nuova Agenzia{% endif %}
+        </h5>
+    </div>
+    <div class="card-body">
+        <form id="agenzia-form" method="post">
+            {% csrf_token %}
+            
+            <div class="mb-3">
+                <label for="descrizione" class="form-label">
+                    Descrizione <span class="text-danger">*</span>
+                </label>
+                <input type="text" 
+                       class="form-control" 
+                       id="descrizione" 
+                       name="descrizione" 
+                       maxlength="50"
+                       value="{% if agenzia %}{{ agenzia.descrizione }}{% endif %}"
+                       required>
+                <small class="text-muted">Max 50 caratteri</small>
+            </div>
+            
+            <div class="mb-3">
+                <label for="nota" class="form-label">Nota</label>
+                <textarea class="form-control" 
+                          id="nota" 
+                          name="nota" 
+                          rows="3"
+                          maxlength="100">{% if agenzia %}{{ agenzia.nota }}{% endif %}</textarea>
+                <small class="text-muted">Max 100 caratteri (opzionale)</small>
+            </div>
+            
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">
+                    <span class="material-icons" style="font-size: 16px; vertical-align: middle;">save</span>
+                    Salva
+                </button>
+                <a href="{% url 'merchandiser:agenzia_list' %}" class="btn btn-secondary">
+                    Annulla
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('agenzia-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const form = this;
+    const formData = new FormData(form);
+    const submitBtn = form.querySelector('button[type="submit"]');
+    
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Salvataggio...';
+    
+    fetch(form.action || window.location.href, {
+        method: 'POST',
+        body: formData
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            window.location.href = "{% url 'merchandiser:agenzia_list' %}";
+        } else {
+            alert(data.error || 'Errore durante il salvataggio');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<span class="material-icons" style="font-size: 16px; vertical-align: middle;">save</span> Salva';
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        alert('Errore durante il salvataggio');
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<span class="material-icons" style="font-size: 16px; vertical-align: middle;">save</span> Salva';
+    });
+});
+</script>
+{% endblock %}

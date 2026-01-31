@@ -63,17 +63,9 @@
               <mat-icon>view_column</mat-icon>
               <span>Gestione Testate</span>
             </a>
-            <a mat-list-item routerLink="/django/pallet-promoter-hostess" routerLinkActive="active">
-              <mat-icon>people</mat-icon>
-              <span>Individuazione Hostess</span>
-            </a>
             <a mat-list-item routerLink="/django/pallet-promoter-scelta-fornitore" routerLinkActive="active">
               <mat-icon>grid_on</mat-icon>
               <span>Scelta Fornitore</span>
-            </a>
-            <a mat-list-item routerLink="/django/pallet-promoter-presenze" routerLinkActive="active">
-              <mat-icon>schedule</mat-icon>
-              <span>Presenze</span>
             </a>
           </div>
         </ng-container>
@@ -101,13 +93,13 @@
               <mat-icon>people</mat-icon>
               <span>Anagrafiche Merchandiser</span>
             </a>
-            <a mat-list-item routerLink="/django/merchandiser-hostess" routerLinkActive="active">
-              <mat-icon>people</mat-icon>
-              <span>Anagrafica Hostess</span>
-            </a>
             <a mat-list-item routerLink="/django/merchandiser-attivita" routerLinkActive="active">
               <mat-icon>assignment</mat-icon>
               <span>Gestione Attività</span>
+            </a>
+            <a mat-list-item routerLink="/django/merchandiser-agenzie" routerLinkActive="active">
+              <mat-icon>assignment</mat-icon>
+              <span>Gestione Agenzie</span>
             </a>
           </div>
         </ng-container>
@@ -135,15 +127,22 @@
               <mat-icon>badge</mat-icon>
               <span>Lista Hostess</span>
             </a>
+            <a mat-list-item routerLink="/django/merchandiser-hostess" routerLinkActive="active">
+              <mat-icon>people</mat-icon>
+              <span>Anagrafica Hostess</span>
+            </a>
           </div>
         </ng-container>
 
         <!-- Punto Info - Admin + Punto Info -->
         <a mat-list-item *ngIf="hasGroup(groups, ['punto info', 'Ufficio Qualita'])" routerLink="/django/punto-info">
           <mat-icon>schedule</mat-icon>
-          <span *ngIf="!isCollapsed">Registrazione Orari</span>
+          <span *ngIf="!isCollapsed">Orari Merchandiser</span>
         </a>
-
+        <a mat-list-item routerLink="/django/alloca-hostess-orari" routerLinkActive="active">
+          <mat-icon>schedule</mat-icon>
+          <span>Orari Hostess</span>
+        </a>
         <!-- WELFARE - Menu espandibile -->
         <ng-container *ngIf="hasGroup(groups, ['ufficio cassa'])">
           <a mat-list-item (click)="toggleWelfareMenu()" class="menu-parent">
