@@ -10033,3 +10033,57 @@ INFO 2026-01-30 19:41:14,716 basehttp "GET /app/merchandiser/agenzie/ HTTP/1.1" 
 INFO 2026-01-30 19:41:16,735 basehttp "GET /app/alloca-hostess/ HTTP/1.1" 200 6972
 INFO 2026-01-30 19:41:17,622 basehttp "GET /app/alloca-hostess/individuazione/ HTTP/1.1" 200 1990274
 INFO 2026-01-30 19:41:21,366 basehttp "GET /app/pallet-promoter/ HTTP/1.1" 200 11100
+INFO 2026-01-31 11:15:16,766 autoreload Watching for file changes with StatReloader
+INFO 2026-01-31 11:20:46,489 basehttp "OPTIONS /api/auth/login-ldap/ HTTP/1.1" 200 0
+INFO 2026-01-31 11:20:46,926 basehttp "POST /api/auth/login-ldap/ HTTP/1.1" 200 66
+INFO 2026-01-31 11:20:50,379 basehttp "GET /app/welfare/da-consegnare/ HTTP/1.1" 200 8809
+INFO 2026-01-31 11:23:32,983 basehttp "GET /app/welfare/da-consegnare/ HTTP/1.1" 200 8809
+INFO 2026-01-31 11:23:49,594 basehttp "GET /app/welfare/ HTTP/1.1" 200 12109
+INFO 2026-01-31 11:23:50,901 basehttp "GET /app/welfare/ricerca/ HTTP/1.1" 200 6219
+INFO 2026-01-31 11:23:51,977 basehttp "GET /app/welfare/cassa/ HTTP/1.1" 200 7194
+INFO 2026-01-31 11:23:52,701 basehttp "GET /app/welfare/da-consegnare/ HTTP/1.1" 200 8809
+INFO 2026-01-31 11:23:53,461 basehttp "GET /app/welfare/contabilita/ HTTP/1.1" 200 15554
+INFO 2026-01-31 11:23:54,030 basehttp "GET /app/welfare/import/ HTTP/1.1" 200 8715
+INFO 2026-01-31 11:23:56,593 basehttp "GET /app/welfare/import/ HTTP/1.1" 200 8715
+INFO 2026-01-31 11:24:04,485 basehttp - Broken pipe from ('127.0.0.1', 62414)
+WARNING 2026-01-31 11:24:11,629 log Unauthorized: /api/auth/login-ldap/
+WARNING 2026-01-31 11:24:11,629 basehttp "POST /api/auth/login-ldap/ HTTP/1.1" 401 35
+WARNING 2026-01-31 11:24:23,763 log Unauthorized: /api/auth/login-ldap/
+WARNING 2026-01-31 11:24:23,764 basehttp "POST /api/auth/login-ldap/ HTTP/1.1" 401 35
+WARNING 2026-01-31 11:27:48,348 log Unauthorized: /api/auth/login-ldap/
+WARNING 2026-01-31 11:27:48,348 basehttp "POST /api/auth/login-ldap/ HTTP/1.1" 401 35
+WARNING 2026-01-31 11:27:57,334 log Unauthorized: /api/auth/login-ldap/
+WARNING 2026-01-31 11:27:57,335 basehttp "POST /api/auth/login-ldap/ HTTP/1.1" 401 35
+INFO 2026-01-31 11:28:08,495 basehttp "POST /api/auth/login-ldap/ HTTP/1.1" 200 70
+INFO 2026-01-31 11:28:12,941 basehttp "GET /app/alloca-hostess/orari-hostess/ HTTP/1.1" 200 29237
+INFO 2026-01-31 11:31:18,927 basehttp "GET /app/alloca-hostess/orari-hostess/ HTTP/1.1" 200 29237
+INFO 2026-01-31 11:32:09,722 basehttp "GET /app/alloca-hostess/orari-hostess/ HTTP/1.1" 200 29237
+INFO 2026-01-31 11:32:26,769 basehttp "GET /app/alloca-hostess/orari-hostess/ HTTP/1.1" 200 29237
+INFO 2026-01-31 11:32:36,496 basehttp "POST /api/auth/login-ldap/ HTTP/1.1" 200 70
+INFO 2026-01-31 11:32:42,333 basehttp "GET /app/welfare/storico/ HTTP/1.1" 200 13829
+INFO 2026-01-31 11:32:46,568 basehttp "GET /app/welfare/da-consegnare/ HTTP/1.1" 200 8809
+INFO 2026-01-31 11:32:48,451 basehttp "GET /app/welfare/storico/ HTTP/1.1" 200 13829
+INFO 2026-01-31 11:32:55,767 basehttp "GET /app/alloca-hostess/orari-hostess/ HTTP/1.1" 200 29237
+INFO 2026-01-31 11:32:57,359 basehttp "GET /app/merchandiser/solo-orari/ HTTP/1.1" 200 78454
+INFO 2026-01-31 11:32:59,235 basehttp "GET /app/alloca-hostess/orari-hostess/ HTTP/1.1" 200 29237
+INFO 2026-01-31 11:33:31,639 basehttp "GET /app/welfare/da-consegnare/ HTTP/1.1" 200 8809
+INFO 2026-01-31 11:33:32,777 basehttp "GET /app/welfare/storico/ HTTP/1.1" 200 13829
+INFO 2026-01-31 11:33:42,057 basehttp "POST /api/auth/login-ldap/ HTTP/1.1" 200 91
+INFO 2026-01-31 11:33:57,065 basehttp "POST /api/auth/login-ldap/ HTTP/1.1" 200 66
+INFO 2026-01-31 11:34:11,731 basehttp "GET /app/merchandiser/solo-orari/ HTTP/1.1" 200 78454
+INFO 2026-01-31 11:34:12,411 basehttp "GET /app/alloca-hostess/orari-hostess/ HTTP/1.1" 200 29237
+INFO 2026-01-31 11:34:13,550 basehttp "GET /app/welfare/ HTTP/1.1" 200 12109
+INFO 2026-01-31 11:34:14,215 basehttp "GET /app/welfare/ricerca/ HTTP/1.1" 200 6219
+INFO 2026-01-31 11:34:14,818 basehttp "GET /app/welfare/cassa/ HTTP/1.1" 200 7194
+INFO 2026-01-31 11:34:15,559 basehttp "GET /app/welfare/da-consegnare/ HTTP/1.1" 200 8809
+INFO 2026-01-31 11:34:16,891 basehttp "GET /app/welfare/contabilita/ HTTP/1.1" 200 15554
+INFO 2026-01-31 11:34:18,544 basehttp "GET /app/welfare/import/ HTTP/1.1" 200 8715
+INFO 2026-01-31 11:34:20,071 basehttp "GET /app/welfare/contabilita/ HTTP/1.1" 200 15554
+INFO 2026-01-31 11:34:35,466 basehttp "GET /app/welfare/da-consegnare/ HTTP/1.1" 200 8809
+INFO 2026-01-31 11:36:51,005 basehttp "GET /app/welfare/da-consegnare/ HTTP/1.1" 200 8809
+INFO 2026-01-31 11:36:54,778 basehttp "GET /app/welfare/storico/ HTTP/1.1" 200 13829
+INFO 2026-01-31 11:36:57,116 basehttp "GET /app/welfare/da-consegnare/ HTTP/1.1" 200 8809
+INFO 2026-01-31 11:36:59,279 basehttp "GET /app/welfare/storico/ HTTP/1.1" 200 13829
+INFO 2026-01-31 12:31:23,532 autoreload Watching for file changes with StatReloader
+INFO 2026-01-31 12:31:34,619 basehttp "GET /app/welfare/contabilita/ HTTP/1.1" 200 16004
+INFO 2026-01-31 12:31:36,342 basehttp "GET /app/welfare/contabilita/export/?anno=2026&mese=1 HTTP/1.1" 200 364

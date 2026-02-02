@@ -17,6 +17,7 @@ urlpatterns = [
     # Cassa
     path('cassa/', views.cassa_consegna, name='cassa_consegna'),
     path('da-consegnare/', views.lista_da_consegnare, name='lista_da_consegnare'),
+    path('storico/', views.storico_consegne, name='storico_consegne'),
     
     # Contabilità
     path('contabilita/', views.contabilita, name='contabilita'),

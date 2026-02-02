@@ -123,7 +123,7 @@ export const DJANGO_EMBED_ROUTES: Routes = [
     path: 'importelab',
     loadComponent: () => import('./pages/importelab').then(m => m.ImportelabPageComponent),
     data: {
-      groups: ['itd', 'Commerciale'],
+      groups: ['itd', 'Segreteria'],
       menu: { label: 'Rossetto', icon: 'sync' }
     }
   },
@@ -141,7 +141,7 @@ export const DJANGO_EMBED_ROUTES: Routes = [
     path: 'assortimenti',
     loadComponent: () => import('./pages/assortimenti').then(m => m.AssortimentiComponent),
     data: {
-      groups: ['itd', 'GruppoCED'],
+      groups: ['itd', 'Segreteria'],
       menu: { label: 'Assortimenti', icon: 'inventory_2' }
     }
   },
@@ -170,7 +170,7 @@ export const DJANGO_EMBED_ROUTES: Routes = [
   {
     path: 'welfare-consegne',
     loadComponent: () => import('./pages/welfare-consegne').then(m => m.WelfareConsegnePageComponent),
-    data: { groups: ['itd', 'ufficio cassa'] }
+    data: { groups: ['itd', 'ufficio cassa', 'Pinfo'] }
   },
   {
     path: 'welfare-contabilita',
@@ -181,5 +181,10 @@ export const DJANGO_EMBED_ROUTES: Routes = [
     path: 'welfare-import',
     loadComponent: () => import('./pages/welfare-import').then(m => m.WelfareImportPageComponent),
     data: { groups: ['itd', 'ufficio cassa'] }
+  },
+  {
+    path: 'welfare-storico',
+    loadComponent: () => import('./pages/welfare-storico').then(m => m.WelfareStoricoPageComponent),
+    data: { groups: ['itd', 'ufficio cassa', 'Pinfo'] }
   },
 ];

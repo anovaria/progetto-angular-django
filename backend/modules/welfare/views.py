@@ -320,7 +320,7 @@ def report_mensile_excel(request):
     
     writer.writerow([
         'Num. Richiesta', 'Nominativo', 'Azienda', 
-        'Valore Buono', 'Quantità', 'Totale',
+        'Valore Buono', 'Quantita', 'Totale',
         'Data Consegna', 'Operatore'
     ])
     
@@ -401,7 +401,7 @@ def import_email(request):
 def parse_email_eudaimon(html_content):
     """
     Parser per email Eudaimon.
-    Estrae: codice richiesta, punto vendita, valore, quantità, totale.
+    Estrae: codice richiesta, punto vendita, valore, quantita, totale.
     """
     risultato = {'success': False}
     
@@ -540,3 +540,56 @@ def api_stats(request):
     }
     
     return JsonResponse(stats)
+
+@csrf_exempt
+@require_auth
+def storico_consegne(request):
+    """Storico consegne per punto.info - solo CONSEGNATO."""
+    username = request.welfare_user
+    
+    oggi = timezone.now().date()
+    anno = int(request.GET.get('anno', oggi.year))
+    mese = int(request.GET.get('mese', oggi.month))
+    giorno_param = request.GET.get('giorno', '')
+    giorno = int(giorno_param) if giorno_param else None
+    filtro_nominativo = request.GET.get('nominativo', '').strip()
+    
+    richieste = RichiestaWelfare.objects.filter(
+        stato='CONSEGNATO',
+        data_consegna__year=anno,
+        data_consegna__month=mese
+    )
+    
+    # Filtro giorno (opzionale)
+    if giorno:
+        richieste = richieste.filter(data_consegna__day=giorno)
+    
+    # Filtro nominativo (opzionale)
+    if filtro_nominativo:
+        richieste = richieste.filter(nominativo__icontains=filtro_nominativo)
+    
+    richieste = richieste.order_by('-data_consegna')
+    
+    totali = richieste.aggregate(
+        num_richieste=Count('id'),
+        valore_totale=Sum('totale_buono')
+    )
+    
+    anni_disponibili = RichiestaWelfare.objects.filter(
+        data_consegna__isnull=False
+    ).dates('data_consegna', 'year', order='DESC')
+    
+    context = {
+        'username': username,
+        'richieste': richieste,
+        'anno': anno,
+        'mese': mese,
+        'giorno': giorno,
+        'filtro_nominativo': filtro_nominativo,
+        'totali': totali,
+        'anni_disponibili': [d.year for d in anni_disponibili],
+        'mesi': range(1, 13),
+        'giorni': range(1, 32),
+    }
+    
+    return render(request, 'welfare/storico_consegne.html', context)
