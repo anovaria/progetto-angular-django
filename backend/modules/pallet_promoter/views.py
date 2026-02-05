@@ -1,5 +1,5 @@
 from django.shortcuts import render, get_object_or_404
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.views.decorators.http import require_http_methods
 from django.utils import timezone
 from django.db.models import Q
@@ -9,7 +9,7 @@ from django.views.decorators.csrf import csrf_exempt
 from .models import (
     Periodo, Pallet, Testata, Fornitore, Buyer, Agenzia,
     AssegnazionePallet, AssegnazioneTestata,
-    Hostess, PresenzaHostess,
+    Hostess, PianificazioneHostess, PresenzaHostess,
     UtenteBuyer
 )
 
@@ -20,6 +20,13 @@ def get_current_user(request):
     Compatibile con Windows Auth e JWT.
     """
     username = None
+    
+    # DEBUG - rimuovi dopo
+    print(f"DEBUG META keys: {[k for k in request.META.keys() if 'USER' in k or 'AUTH' in k]}")
+    print(f"DEBUG request.user: {request.user}, authenticated: {request.user.is_authenticated if hasattr(request, 'user') else 'N/A'}")
+    print(f"DEBUG request.user: {getattr(request, 'user', 'NO USER')}")
+    print(f"DEBUG is_authenticated: {request.user.is_authenticated if hasattr(request, 'user') else 'N/A'}")
+    print(f"DEBUG REMOTE_USER: {request.META.get('REMOTE_USER', 'NONE')}")
 
     # Windows Auth
     if hasattr(request, 'META') and 'REMOTE_USER' in request.META:

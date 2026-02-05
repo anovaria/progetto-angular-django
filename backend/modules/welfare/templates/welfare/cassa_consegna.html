@@ -30,14 +30,14 @@
 
 {% if richiesta %}
 <!-- Richiesta trovata -->
-<div class="row g-4">
-    <div class="col-md-7">
-        <div class="card">
-            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">Dettaglio Richiesta</h5>
-                <span class="badge-stato badge-{{ richiesta.stato|lower }}">{{ richiesta.stato }}</span>
-            </div>
-            <div class="card-body">
+<div class="card">
+    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Dettaglio Richiesta</h5>
+        <span class="badge-stato badge-{{ richiesta.stato|lower }}">{{ richiesta.stato }}</span>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-7">
                 <div class="row mb-3">
                     <div class="col-4 text-muted">Voucher:</div>
                     <div class="col-8"><code class="fs-5">{{ richiesta.num_richiesta }}</code></div>
@@ -62,71 +62,16 @@
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
-    
-    <div class="col-md-5">
-        <!-- Form Tagli -->
-        <div class="card mb-3">
-            <div class="card-header bg-white py-3">
-                <h5 class="mb-0">
-                    <span class="material-icons align-middle me-2">grid_view</span>
-                    Composizione Tagli
-                </h5>
-            </div>
-            <div class="card-body">
-                <form method="post">
-                    <input type="hidden" name="richiesta_id" value="{{ richiesta.id }}">
-                    <input type="hidden" name="azione" value="salva_tagli">
-                    
-                    {% for taglio in tagli_disponibili %}
-                    <div class="row mb-2 align-items-center">
-                        <div class="col-6">
-                            <label class="form-label mb-0">€ {{ taglio.valore_nominale }}</label>
-                        </div>
-                        <div class="col-6">
-                            {% with taglio_esistente=dettagli|dictsort:"taglio_id" %}
-                            <input type="number" name="qta_{{ taglio.valore_nominale }}" 
-                                   class="form-control text-center taglio-input"
-                                   data-valore="{{ taglio.valore_nominale }}"
-                                   value="{% for d in dettagli %}{% if d.taglio.valore_nominale == taglio.valore_nominale %}{{ d.quantita }}{% endif %}{% endfor %}"
-                                   min="0" max="100">
-                            {% endwith %}
-                        </div>
-                    </div>
-                    {% endfor %}
-                    
-                    <hr>
-                    <div class="row mb-3 align-items-center">
-                        <div class="col-6"><strong>Totale Calcolato:</strong></div>
-                        <div class="col-6">
-                            <span id="totale-calcolato" class="fs-5 fw-bold">€ 0</span>
-                        </div>
-                    </div>
-                    
-                    <button type="submit" class="btn btn-outline-primary w-100 mb-2">
-                        <span class="material-icons align-middle me-1">save</span>
-                        Salva Tagli
-                    </button>
-                </form>
-            </div>
-        </div>
-        
-        <!-- Bottone Consegna -->
-        <div class="card border-success">
-            <div class="card-body">
-                <form method="post" onsubmit="return confirm('Confermi la consegna a {{ richiesta.nominativo }}?')">
+            
+            <div class="col-md-5 d-flex align-items-center">
+                <form method="post" class="w-100" onsubmit="return confirm('Confermi la consegna a {{ richiesta.nominativo }}?')">
                     <input type="hidden" name="richiesta_id" value="{{ richiesta.id }}">
                     <input type="hidden" name="azione" value="consegna">
                     
-                    <button type="submit" class="btn btn-success btn-lg w-100 py-3">
-                        <span class="material-icons align-middle me-2" style="font-size:28px">check_circle</span>
-                        <span class="fs-5">CONSEGNA</span>
+                    <button type="submit" class="btn btn-success btn-lg w-100 py-4">
+                        <span class="material-icons align-middle me-2" style="font-size:32px">check_circle</span>
+                        <span class="fs-4">CONSEGNA</span>
                     </button>
-                    
-                    <div class="text-center text-muted small mt-2">
-                        Operatore: {{ utente.username }}
-                    </div>
                 </form>
             </div>
         </div>
@@ -160,37 +105,4 @@
     </div>
 </div>
 {% endif %}
-{% endblock %}
-
-{% block extra_js %}
-<script>
-// Calcolo totale tagli in tempo reale
-document.querySelectorAll('.taglio-input').forEach(input => {
-    input.addEventListener('input', calcolaTotale);
-});
-
-function calcolaTotale() {
-    let totale = 0;
-    document.querySelectorAll('.taglio-input').forEach(input => {
-        const qta = parseInt(input.value) || 0;
-        const valore = parseInt(input.dataset.valore);
-        totale += qta * valore;
-    });
-    document.getElementById('totale-calcolato').textContent = '€ ' + totale;
-    
-    // Evidenzia se non corrisponde
-    const atteso = {{ richiesta.totale_buono|default:0 }};
-    const el = document.getElementById('totale-calcolato');
-    if (totale === atteso) {
-        el.classList.remove('text-danger');
-        el.classList.add('text-success');
-    } else if (totale > 0) {
-        el.classList.remove('text-success');
-        el.classList.add('text-danger');
-    }
-}
-
-// Calcola al caricamento
-calcolaTotale();
-</script>
 {% endblock %}

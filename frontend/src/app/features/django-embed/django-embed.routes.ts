@@ -3,22 +3,22 @@
 export const DJANGO_EMBED_ROUTES: Routes = [
 
   // ========================================
-  // PALLET-PROMOTER
+  // pallet-PROMOTER
   // ========================================
   {
     path: 'pallet-promoter',
     loadComponent: () => import('./pages/pallet-promoter-dashboard').then(m => m.PalletPromoterDashboardComponent),
     data: {
-      groups: ['itd', 'Commerciale', 'Pallet'],
-      menu: { label: 'Pallet-Promoter', icon: 'inventory_2' }
+      groups: ['itd', 'Commerciale', 'pallet'],
+      menu: { label: 'pallet-Promoter', icon: 'inventory_2' }
     }
   },
   {
     path: 'pallet-promoter-pallet',
     loadComponent: () => import('./pages/pallet-promoter-pallet').then(m => m.PalletPromoterPalletComponent),
     data: {
-      menu: { label: 'Gestione Pallet' },
-      groups: ['itd', 'Commerciale', 'Pallet']
+      menu: { label: 'Gestione pallet' },
+      groups: ['itd', 'Commerciale', 'pallet']
     }
   },
   {
@@ -26,7 +26,7 @@ export const DJANGO_EMBED_ROUTES: Routes = [
     loadComponent: () => import('./pages/pallet-promoter-testate').then(m => m.PalletPromoterTestateComponent),
     data: {
       menu: { label: 'Gestione Testate' },
-      groups: ['itd', 'Commerciale', 'Pallet']
+      groups: ['itd', 'Commerciale', 'pallet']
     }
   },
   {
@@ -34,7 +34,7 @@ export const DJANGO_EMBED_ROUTES: Routes = [
     loadComponent: () => import('./pages/pallet-promoter-scelta-fornitore').then(m => m.PalletPromoterSceltaFornitoreComponent),
     data: {
       menu: { label: 'Scelta Fornitore' },
-      groups: ['itd', 'Commerciale', 'Pallet']
+      groups: ['itd', 'Commerciale', 'pallet']
     }
   },
 
@@ -45,26 +45,26 @@ export const DJANGO_EMBED_ROUTES: Routes = [
     path: 'merchandiser',
     loadComponent: () => import('./pages/merchandiser-dashboard').then(m => m.MerchandiserDashboardComponent),
     data: {
-      groups: ['itd', 'Pallet', 'Centralino', 'Pinfo'],
+      groups: ['itd', 'pallet', 'centralino', 'pinfo'],
       menu: { label: 'Merchandiser', icon: 'store' }
     }
   },
   {
     path: 'merchandiser-slot',
     loadComponent: () => import('./pages/merchandiser-slot').then(m => m.MerchandiserSlotComponent),
-    data: { groups: ['itd', 'Pallet'] }
+    data: { groups: ['itd', 'pallet'] }
   },
   {
     path: 'merchandiser-anagrafiche',
     loadComponent: () => import('./pages/merchandiser-anagrafiche').then(m => m.MerchandiserAnagraficheComponent),
-    data: { groups: ['itd', 'Pallet'] }
+    data: { groups: ['itd', 'pallet'] }
   },
   {
     path: 'merchandiser-agenzie',
     loadComponent: () => import('./pages/merchandiser-agenzie').then(m => m.MerchandiserAgenzieComponent),
     data: {
       menu: { label: 'Agenzie' },
-      groups: ['itd', 'Pallet']
+      groups: ['itd', 'pallet']
     }
   },
   // ========================================
@@ -73,13 +73,13 @@ export const DJANGO_EMBED_ROUTES: Routes = [
   {
     path: 'merchandiser-hostess',
     loadComponent: () => import('./pages/merchandiser-hostess').then(m => m.MerchandiserHostessComponent),
-    data: { groups: ['itd', 'Pallet'] }
+    data: { groups: ['itd', 'pallet'] }
   },
   // ========================================
   {
     path: 'merchandiser-attivita',
     loadComponent: () => import('./pages/merchandiser-attivita').then(m => m.MerchandiserAttivitaComponent),
-    data: { groups: ['itd', 'Pallet'] }
+    data: { groups: ['itd', 'pallet'] }
   },
 
   // ========================================
@@ -89,7 +89,7 @@ export const DJANGO_EMBED_ROUTES: Routes = [
     path: 'alloca-hostess',
     loadComponent: () => import('./pages/alloca-hostess-dashboard').then(m => m.AllocaHostessDashboardComponent),
     data: {
-      groups: ['itd', 'Centralino', 'Pallet'],
+      groups: ['itd', 'centralino', 'pallet'],
       menu: { label: 'Alloca Hostess', icon: 'people' }
     }
   },
@@ -98,20 +98,20 @@ export const DJANGO_EMBED_ROUTES: Routes = [
     loadComponent: () => import('./pages/alloca-hostess-individuazione').then(m => m.AllocaHostessIndividuazioneComponent),
     data: {
       menu: { label: 'Gestione Slot' },
-      groups: ['itd', 'Centralino', 'Pallet']
+      groups: ['itd', 'centralino', 'pallet']
     }
   },
   {
     path: 'alloca-hostess-hostess',
     loadComponent: () => import('./pages/alloca-hostess-hostess').then(m => m.AllocaHostessHostessComponent),
-    data: { groups: ['itd', 'Centralino', 'Pallet'] }
+    data: { groups: ['itd', 'centralino', 'pallet'] }
   },
   {
     path: 'alloca-hostess-orari',
     loadComponent: () => import('./pages/alloca-hostess-orari').then(m => m.AllocaHostessOrariComponent),
     data: {
       menu: { label: 'Registrazione Orari' },
-      groups: ['itd', 'Pallet', 'Centralino']
+      groups: ['itd', 'pallet', 'centralino']
     }
   },
 
@@ -123,7 +123,7 @@ export const DJANGO_EMBED_ROUTES: Routes = [
     path: 'importelab',
     loadComponent: () => import('./pages/importelab').then(m => m.ImportelabPageComponent),
     data: {
-      groups: ['itd', 'Segreteria'],
+      groups: ['itd', 'segreteria'],
       menu: { label: 'Rossetto', icon: 'sync' }
     }
   },
@@ -132,7 +132,7 @@ export const DJANGO_EMBED_ROUTES: Routes = [
     path: 'punto-info',
     loadComponent: () => import('./pages/punto-info').then(m => m.PuntoInfoPageComponent),
     data: {
-      groups: ['itd', 'Pinfo', 'Pallet'],
+      groups: ['itd', 'pinfo', 'pallet'],
       menu: { label: 'Registrazione Orari', icon: 'schedule' }
     }
   },
@@ -141,7 +141,7 @@ export const DJANGO_EMBED_ROUTES: Routes = [
     path: 'assortimenti',
     loadComponent: () => import('./pages/assortimenti').then(m => m.AssortimentiComponent),
     data: {
-      groups: ['itd', 'Segreteria'],
+      groups: ['itd', 'segreteria'],
       menu: { label: 'Assortimenti', icon: 'inventory_2' }
     }
   },
@@ -170,7 +170,7 @@ export const DJANGO_EMBED_ROUTES: Routes = [
   {
     path: 'welfare-consegne',
     loadComponent: () => import('./pages/welfare-consegne').then(m => m.WelfareConsegnePageComponent),
-    data: { groups: ['itd', 'ufficio cassa', 'Pinfo'] }
+    data: { groups: ['itd', 'ufficio cassa', 'pinfo'] }
   },
   {
     path: 'welfare-contabilita',
@@ -185,6 +185,6 @@ export const DJANGO_EMBED_ROUTES: Routes = [
   {
     path: 'welfare-storico',
     loadComponent: () => import('./pages/welfare-storico').then(m => m.WelfareStoricoPageComponent),
-    data: { groups: ['itd', 'ufficio cassa', 'Pinfo'] }
+    data: { groups: ['itd', 'ufficio cassa', 'pinfo'] }
   },
 ];

@@ -10087,3 +10087,210 @@ INFO 2026-01-31 11:36:59,279 basehttp "GET /app/welfare/storico/ HTTP/1.1" 200 1
 INFO 2026-01-31 12:31:23,532 autoreload Watching for file changes with StatReloader
 INFO 2026-01-31 12:31:34,619 basehttp "GET /app/welfare/contabilita/ HTTP/1.1" 200 16004
 INFO 2026-01-31 12:31:36,342 basehttp "GET /app/welfare/contabilita/export/?anno=2026&mese=1 HTTP/1.1" 200 364
+INFO 2026-02-02 16:19:17,033 autoreload Watching for file changes with StatReloader
+INFO 2026-02-02 16:21:22,606 basehttp "OPTIONS /api/auth/login-ldap/ HTTP/1.1" 200 0
+INFO 2026-02-02 16:21:23,096 basehttp "POST /api/auth/login-ldap/ HTTP/1.1" 200 84
+INFO 2026-02-02 16:22:50,811 basehttp "OPTIONS /api/auth/login-ldap/ HTTP/1.1" 200 0
+INFO 2026-02-02 16:22:51,216 basehttp "POST /api/auth/login-ldap/ HTTP/1.1" 200 84
+INFO 2026-02-02 16:29:04,191 basehttp "GET /app/importelab/ HTTP/1.1" 200 395268
+INFO 2026-02-02 16:29:36,394 basehttp "GET /app/pallet-promoter/ HTTP/1.1" 200 11100
+INFO 2026-02-02 16:29:37,446 basehttp "GET /app/pallet-promoter/pallet/ HTTP/1.1" 200 39183
+INFO 2026-02-02 16:29:38,280 basehttp "GET /app/pallet-promoter/testate/ HTTP/1.1" 200 13793
+INFO 2026-02-02 16:29:39,346 basehttp "GET /app/pallet-promoter/hostess/scelta-fornitore/ HTTP/1.1" 200 285607
+INFO 2026-02-02 18:36:14,181 autoreload Watching for file changes with StatReloader
+INFO 2026-02-02 18:36:21,105 basehttp "OPTIONS /api/auth/login-ldap/ HTTP/1.1" 200 0
+INFO 2026-02-02 18:36:21,467 basehttp "POST /api/auth/login-ldap/ HTTP/1.1" 200 84
+INFO 2026-02-02 18:36:28,867 basehttp "POST /api/auth/login-ldap/ HTTP/1.1" 200 66
+INFO 2026-02-02 18:36:31,593 basehttp "GET /app/merchandiser/solo-orari/ HTTP/1.1" 200 134267
+INFO 2026-02-02 18:36:52,435 basehttp "GET /app/alloca-hostess/orari-hostess/ HTTP/1.1" 200 36557
+INFO 2026-02-02 18:37:03,355 basehttp "GET /app/merchandiser/solo-orari/ HTTP/1.1" 200 134267
+INFO 2026-02-02 18:39:09,026 basehttp "GET /app/alloca-hostess/orari-hostess/ HTTP/1.1" 200 36557
+INFO 2026-02-02 18:39:59,783 basehttp "GET /app/merchandiser/solo-orari/ HTTP/1.1" 200 134396
+INFO 2026-02-02 18:40:06,331 basehttp "GET /app/alloca-hostess/orari-hostess/ HTTP/1.1" 200 36557
+INFO 2026-02-02 18:40:12,091 basehttp "GET /app/merchandiser/solo-orari/ HTTP/1.1" 200 134396
+INFO 2026-02-02 18:40:27,402 basehttp "GET /app/alloca-hostess/ HTTP/1.1" 200 6972
+INFO 2026-02-02 18:40:29,766 basehttp "GET /app/alloca-hostess/individuazione/ HTTP/1.1" 200 1990080
+INFO 2026-02-02 18:40:35,493 basehttp "GET /app/alloca-hostess/api/cerca-fornitore/?q=ba HTTP/1.1" 200 2048
+INFO 2026-02-02 18:40:35,892 basehttp "GET /app/alloca-hostess/api/cerca-fornitore/?q=bar HTTP/1.1" 200 2068
+INFO 2026-02-02 18:41:00,040 basehttp "GET /app/alloca-hostess/orari-hostess/ HTTP/1.1" 200 36557
+INFO 2026-02-02 18:41:11,354 basehttp "GET /app/alloca-hostess/individuazione/ HTTP/1.1" 200 1990080
+INFO 2026-02-02 18:41:21,258 basehttp "GET /app/alloca-hostess/api/cerca-fornitore/?q=ba HTTP/1.1" 200 2048
+INFO 2026-02-02 18:41:21,756 basehttp "GET /app/alloca-hostess/api/cerca-fornitore/?q=bari HTTP/1.1" 200 817
+INFO 2026-02-02 18:41:22,543 basehttp "GET /app/alloca-hostess/api/cerca-fornitore/?q=barilla HTTP/1.1" 200 408
+INFO 2026-02-02 18:41:52,518 basehttp "GET /app/alloca-hostess/individuazione/?giorno=2026-02-01 HTTP/1.1" 200 1990081
+INFO 2026-02-02 18:41:54,030 basehttp "GET /app/alloca-hostess/individuazione/?giorno=2026-02-02 HTTP/1.1" 200 1990080
+INFO 2026-02-02 18:49:07,318 autoreload C:\portale\backend\modules\alloca_hostess\views.py changed, reloading.
+INFO 2026-02-02 18:49:08,408 autoreload Watching for file changes with StatReloader
+INFO 2026-02-02 18:52:25,817 basehttp "GET /app/alloca-hostess/ HTTP/1.1" 200 6972
+INFO 2026-02-02 18:52:26,955 basehttp "GET /app/alloca-hostess/individuazione/ HTTP/1.1" 200 2020703
+INFO 2026-02-02 18:52:30,580 basehttp "GET /app/alloca-hostess/api/cerca-fornitore/?q=bar HTTP/1.1" 200 2068
+INFO 2026-02-02 18:52:49,085 basehttp "POST /app/alloca-hostess/api/salva-presenze/ HTTP/1.1" 200 30
+INFO 2026-02-02 18:52:50,508 basehttp "GET /app/alloca-hostess/individuazione/ HTTP/1.1" 200 2020920
+INFO 2026-02-02 18:52:59,256 basehttp "GET /app/alloca-hostess/orari-hostess/ HTTP/1.1" 200 36518
+INFO 2026-02-02 18:53:11,184 basehttp "POST /app/alloca-hostess/api/salva-orario-hostess/ HTTP/1.1" 200 17
+INFO 2026-02-02 18:53:14,360 basehttp "GET /app/merchandiser/solo-orari/ HTTP/1.1" 200 134396
+INFO 2026-02-02 18:53:15,422 basehttp "GET /app/alloca-hostess/orari-hostess/ HTTP/1.1" 200 36528
+INFO 2026-02-02 18:53:27,448 basehttp "GET /app/alloca-hostess/individuazione/ HTTP/1.1" 200 2020930
+INFO 2026-02-02 18:53:32,523 basehttp "GET /app/alloca-hostess/orari-hostess/ HTTP/1.1" 200 36528
+INFO 2026-02-02 18:58:27,492 basehttp "GET /app/alloca-hostess/ HTTP/1.1" 200 6973
+INFO 2026-02-02 18:58:28,801 basehttp "GET /app/alloca-hostess/individuazione/ HTTP/1.1" 200 2020930
+INFO 2026-02-02 18:58:31,391 basehttp "GET /app/merchandiser/solo-orari/ HTTP/1.1" 200 134396
+INFO 2026-02-02 18:58:36,150 basehttp "GET /app/alloca-hostess/orari-hostess/ HTTP/1.1" 200 36528
+INFO 2026-02-02 18:59:46,701 autoreload Watching for file changes with StatReloader
+INFO 2026-02-02 18:59:55,482 basehttp "OPTIONS /api/auth/login-ldap/ HTTP/1.1" 200 0
+INFO 2026-02-02 18:59:55,858 basehttp "POST /api/auth/login-ldap/ HTTP/1.1" 200 66
+INFO 2026-02-02 19:00:00,068 basehttp "GET /app/alloca-hostess/individuazione/ HTTP/1.1" 200 2020930
+INFO 2026-02-02 19:00:03,194 basehttp "GET /app/alloca-hostess/orari-hostess/ HTTP/1.1" 200 36528
+INFO 2026-02-02 19:03:22,895 basehttp "GET /app/alloca-hostess/hostess/ HTTP/1.1" 200 192719
+INFO 2026-02-02 19:03:23,942 basehttp "GET /app/merchandiser/solo-orari/ HTTP/1.1" 200 134423
+INFO 2026-02-02 19:03:27,997 basehttp "GET /app/alloca-hostess/orari-hostess/ HTTP/1.1" 200 36555
+INFO 2026-02-02 19:03:42,039 basehttp "POST /app/alloca-hostess/api/salva-orario-hostess/ HTTP/1.1" 200 17
+INFO 2026-02-02 19:03:45,521 basehttp "GET /app/merchandiser/solo-orari/ HTTP/1.1" 200 134423
+INFO 2026-02-02 19:03:46,246 basehttp "GET /app/alloca-hostess/orari-hostess/ HTTP/1.1" 200 36559
+INFO 2026-02-02 19:03:53,489 basehttp "POST /app/alloca-hostess/api/salva-orario-hostess/ HTTP/1.1" 200 17
+INFO 2026-02-03 15:20:19,541 autoreload Watching for file changes with StatReloader
+INFO 2026-02-03 15:20:29,590 basehttp "OPTIONS /api/auth/login-ldap/ HTTP/1.1" 200 0
+INFO 2026-02-03 15:20:30,018 basehttp "POST /api/auth/login-ldap/ HTTP/1.1" 200 84
+INFO 2026-02-03 15:20:39,982 basehttp "GET /app/asso_articoli/ HTTP/1.1" 200 845369
+INFO 2026-02-03 16:04:55,146 basehttp "GET /app/importelab/ HTTP/1.1" 200 395268
+INFO 2026-02-04 10:59:43,991 autoreload Watching for file changes with StatReloader
+INFO 2026-02-04 11:01:13,217 basehttp "OPTIONS /api/auth/login-ldap/ HTTP/1.1" 200 0
+INFO 2026-02-04 11:01:13,649 basehttp "POST /api/auth/login-ldap/ HTTP/1.1" 200 66
+INFO 2026-02-04 11:01:24,234 basehttp "GET /app/welfare/cassa/ HTTP/1.1" 200 7194
+INFO 2026-02-04 11:01:27,963 basehttp "GET /app/welfare/da-consegnare/ HTTP/1.1" 200 7838
+INFO 2026-02-04 11:01:30,451 basehttp "GET /app/welfare/ricerca/?voucher=07208176 HTTP/1.1" 200 7727
+INFO 2026-02-04 11:01:32,873 basehttp "GET /app/welfare/storico/ HTTP/1.1" 200 13553
+INFO 2026-02-04 11:01:46,196 basehttp "GET /app/welfare/contabilita/ HTTP/1.1" 200 15102
+INFO 2026-02-04 11:01:51,271 basehttp "GET /app/welfare/storico/ HTTP/1.1" 200 13553
+INFO 2026-02-04 11:01:53,936 basehttp "GET /app/welfare/da-consegnare/ HTTP/1.1" 200 7838
+INFO 2026-02-04 11:01:55,480 basehttp "GET /app/welfare/ricerca/?voucher=07208176 HTTP/1.1" 200 7727
+INFO 2026-02-04 11:01:57,840 basehttp "GET /app/welfare/cassa/ HTTP/1.1" 200 7194
+INFO 2026-02-04 11:01:59,312 basehttp "GET /app/welfare/ricerca/ HTTP/1.1" 200 6219
+INFO 2026-02-04 11:02:06,100 basehttp "GET /app/welfare/storico/ HTTP/1.1" 200 13553
+INFO 2026-02-04 11:02:10,438 basehttp "GET /app/welfare/contabilita/ HTTP/1.1" 200 15102
+INFO 2026-02-04 11:02:14,355 basehttp "GET /app/welfare/ricerca/ HTTP/1.1" 200 6219
+INFO 2026-02-04 11:02:16,150 basehttp "GET /app/welfare/cassa/ HTTP/1.1" 200 7194
+INFO 2026-02-04 11:02:28,355 basehttp "GET /app/welfare/ricerca/ HTTP/1.1" 200 6219
+INFO 2026-02-04 11:02:29,715 basehttp "GET /app/welfare/cassa/ HTTP/1.1" 200 7194
+INFO 2026-02-04 11:02:50,830 basehttp "GET /app/welfare/ HTTP/1.1" 200 11251
+INFO 2026-02-04 11:02:52,945 basehttp "GET /app/welfare/ricerca/?voucher=07208176 HTTP/1.1" 200 7727
+INFO 2026-02-04 11:02:57,488 basehttp "GET /app/welfare/ricerca/ HTTP/1.1" 200 6219
+INFO 2026-02-04 11:02:59,484 basehttp "GET /app/welfare/ HTTP/1.1" 200 11251
+INFO 2026-02-04 11:03:02,869 basehttp "GET /app/welfare/da-consegnare/ HTTP/1.1" 200 7838
+INFO 2026-02-04 11:03:04,317 basehttp "GET /app/welfare/ricerca/?voucher=07208176 HTTP/1.1" 200 7727
+INFO 2026-02-04 11:03:06,586 basehttp "GET /app/welfare/ricerca/ HTTP/1.1" 200 6219
+INFO 2026-02-04 11:03:08,254 basehttp "GET /app/welfare/cassa/ HTTP/1.1" 200 7194
+INFO 2026-02-04 11:03:10,153 basehttp "GET /app/welfare/da-consegnare/ HTTP/1.1" 200 7838
+INFO 2026-02-04 11:03:12,240 basehttp "GET /app/welfare/ricerca/?voucher=07208176 HTTP/1.1" 200 7727
+INFO 2026-02-04 11:03:14,516 basehttp "GET /app/welfare/storico/ HTTP/1.1" 200 13553
+INFO 2026-02-04 11:03:17,777 basehttp "GET /app/welfare/import/ HTTP/1.1" 200 8715
+INFO 2026-02-04 11:03:43,094 basehttp "POST /api/auth/login-ldap/ HTTP/1.1" 200 70
+INFO 2026-02-04 11:03:46,940 basehttp "GET /app/welfare/da-consegnare/ HTTP/1.1" 200 7838
+INFO 2026-02-04 11:03:49,199 basehttp "GET /app/welfare/ricerca/?voucher=07208176 HTTP/1.1" 200 7727
+INFO 2026-02-04 11:03:51,657 basehttp "GET /app/welfare/storico/ HTTP/1.1" 200 13553
+INFO 2026-02-04 11:04:11,309 basehttp "POST /api/auth/login-ldap/ HTTP/1.1" 200 66
+INFO 2026-02-04 11:04:15,181 basehttp "GET /app/welfare/cassa/ HTTP/1.1" 200 7194
+INFO 2026-02-04 11:04:17,536 basehttp "GET /app/welfare/da-consegnare/ HTTP/1.1" 200 7838
+INFO 2026-02-04 11:04:21,551 basehttp "GET /app/welfare/cassa/ HTTP/1.1" 200 7194
+INFO 2026-02-04 11:04:25,622 basehttp "GET /app/welfare/cassa/?voucher=07208176 HTTP/1.1" 200 14681
+INFO 2026-02-04 11:04:50,925 basehttp "POST /api/auth/login-ldap/ HTTP/1.1" 200 70
+INFO 2026-02-04 11:04:54,504 basehttp "GET /app/welfare/da-consegnare/ HTTP/1.1" 200 7838
+INFO 2026-02-04 11:05:05,526 basehttp "GET /app/welfare/storico/ HTTP/1.1" 200 13553
+INFO 2026-02-04 11:05:11,110 basehttp "GET /app/welfare/da-consegnare/ HTTP/1.1" 200 7838
+INFO 2026-02-04 11:05:16,556 basehttp "GET /app/welfare/ricerca/?voucher=07208176 HTTP/1.1" 200 7727
+INFO 2026-02-04 11:05:22,370 basehttp "GET /app/welfare/storico/ HTTP/1.1" 200 13553
+INFO 2026-02-04 11:05:42,639 basehttp "GET /app/welfare/da-consegnare/ HTTP/1.1" 200 7838
+INFO 2026-02-04 11:05:54,217 basehttp "GET /app/welfare/cassa/?voucher=07208176 HTTP/1.1" 200 14681
+INFO 2026-02-04 11:06:20,551 basehttp "GET /app/welfare/storico/ HTTP/1.1" 200 13553
+INFO 2026-02-04 11:06:21,390 basehttp "GET /app/welfare/da-consegnare/ HTTP/1.1" 200 7838
+INFO 2026-02-04 11:07:56,081 basehttp "GET /app/welfare/storico/ HTTP/1.1" 200 13553
+INFO 2026-02-04 11:07:56,741 basehttp "GET /app/welfare/da-consegnare/ HTTP/1.1" 200 7838
+INFO 2026-02-04 11:07:58,053 basehttp "GET /app/welfare/cassa/?voucher=07208176 HTTP/1.1" 200 8090
+INFO 2026-02-04 11:15:59,807 basehttp "OPTIONS /api/auth/login-ldap/ HTTP/1.1" 200 0
+INFO 2026-02-04 11:16:00,231 basehttp "POST /api/auth/login-ldap/ HTTP/1.1" 200 66
+INFO 2026-02-04 11:16:11,385 basehttp "GET /app/merchandiser/ HTTP/1.1" 200 8866
+INFO 2026-02-04 11:16:13,833 basehttp "GET /app/merchandiser/slot/ HTTP/1.1" 200 130194
+INFO 2026-02-04 11:16:19,108 basehttp "GET /app/merchandiser/slot/add/ HTTP/1.1" 200 88329
+INFO 2026-02-04 11:16:26,730 basehttp "GET /app/merchandiser/slot/ HTTP/1.1" 200 130194
+INFO 2026-02-04 11:16:31,167 basehttp "GET /app/pallet-promoter/ HTTP/1.1" 200 11100
+INFO 2026-02-04 11:16:35,232 basehttp "GET /app/pallet-promoter/pallet/ HTTP/1.1" 200 39184
+INFO 2026-02-04 11:16:37,904 basehttp "GET /app/pallet-promoter/testate/ HTTP/1.1" 200 13793
+INFO 2026-02-04 11:16:46,241 basehttp "GET /app/alloca-hostess/individuazione/ HTTP/1.1" 200 2020699
+INFO 2026-02-04 11:16:53,216 basehttp "GET /app/merchandiser/ HTTP/1.1" 200 8866
+INFO 2026-02-04 11:16:54,608 basehttp "GET /app/merchandiser/slot/ HTTP/1.1" 200 130194
+INFO 2026-02-04 11:16:55,841 basehttp "GET /app/merchandiser/ HTTP/1.1" 200 8866
+INFO 2026-02-04 11:16:57,287 basehttp "GET /app/merchandiser/slot/ HTTP/1.1" 200 130194
+INFO 2026-02-04 11:16:59,076 basehttp "GET /app/merchandiser/slot/add/ HTTP/1.1" 200 88329
+INFO 2026-02-04 11:17:22,981 basehttp "GET /app/merchandiser/ HTTP/1.1" 200 8866
+INFO 2026-02-04 11:17:23,595 basehttp "GET /app/merchandiser/slot/ HTTP/1.1" 200 130194
+INFO 2026-02-04 11:40:15,724 basehttp "GET /app/alloca-hostess/individuazione/ HTTP/1.1" 200 2020699
+INFO 2026-02-04 11:40:28,311 basehttp "GET /app/alloca-hostess/ HTTP/1.1" 200 6973
+INFO 2026-02-04 11:40:33,016 basehttp "GET /app/alloca-hostess/individuazione/ HTTP/1.1" 200 2020699
+INFO 2026-02-04 11:40:46,335 basehttp "GET /app/pallet-promoter/ HTTP/1.1" 200 11100
+INFO 2026-02-04 11:41:40,580 basehttp "GET /app/merchandiser/slot/ HTTP/1.1" 200 130194
+INFO 2026-02-04 11:41:44,717 basehttp "GET /app/merchandiser/slot/add/ HTTP/1.1" 200 88329
+INFO 2026-02-04 11:45:30,029 basehttp "GET /app/alloca-hostess/ HTTP/1.1" 200 6973
+INFO 2026-02-04 11:45:31,778 basehttp "GET /app/alloca-hostess/individuazione/ HTTP/1.1" 200 2020699
+INFO 2026-02-05 10:47:00,158 autoreload Watching for file changes with StatReloader
+INFO 2026-02-05 10:49:59,768 autoreload C:\portale\backend\modules\pallet_promoter\views.py changed, reloading.
+INFO 2026-02-05 10:50:01,000 autoreload Watching for file changes with StatReloader
+INFO 2026-02-05 10:50:16,410 autoreload Watching for file changes with StatReloader
+INFO 2026-02-05 10:50:25,247 basehttp "GET /app/pallet-promoter/ HTTP/1.1" 200 11100
+INFO 2026-02-05 10:50:26,931 basehttp "GET /app/pallet-promoter/pallet/ HTTP/1.1" 200 39184
+INFO 2026-02-05 10:50:28,644 basehttp "GET /app/pallet-promoter/pallet/218/ HTTP/1.1" 200 17135
+INFO 2026-02-05 10:50:31,179 basehttp "GET /app/pallet-promoter/pallet/218/?buyer=5 HTTP/1.1" 200 28198
+INFO 2026-02-05 10:50:38,408 basehttp "GET /app/pallet-promoter/hostess/scelta-fornitore/ HTTP/1.1" 200 285621
+INFO 2026-02-05 10:50:41,544 basehttp "GET /app/alloca-hostess/ HTTP/1.1" 200 6973
+INFO 2026-02-05 10:50:44,580 basehttp "GET /app/alloca-hostess/individuazione/ HTTP/1.1" 200 1330535
+INFO 2026-02-05 10:51:32,307 basehttp "GET /app/alloca-hostess/ HTTP/1.1" 200 6973
+INFO 2026-02-05 10:51:33,469 basehttp "GET /app/alloca-hostess/individuazione/ HTTP/1.1" 200 1329811
+INFO 2026-02-05 10:52:01,639 basehttp "GET /app/alloca-hostess/orari-hostess/ HTTP/1.1" 200 36558
+INFO 2026-02-05 10:52:04,448 basehttp "GET /app/merchandiser/solo-orari/ HTTP/1.1" 200 134424
+INFO 2026-02-05 10:52:06,955 basehttp "GET /app/merchandiser/hostess/ HTTP/1.1" 200 759877
+INFO 2026-02-05 10:52:11,219 basehttp "GET /app/alloca-hostess/individuazione/ HTTP/1.1" 200 1329811
+INFO 2026-02-05 10:55:22,321 autoreload C:\portale\backend\modules\alloca_hostess\views.py changed, reloading.
+INFO 2026-02-05 10:55:23,791 autoreload Watching for file changes with StatReloader
+INFO 2026-02-05 10:55:26,587 basehttp "GET /app/alloca-hostess/ HTTP/1.1" 200 6973
+INFO 2026-02-05 10:55:27,730 basehttp "GET /app/alloca-hostess/individuazione/ HTTP/1.1" 200 1329811
+INFO 2026-02-05 10:56:28,827 autoreload C:\portale\backend\modules\alloca_hostess\views.py changed, reloading.
+INFO 2026-02-05 10:56:30,200 autoreload Watching for file changes with StatReloader
+INFO 2026-02-05 10:56:53,021 autoreload Watching for file changes with StatReloader
+INFO 2026-02-05 10:57:01,318 basehttp "GET /app/alloca-hostess/individuazione/ HTTP/1.1" 200 1329811
+INFO 2026-02-05 10:58:41,455 autoreload C:\portale\backend\modules\alloca_hostess\views.py changed, reloading.
+INFO 2026-02-05 10:58:42,873 autoreload Watching for file changes with StatReloader
+INFO 2026-02-05 10:59:05,805 autoreload Watching for file changes with StatReloader
+INFO 2026-02-05 10:59:15,374 basehttp "GET /app/alloca-hostess/individuazione/ HTTP/1.1" 200 1341883
+INFO 2026-02-05 10:59:32,745 basehttp "GET /app/merchandiser/hostess/ HTTP/1.1" 200 759877
+INFO 2026-02-05 10:59:36,527 basehttp "GET /app/alloca-hostess/hostess/ HTTP/1.1" 200 192719
+INFO 2026-02-05 10:59:39,454 basehttp "GET /app/alloca-hostess/orari-hostess/ HTTP/1.1" 200 36558
+INFO 2026-02-05 11:00:03,368 basehttp "GET /app/alloca-hostess/individuazione/ HTTP/1.1" 200 1341883
+INFO 2026-02-05 11:00:14,729 basehttp "GET /app/alloca-hostess/individuazione/?periodo=220&giorno=2026-02-04 HTTP/1.1" 200 1341868
+INFO 2026-02-05 11:00:22,486 basehttp "GET /app/alloca-hostess/individuazione/?periodo=220&giorno=2026-02-05 HTTP/1.1" 200 1341883
+INFO 2026-02-05 11:00:24,280 basehttp "GET /app/alloca-hostess/individuazione/?periodo=220&giorno=2026-02-06 HTTP/1.1" 200 1341883
+INFO 2026-02-05 11:00:26,319 basehttp "GET /app/alloca-hostess/individuazione/?periodo=220&giorno=2026-02-05 HTTP/1.1" 200 1341883
+INFO 2026-02-05 11:00:27,729 basehttp "GET /app/alloca-hostess/individuazione/?periodo=220&giorno=2026-02-04 HTTP/1.1" 200 1341868
+INFO 2026-02-05 11:04:08,415 basehttp "GET /app/alloca-hostess/hostess/ HTTP/1.1" 200 192719
+INFO 2026-02-05 11:04:09,744 basehttp "GET /app/merchandiser/hostess/ HTTP/1.1" 200 759877
+INFO 2026-02-05 11:04:11,405 basehttp "GET /app/merchandiser/solo-orari/ HTTP/1.1" 200 134424
+INFO 2026-02-05 11:04:13,611 basehttp "GET /app/alloca-hostess/orari-hostess/ HTTP/1.1" 200 36558
+INFO 2026-02-05 11:04:21,679 basehttp "GET /app/alloca-hostess/individuazione/ HTTP/1.1" 200 1341883
+INFO 2026-02-05 11:04:23,648 basehttp "GET /app/alloca-hostess/hostess/ HTTP/1.1" 200 192719
+INFO 2026-02-05 11:04:25,006 basehttp "GET /app/merchandiser/hostess/ HTTP/1.1" 200 759877
+INFO 2026-02-05 11:04:27,838 basehttp "GET /app/merchandiser/hostess/558/edit/ HTTP/1.1" 200 4951
+INFO 2026-02-05 11:04:35,555 basehttp "GET /app/merchandiser/hostess/ HTTP/1.1" 200 759877
+INFO 2026-02-05 11:04:44,749 basehttp "GET /app/merchandiser/hostess/add/ HTTP/1.1" 200 4920
+INFO 2026-02-05 11:04:51,625 basehttp "GET /app/merchandiser/hostess/ HTTP/1.1" 200 759877
+INFO 2026-02-05 11:04:59,703 basehttp "GET /app/merchandiser/hostess/153/edit/ HTTP/1.1" 200 4974
+INFO 2026-02-05 11:05:03,916 basehttp "GET /app/merchandiser/hostess/ HTTP/1.1" 200 759877
+INFO 2026-02-05 11:05:21,924 basehttp "GET /app/alloca-hostess/individuazione/ HTTP/1.1" 200 1341883
+INFO 2026-02-05 11:05:33,959 basehttp "GET /app/alloca-hostess/api/cerca-fornitore/?q=bar HTTP/1.1" 200 2068
+INFO 2026-02-05 11:05:34,458 basehttp "GET /app/alloca-hostess/api/cerca-fornitore/?q=bari HTTP/1.1" 200 817
+INFO 2026-02-05 11:06:17,239 basehttp "POST /app/alloca-hostess/api/salva-presenze/ HTTP/1.1" 200 30
+INFO 2026-02-05 11:06:18,753 basehttp "GET /app/alloca-hostess/individuazione/ HTTP/1.1" 200 1342170
+INFO 2026-02-05 11:06:21,137 basehttp "GET /app/alloca-hostess/individuazione/?periodo=220&giorno=2026-02-06 HTTP/1.1" 200 1341962
+INFO 2026-02-05 11:06:22,683 basehttp "GET /app/alloca-hostess/individuazione/?periodo=220&giorno=2026-02-05 HTTP/1.1" 200 1342170
+INFO 2026-02-05 11:07:02,453 basehttp "POST /app/alloca-hostess/api/salva-presenze/ HTTP/1.1" 200 30
+INFO 2026-02-05 11:07:04,012 basehttp "GET /app/alloca-hostess/individuazione/?periodo=220&giorno=2026-02-05 HTTP/1.1" 200 1341883
+INFO 2026-02-05 11:07:11,622 basehttp "GET /app/merchandiser/ HTTP/1.1" 200 8866
+INFO 2026-02-05 11:07:12,687 basehttp "GET /app/merchandiser/slot/ HTTP/1.1" 200 130194
+INFO 2026-02-05 11:07:15,857 basehttp "GET /app/merchandiser/merchandiser/ HTTP/1.1" 200 733065

@@ -308,6 +308,10 @@ class PresenzaHostess(models.Model):
                                   blank=True, null=True,
                                   related_name='presenze_hostess')
     nota_fornitore = models.CharField(max_length=50, blank=True, null=True)
+    buyer = models.ForeignKey(Buyer, on_delete=models.PROTECT,
+                              db_column='buyer_id',
+                              blank=True, null=True,
+                              related_name='presenze_hostess_buyer')
 
     class Meta:
         managed = False

@@ -29,19 +29,19 @@
       <ng-container *ngIf="groups$ | async as groups">
 
         <!-- PLU - Vendita + Admin -->
-        <a mat-list-item *ngIf="hasGroup(groups, ['Freschi'])" [routerLink]="['/plu']">
+        <a mat-list-item *ngIf="hasGroup(groups, ['freschi'])" [routerLink]="['/plu']">
           <mat-icon>qr_code_scanner</mat-icon>
           <span *ngIf="!isCollapsed">Plu</span>
         </a>
 
         <!-- Rossetto - Solo Admin -->
-        <a mat-list-item *ngIf="isAdmin(groups)" routerLink="/django/importelab">
+        <a mat-list-item *ngIf="hasGroup(groups, ['segreteria'])" [routerLink]="['/django/importelab']">
           <mat-icon>sync</mat-icon>
           <span *ngIf="!isCollapsed">Rossetto</span>
         </a>
 
         <!-- PALLET-PROMOTER - Menu espandibile -->
-        <ng-container *ngIf="hasGroup(groups, ['pallet_manager', 'Ufficio Qualita', 'commerciale'])">
+        <ng-container *ngIf="hasGroup(groups, ['pallet_manager', 'ufficio qualita', 'commerciale'])">
           <a mat-list-item (click)="togglePalletMenu()" class="menu-parent">
             <mat-icon>inventory_2</mat-icon>
             <span *ngIf="!isCollapsed">Pallet-Promoter</span>
@@ -71,7 +71,7 @@
         </ng-container>
 
         <!-- MERCHANDISER - Menu espandibile -->
-        <ng-container *ngIf="hasGroup(groups, ['merchandiser_manager', 'Ufficio Qualita'])">
+        <ng-container *ngIf="hasGroup(groups, ['merchandiser_manager', 'ufficio qualita'])">
           <a mat-list-item (click)="toggleMerchandiserMenu()" class="menu-parent">
             <mat-icon>store</mat-icon>
             <span *ngIf="!isCollapsed">Merchandiser</span>
@@ -105,7 +105,7 @@
         </ng-container>
 
         <!-- ALLOCA HOSTESS - Menu espandibile -->
-        <ng-container *ngIf="hasGroup(groups, ['centralino', 'Ufficio Qualita'])">
+        <ng-container *ngIf="hasGroup(groups, ['centralino', 'ufficio qualita'])">
           <a mat-list-item (click)="toggleAllocaMenu()" class="menu-parent">
             <mat-icon>people</mat-icon>
             <span *ngIf="!isCollapsed">Hostess</span>
@@ -135,11 +135,11 @@
         </ng-container>
 
         <!-- Punto Info - Admin + Punto Info -->
-        <a mat-list-item *ngIf="hasGroup(groups, ['pinfo', 'Ufficio Qualita'])" routerLink="/django/punto-info">
+        <a mat-list-item *ngIf="hasGroup(groups, ['pinfo', 'ufficio qualita'])" routerLink="/django/punto-info">
           <mat-icon>schedule</mat-icon>
           <span *ngIf="!isCollapsed">Orari Merchandiser</span>
         </a>
-        <a mat-list-item *ngIf="hasGroup(groups, ['pinfo', 'Ufficio Qualita'])"
+        <a mat-list-item *ngIf="hasGroup(groups, ['pinfo', 'ufficio qualita'])"
           routerLink="/django/alloca-hostess-orari" routerLinkActive="active">
           <mat-icon>schedule</mat-icon>
           <span *ngIf="!isCollapsed">Orari Hostess</span>
@@ -208,7 +208,7 @@
         </ng-container>
 
         <!-- Assoarticoli -->
-        <a mat-list-item *ngIf="hasGroup(groups, ['GruppoCED'])" routerLink="/django/assortimenti">
+        <a mat-list-item *ngIf="hasGroup(groups, ['segreteria'])" routerLink="/django/assortimenti">
           <mat-icon>inventory_2</mat-icon>
           <span *ngIf="!isCollapsed">AssoArticoli</span>
         </a>

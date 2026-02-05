@@ -11,13 +11,11 @@
         border-radius: 8px;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         margin-bottom: 20px;
-        display: flex;
-        align-items: center;
-        gap: 15px;
     }
     
     .date-selector h5 {
         margin: 0;
+        text-align: center;
     }
     
     .orari-grid {
@@ -57,145 +55,172 @@
         padding-left: 15px;
     }
     
-    .orari-table tr:hover {
-        background: #fff8f6;
-    }
-    
     .orari-table input[type="time"] {
-        width: 85px;
-        padding: 5px 8px;
+        width: 80px;
+        padding: 4px;
         border: 1px solid #ddd;
         border-radius: 4px;
-        font-size: 0.9em;
+        text-align: center;
+        cursor: pointer;
     }
     
     .orari-table input[type="time"]:focus {
         border-color: #ff5722;
         outline: none;
-        box-shadow: 0 0 0 2px rgba(255,87,34,0.2);
+    }
+    
+    .orari-table input[type="text"] {
+        width: 100%;
+        padding: 4px 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
     }
     
     .merchandiser-name {
         font-weight: 600;
     }
     
-    .ore-cell {
-        font-weight: bold;
-        color: #4caf50;
-        min-width: 60px;
-    }
-    
     .btn-salva-riga {
-        padding: 4px 10px;
+        min-width: 40px;
     }
     
-    .nav-day {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-    
-    .nav-day .btn {
-        padding: 8px 15px;
+    .btn-salva-riga .material-icons {
+        font-size: 18px;
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<!-- Selettore data -->
-<div class="date-selector">
-    <div class="nav-day">
-        <a href="?data={{ data_prec|date:'Y-m-d' }}" class="btn btn-outline-primary">
-            <span class="material-icons">chevron_left</span>
-        </a>
+<div class="container-fluid py-4">
+    <h4 class="mb-4">
+        <span class="material-icons" style="vertical-align: middle;">schedule</span>
+        Registrazione Orari Merchandiser
+    </h4>
+    
+    <!-- Data fissa: solo giorno corrente -->
+    <div class="date-selector">
         <h5>
-            <span class="material-icons" style="vertical-align: middle;">calendar_today</span>
-            {{ data|date:"l d F Y" }}
+            <span class="material-icons" style="vertical-align: middle; margin-right: 10px;">today</span>
+            {{ data|date:"l d F Y"|upper }}
         </h5>
-        <a href="?data={{ data_succ|date:'Y-m-d' }}" class="btn btn-outline-primary">
-            <span class="material-icons">chevron_right</span>
-        </a>
     </div>
     
-    <input type="date" class="form-control" style="width: auto;" 
-           value="{{ data|date:'Y-m-d' }}"
-           onchange="window.location.href='?data=' + this.value">
-</div>
-
-<!-- Griglia orari -->
-<div class="orari-grid">
-    <table class="orari-table">
-        <thead>
-            <tr>
-                <th>Merchandiser</th>
-                <th>I.1</th>
-                <th>U.1</th>
-                <th>I.2</th>
-                <th>U.2</th>
-                <th>I.Extra</th>
-                <th>U.Extra</th>
-                <th>Ore</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for item in slot_orari %}
-            <tr data-slot="{{ item.slot.id }}" data-data="{{ data|date:'Y-m-d' }}">
-                <td>
-                    <div class="merchandiser-name">{{ item.slot.merchandiser.nominativo }}</div>
-                </td>
-                <td>
-                    <input type="time" name="ingresso_1" 
-                           value="{% if item.ingresso.ingresso_1 %}{{ item.ingresso.ingresso_1|time:'H:i' }}{% endif %}">
-                </td>
-                <td>
-                    <input type="time" name="uscita_1" 
-                           value="{% if item.ingresso.uscita_1 %}{{ item.ingresso.uscita_1|time:'H:i' }}{% endif %}">
-                </td>
-                <td>
-                    <input type="time" name="ingresso_2" 
-                           value="{% if item.ingresso.ingresso_2 %}{{ item.ingresso.ingresso_2|time:'H:i' }}{% endif %}">
-                </td>
-                <td>
-                    <input type="time" name="uscita_2" 
-                           value="{% if item.ingresso.uscita_2 %}{{ item.ingresso.uscita_2|time:'H:i' }}{% endif %}">
-                </td>
-                <td>
-                    <input type="time" name="ingresso_extra" 
-                           value="{% if item.ingresso.ingresso_extra %}{{ item.ingresso.ingresso_extra|time:'H:i' }}{% endif %}">
-                </td>
-                <td>
-                    <input type="time" name="uscita_extra" 
-                           value="{% if item.ingresso.uscita_extra %}{{ item.ingresso.uscita_extra|time:'H:i' }}{% endif %}">
-                </td>
-                <td class="ore-cell">
-                    <span class="ore-value">{{ item.ingresso.ore_lavorate|default:"0" }}</span>
-                </td>
-                <td>
-                    <button type="button" class="btn btn-sm btn-success btn-salva-riga" onclick="salvaRiga(this)">
-                        <span class="material-icons" style="font-size: 16px;">save</span>
-                    </button>
-                </td>
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="9" class="text-center text-muted py-4">
-                    Nessuno slot attivo per questa data
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
-
-<div class="mt-3 text-muted">
-    <span class="material-icons" style="font-size: 16px; vertical-align: middle;">info</span>
-    Slot attivi: {{ slot_orari|length }}
+    <!-- Griglia orari -->
+    <div class="orari-grid">
+        <table class="orari-table table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>Merchandiser</th>
+                    <th>I.1</th>
+                    <th>U.1</th>
+                    <th>I.2</th>
+                    <th>U.2</th>
+                    <th>I.Extra</th>
+                    <th>U.Extra</th>
+                    <th>Fornitore</th>
+                    <th>Note</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in slot_orari %}
+                <tr data-slot="{{ item.slot.id }}" data-data="{{ data|date:'Y-m-d' }}">
+                    <td>
+                        <div class="merchandiser-name">{{ item.slot.merchandiser.nominativo }}</div>
+                    </td>
+                    <td>
+                        <input type="time" 
+                               name="ingresso_1" 
+                               value="{% if item.ingresso.ingresso_1 %}{{ item.ingresso.ingresso_1|time:'H:i' }}{% endif %}"
+                               ondblclick="setCurrentTime(this)">
+                    </td>
+                    <td>
+                        <input type="time" 
+                               name="uscita_1" 
+                               value="{% if item.ingresso.uscita_1 %}{{ item.ingresso.uscita_1|time:'H:i' }}{% endif %}"
+                               ondblclick="setCurrentTime(this)">
+                    </td>
+                    <td>
+                        <input type="time" 
+                               name="ingresso_2" 
+                               value="{% if item.ingresso.ingresso_2 %}{{ item.ingresso.ingresso_2|time:'H:i' }}{% endif %}"
+                               ondblclick="setCurrentTime(this)">
+                    </td>
+                    <td>
+                        <input type="time" 
+                               name="uscita_2" 
+                               value="{% if item.ingresso.uscita_2 %}{{ item.ingresso.uscita_2|time:'H:i' }}{% endif %}"
+                               ondblclick="setCurrentTime(this)">
+                    </td>
+                    <td>
+                        <input type="time" 
+                               name="ingresso_extra" 
+                               value="{% if item.ingresso.ingresso_extra %}{{ item.ingresso.ingresso_extra|time:'H:i' }}{% endif %}"
+                               ondblclick="setCurrentTime(this)">
+                    </td>
+                    <td>
+                        <input type="time" 
+                               name="uscita_extra" 
+                               value="{% if item.ingresso.uscita_extra %}{{ item.ingresso.uscita_extra|time:'H:i' }}{% endif %}"
+                               ondblclick="setCurrentTime(this)">
+                    </td>
+                    <td>
+                        {% if item.slot.fornitori.all %}
+                            {% with item.slot.fornitori.first.fornitore as forn %}
+                                {% if forn %}
+                                    {{ forn.nome|truncatechars:25 }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            {% endwith %}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                    <td>
+                        <input type="text" 
+                               name="note" 
+                               class="form-control form-control-sm" 
+                               value="{{ item.ingresso.note|default:'' }}"
+                               placeholder="Note...">
+                    </td>
+                    <td>
+                        <button type="button" 
+                                class="btn btn-sm btn-success btn-salva-riga" 
+                                onclick="salvaRiga(this)">
+                            <span class="material-icons">save</span>
+                        </button>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="10" class="text-center text-muted py-4">
+                        Nessuno slot attivo per questa data
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="mt-3 text-muted">
+        <span class="material-icons" style="font-size: 16px; vertical-align: middle;">info</span>
+        Slot attivi: {{ slot_orari|length }} | Doppio click sui campi orario per inserire l'ora corrente
+    </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
+// Inserisce orario corrente su doppio click
+function setCurrentTime(input) {
+    const now = new Date();
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    input.value = `${hours}:${minutes}`;
+    input.focus();
+}
+
 function salvaRiga(btn) {
     const row = btn.closest('tr');
     const slotId = row.dataset.slot;
@@ -210,11 +235,13 @@ function salvaRiga(btn) {
     formData.append('uscita_2', row.querySelector('[name="uscita_2"]').value);
     formData.append('ingresso_extra', row.querySelector('[name="ingresso_extra"]').value);
     formData.append('uscita_extra', row.querySelector('[name="uscita_extra"]').value);
+    formData.append('note', row.querySelector('[name="note"]').value);
     formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
     
+    // Disabilita pulsante
     btn.disabled = true;
-    const originalHtml = btn.innerHTML;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+    const originalIcon = btn.querySelector('.material-icons').textContent;
+    btn.querySelector('.material-icons').textContent = 'hourglass_empty';
     
     fetch("{% url 'merchandiser:salva_orario' %}", {
         method: 'POST',
@@ -223,20 +250,28 @@ function salvaRiga(btn) {
     .then(r => r.json())
     .then(data => {
         if (data.success) {
-            row.querySelector('.ore-value').textContent = data.ore_lavorate;
-            btn.innerHTML = '<span class="material-icons" style="font-size: 16px;">check</span>';
+            // Feedback visivo
+            btn.querySelector('.material-icons').textContent = 'check';
+            btn.classList.remove('btn-success');
+            btn.classList.add('btn-primary');
+            
             setTimeout(() => {
-                btn.innerHTML = originalHtml;
+                btn.querySelector('.material-icons').textContent = originalIcon;
+                btn.classList.remove('btn-primary');
+                btn.classList.add('btn-success');
                 btn.disabled = false;
             }, 1500);
+        } else {
+            alert('Errore: ' + (data.error || 'Salvataggio fallito'));
+            btn.querySelector('.material-icons').textContent = originalIcon;
+            btn.disabled = false;
         }
     })
     .catch(err => {
-        btn.innerHTML = '<span class="material-icons" style="font-size: 16px;">error</span>';
-        setTimeout(() => {
-            btn.innerHTML = originalHtml;
-            btn.disabled = false;
-        }, 1500);
+        console.error(err);
+        alert('Errore durante il salvataggio');
+        btn.querySelector('.material-icons').textContent = originalIcon;
+        btn.disabled = false;
     });
 }
 </script>

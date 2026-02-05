@@ -1,11 +1,12 @@
-from datetime import datetime, timedelta
-from django.shortcuts import render
+from datetime import datetime
+from django.shortcuts import render, get_object_or_404
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.utils import timezone
 
-from modules.pallet_promoter.models import Agenzia, Fornitore, Hostess, Periodo, PresenzaHostess
-from django.views.decorators.csrf import csrf_exempt
+from modules.pallet_promoter.models import (
+    Agenzia, Buyer, Hostess, Fornitore, Periodo, PresenzaHostess
+)
 
 
 def get_current_user(request):
@@ -68,7 +69,7 @@ def agenzie_list(request):
     }
     return render(request, 'alloca_hostess/agenzie_list.html', context)
 
-@csrf_exempt
+
 def individuazione(request):
     """Individuazione/Coordinamento Hostess - Form principale."""
     from datetime import timedelta
@@ -119,7 +120,7 @@ def individuazione(request):
     # Presenze del giorno
     presenze = {}
     for slot in range(1, num_slots + 1):
-        presenza = PresenzaHostess.objects.filter(giorno=giorno, slot=slot).first()
+        presenza = PresenzaHostess.objects.filter(giorno=giorno, slot=slot).select_related('hostess', 'agenzia', 'fornitore', 'buyer').first()
         if not presenza:
             presenza = PresenzaHostess(giorno=giorno, slot=slot)
         presenze[slot] = presenza
@@ -128,7 +129,7 @@ def individuazione(request):
     giorni_periodo = []
     current = periodo.data_inizio
     while current <= periodo.data_fine:
-        presenze_giorno = PresenzaHostess.objects.filter(giorno=current).select_related('hostess', 'fornitore', 'agenzia')
+        presenze_giorno = PresenzaHostess.objects.filter(giorno=current).select_related('hostess', 'fornitore', 'agenzia', 'buyer')
         giorni_periodo.append({
             'data': current,
             'presenze': list(presenze_giorno),
@@ -150,11 +151,12 @@ def individuazione(request):
         'giorni_periodo': giorni_periodo,
         'hostess_list': hostess_list,
         'agenzie_list': agenzie_list,
+        'buyer_list': Buyer.objects.all().order_by('nominativo'),
         'current_user': get_current_user(request),
     }
     return render(request, 'alloca_hostess/individuazione.html', context)
 
-@csrf_exempt
+
 @require_http_methods(["GET"])
 def cerca_fornitore(request):
     """API ricerca fornitore."""
@@ -166,6 +168,9 @@ def cerca_fornitore(request):
     return render(request, 'alloca_hostess/partials/fornitore_results.html', {'fornitori': fornitori})
 
 
+from django.views.decorators.csrf import csrf_exempt
+
+@csrf_exempt
 @require_http_methods(["POST"])
 def salva_presenze(request):
     """Salva tutte le presenze di un giorno."""
@@ -199,6 +204,9 @@ def salva_presenze(request):
         agenzia_id = p.get('agenzia_id')
         presenza.agenzia = Agenzia.objects.filter(pk=agenzia_id).first() if agenzia_id else None
         
+        buyer_id = p.get('buyer_id')
+        presenza.buyer = Buyer.objects.filter(pk=buyer_id).first() if buyer_id else None
+        
         def parse_time(val):
             if not val:
                 return None
@@ -218,30 +226,28 @@ def salva_presenze(request):
         saved += 1
     
     return JsonResponse({'success': True, 'saved': saved})
+
+
+# ============================================
+# REGISTRAZIONE ORARI HOSTESS (Punto Info)
+# ============================================
+
 def orari_hostess(request):
-    """Registrazione orari giornalieri hostess - Vista semplificata."""
+    """Registrazione orari giornalieri hostess - Solo giorno corrente per Punto Info."""
+    # Solo data odierna (no navigazione per Punto Informazioni)
     oggi = timezone.now().date()
+    data = oggi
     
-    # Filtro data
-    data_str = request.GET.get('data')
-    if data_str:
-        try:
-            data = datetime.strptime(data_str, '%Y-%m-%d').date()
-        except:
-            data = oggi
-    else:
-        data = oggi
-    
-    # Date per navigazione
-    data_prec = data - timedelta(days=1)
-    data_succ = data + timedelta(days=1)
-    
-    # Trova tutte le presenze hostess per questa data (slot 1-12)
+    # Trova tutte le presenze hostess per oggi (slot 1-12)
     presenze_hostess = []
     for slot_num in range(1, 13):  # 12 slot
-        presenza = PresenzaHostess.objects.filter(giorno=data, slot=slot_num).select_related('hostess', 'agenzia').first()
+        presenza = PresenzaHostess.objects.filter(
+            giorno=data, 
+            slot=slot_num
+        ).select_related('hostess', 'agenzia', 'fornitore').first()
+        
         if not presenza:
-            # Crea oggetto vuoto (non salvato)
+            # Crea oggetto vuoto (non salvato) per mostrare slot disponibile
             presenza = PresenzaHostess(giorno=data, slot=slot_num)
         
         presenze_hostess.append({
@@ -251,8 +257,6 @@ def orari_hostess(request):
     
     context = {
         'data': data,
-        'data_prec': data_prec,
-        'data_succ': data_succ,
         'presenze_hostess': presenze_hostess,
         'current_user': get_current_user(request),
     }
@@ -278,29 +282,23 @@ def salva_orario_hostess(request):
     )
     
     # Aggiorna orari
-    ingresso_m = request.POST.get('ingresso_mattino')
-    uscita_m = request.POST.get('uscita_mattino')
-    ingresso_p = request.POST.get('ingresso_pomeriggio')
-    uscita_p = request.POST.get('uscita_pomeriggio')
+    def parse_time(val):
+        if not val:
+            return None
+        try:
+            return datetime.strptime(val, '%H:%M').time()
+        except:
+            return None
     
-    presenza.ingresso_mattino = ingresso_m if ingresso_m else None
-    presenza.uscita_mattino = uscita_m if uscita_m else None
-    presenza.ingresso_pomeriggio = ingresso_p if ingresso_p else None
-    presenza.uscita_pomeriggio = uscita_p if uscita_p else None
+    presenza.ingresso_mattino = parse_time(request.POST.get('ingresso_mattino'))
+    presenza.uscita_mattino = parse_time(request.POST.get('uscita_mattino'))
+    presenza.ingresso_pomeriggio = parse_time(request.POST.get('ingresso_pomeriggio'))
+    presenza.uscita_pomeriggio = parse_time(request.POST.get('uscita_pomeriggio'))
+    
+    # Salva nota
+    nota = request.POST.get('nota', '').strip()
+    presenza.nota = nota if nota else None
     
     presenza.save()
     
-    # Calcola ore lavorate (opzionale, se vuoi mostrarle)
-    ore_lavorate = 0
-    if presenza.ingresso_mattino and presenza.uscita_mattino:
-        delta_m = datetime.combine(giorno, presenza.uscita_mattino) - datetime.combine(giorno, presenza.ingresso_mattino)
-        ore_lavorate += delta_m.total_seconds() / 3600
-    
-    if presenza.ingresso_pomeriggio and presenza.uscita_pomeriggio:
-        delta_p = datetime.combine(giorno, presenza.uscita_pomeriggio) - datetime.combine(giorno, presenza.ingresso_pomeriggio)
-        ore_lavorate += delta_p.total_seconds() / 3600
-    
-    return JsonResponse({
-        'success': True,
-        'ore_lavorate': round(ore_lavorate, 2)
-    })
+    return JsonResponse({'success': True})
