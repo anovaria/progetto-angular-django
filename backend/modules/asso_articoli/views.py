@@ -15,17 +15,48 @@ from .excel_utils import export_articoli_excel, export_report_inventario
 
 def index(request):
     """
-    Maschera principale - Visualizzazione e filtro articoli per CCOM
+    Maschera principale - Visualizzazione e filtro articoli per CCOM, Reparto, Sottoreparto, Famiglia, Linea
     """
     # Ottieni lista CCOM distinti per dropdown
     ccom_list = MasterAssortimenti.objects.using('goldreport').values(
         'ccom', 'descrccom'
     ).distinct().order_by('ccom')
     
+    # Ottieni lista Reparti distinti
+    rep_list = MasterAssortimenti.objects.using('goldreport').values(
+        'rep', 'descrrep'
+    ).distinct().order_by('rep')
+    
+    # Ottieni lista Sottoreparti distinti
+    srep_list = MasterAssortimenti.objects.using('goldreport').values(
+        'srep', 'descrsrep'
+    ).distinct().order_by('srep')
+    
+    # Ottieni lista Famiglie distinte
+    fam_list = MasterAssortimenti.objects.using('goldreport').values(
+        'fam', 'descrfam'
+    ).distinct().order_by('fam')
+    
     # Filtri dalla request
     selected_ccom = request.GET.get('ccom', '')
+    selected_rep = request.GET.get('rep', '')
+    selected_srep = request.GET.get('srep', '')
+    selected_fam = request.GET.get('fam', '')
+    selected_linee = request.GET.getlist('linea')  # Selezione multipla
     linea_1_filter = request.GET.get('linea1', '') == '1'
     search_query = request.GET.get('search', '')
+    
+    # Lista linee per il CCOM selezionato (solo se L1 attivo e CCOM selezionato)
+    linea_list = []
+    if selected_ccom and linea_1_filter:
+        linea_list = MasterAssortimenti.objects.using('goldreport').filter(
+            ccom=selected_ccom,
+            fornprinc=1
+        ).values(
+            'linea_prodotto', 'descr_linea'
+        ).exclude(
+            Q(linea_prodotto__isnull=True) | Q(linea_prodotto='')
+        ).distinct().order_by('linea_prodotto')
     
     # Query base
     articoli_query = MasterAssortimenti.objects.using('goldreport').select_related()
@@ -36,9 +67,22 @@ def index(request):
             Q(ccom=selected_ccom) | Q(descrccom__icontains=selected_ccom)
         )
     
+    if selected_rep:
+        articoli_query = articoli_query.filter(rep=selected_rep)
+    
+    if selected_srep:
+        articoli_query = articoli_query.filter(srep=selected_srep)
+    
+    if selected_fam:
+        articoli_query = articoli_query.filter(fam=selected_fam)
+    
     if linea_1_filter:
-        # Filtra per linee prodotto specifiche (logica da Query1-4)
+        # Filtra per fornitore principale
         articoli_query = articoli_query.filter(fornprinc=1)
+        
+        # Se selezionate linee specifiche, filtra per quelle
+        if selected_linee:
+            articoli_query = articoli_query.filter(linea_prodotto__in=selected_linee)
     
     if search_query:
         articoli_query = articoli_query.filter(
@@ -48,7 +92,7 @@ def index(request):
         )
     
     # Ordina
-    articoli_query = articoli_query.order_by('fam', 'linea_prodotto', 'tipo_riordino', 'codart')
+    articoli_query = articoli_query.order_by('linea_prodotto', 'tipo_riordino', 'fam', 'codart')
     
     # Limita risultati per performance (paginazione manuale)
     page_size = 100
@@ -83,6 +127,7 @@ def index(request):
             'rep': art.rep,
             'descrrep': art.descrrep,
             'srep': art.srep,
+            'descrsrep': art.descrsrep,
             'fam': art.fam,
             'descrfam': art.descrfam,
             'ccom': art.ccom,
@@ -103,8 +148,16 @@ def index(request):
     
     context = {
         'ccom_list': ccom_list,
+        'rep_list': rep_list,
+        'srep_list': srep_list,
+        'fam_list': fam_list,
+        'linea_list': linea_list,
         'articoli': articoli_data,
         'selected_ccom': selected_ccom,
+        'selected_rep': selected_rep,
+        'selected_srep': selected_srep,
+        'selected_fam': selected_fam,
+        'selected_linee': selected_linee,
         'linea1_checked': linea_1_filter,
         'search_query': search_query,
         'total_count': len(articoli_data),
@@ -113,12 +166,40 @@ def index(request):
     return render(request, 'asso_articoli/main.html', context)
 
 
+def api_linee_per_ccom(request):
+    """
+    API per ottenere lista Linee filtrate per CCOM (per dropdown a cascata)
+    Chiamata via AJAX quando cambia CCOM e L1 è attivo
+    """
+    ccom = request.GET.get('ccom', '')
+    
+    if not ccom:
+        return JsonResponse({'results': []})
+    
+    linee_query = MasterAssortimenti.objects.using('goldreport').filter(
+        ccom=ccom,
+        fornprinc=1  # Solo fornitore principale
+    ).values(
+        'linea_prodotto', 'descr_linea'
+    ).exclude(
+        Q(linea_prodotto__isnull=True) | Q(linea_prodotto='')
+    ).distinct().order_by('linea_prodotto')
+    
+    linee_list = list(linee_query)
+    
+    return JsonResponse({'results': linee_list})
+
+
 def export_excel_view(request):
     """
     Export Excel degli articoli con filtri applicati
     """
     # Ottieni stessi filtri della vista principale
     selected_ccom = request.GET.get('ccom', '')
+    selected_rep = request.GET.get('rep', '')
+    selected_srep = request.GET.get('srep', '')
+    selected_fam = request.GET.get('fam', '')
+    selected_linee = request.GET.getlist('linea')  # Selezione multipla
     linea_1_filter = request.GET.get('linea1', '') == '1'
     search_query = request.GET.get('search', '')
     
@@ -130,8 +211,19 @@ def export_excel_view(request):
             Q(ccom=selected_ccom) | Q(descrccom__icontains=selected_ccom)
         )
     
+    if selected_rep:
+        articoli_query = articoli_query.filter(rep=selected_rep)
+    
+    if selected_srep:
+        articoli_query = articoli_query.filter(srep=selected_srep)
+    
+    if selected_fam:
+        articoli_query = articoli_query.filter(fam=selected_fam)
+    
     if linea_1_filter:
         articoli_query = articoli_query.filter(fornprinc=1)
+        if selected_linee:
+            articoli_query = articoli_query.filter(linea_prodotto__in=selected_linee)
     
     if search_query:
         articoli_query = articoli_query.filter(
@@ -140,7 +232,7 @@ def export_excel_view(request):
             Q(ean__icontains=search_query)
         )
     
-    articoli_query = articoli_query.order_by('fam', 'linea_prodotto', 'codart')
+    articoli_query = articoli_query.order_by('linea_prodotto', 'tipo_riordino', 'fam', 'codart')
     
     # Prepara dati per export
     articoli_data = []
@@ -167,6 +259,7 @@ def export_excel_view(request):
             'fam': art.fam,
             'ccom': art.ccom,
             'linea_prodotto': art.linea_prodotto,
+            'descr_linea': art.descr_linea,
             'stato': art.stato,
             'ean': art.ean,
             'tipoean': art.tipoean,

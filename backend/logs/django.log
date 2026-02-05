@@ -10294,3 +10294,108 @@ INFO 2026-02-05 11:07:04,012 basehttp "GET /app/alloca-hostess/individuazione/?p
 INFO 2026-02-05 11:07:11,622 basehttp "GET /app/merchandiser/ HTTP/1.1" 200 8866
 INFO 2026-02-05 11:07:12,687 basehttp "GET /app/merchandiser/slot/ HTTP/1.1" 200 130194
 INFO 2026-02-05 11:07:15,857 basehttp "GET /app/merchandiser/merchandiser/ HTTP/1.1" 200 733065
+INFO 2026-02-05 12:47:40,784 autoreload Watching for file changes with StatReloader
+INFO 2026-02-05 12:47:57,714 basehttp "GET /app/asso_articoli/ HTTP/1.1" 200 1310464
+INFO 2026-02-05 16:15:40,777 autoreload Watching for file changes with StatReloader
+INFO 2026-02-05 16:15:57,635 basehttp "GET /app/importelab/ HTTP/1.1" 200 395674
+WARNING 2026-02-05 16:15:58,449 log Not Found: /favicon.ico
+WARNING 2026-02-05 16:15:58,450 basehttp "GET /favicon.ico HTTP/1.1" 404 3776
+INFO 2026-02-05 16:16:03,263 basehttp "GET /app/importelab/batch/6/delete/ HTTP/1.1" 200 1149
+INFO 2026-02-05 16:16:04,893 basehttp "POST /app/importelab/batch/6/delete/ HTTP/1.1" 302 0
+INFO 2026-02-05 16:16:04,907 basehttp "GET /app/importelab/ HTTP/1.1" 200 2742
+INFO 2026-02-05 16:17:30,525 basehttp "POST /app/importelab/gold/sync/ HTTP/1.1" 302 0
+INFO 2026-02-05 16:17:30,738 basehttp "GET /app/importelab/?gold=1 HTTP/1.1" 200 20993
+INFO 2026-02-05 16:18:10,013 basehttp "POST /app/importelab/?gold=1 HTTP/1.1" 302 0
+INFO 2026-02-05 16:18:10,287 basehttp "GET /app/importelab/?batch=7 HTTP/1.1" 200 395675
+INFO 2026-02-05 16:18:43,575 basehttp "POST /app/importelab/intermediate/regen/ HTTP/1.1" 302 0
+INFO 2026-02-05 16:18:43,973 basehttp "GET /app/importelab/?batch=7&inter=1 HTTP/1.1" 200 420330
+INFO 2026-02-05 16:18:57,917 basehttp "GET /app/importelab/report/prezziacq/?batch=7 HTTP/1.1" 200 91660
+INFO 2026-02-05 16:19:03,014 basehttp "GET /app/importelab/?batch=7 HTTP/1.1" 200 395675
+INFO 2026-02-05 16:19:06,169 basehttp "GET /app/importelab/report/ean/?batch=7 HTTP/1.1" 200 5407
+INFO 2026-02-05 16:19:09,052 basehttp "GET /app/importelab/?batch=7 HTTP/1.1" 200 395675
+INFO 2026-02-05 16:19:12,059 basehttp "GET /app/importelab/report/logistica/?batch=7 HTTP/1.1" 200 167421
+INFO 2026-02-05 16:19:15,526 basehttp "GET /app/importelab/?batch=7 HTTP/1.1" 200 395675
+INFO 2026-02-05 16:20:42,939 basehttp "GET /app/importelab/ordine/email/ HTTP/1.1" 200 1751
+INFO 2026-02-05 16:22:44,419 basehttp "POST /app/importelab/ordine/email/ HTTP/1.1" 200 5532
+INFO 2026-02-05 16:32:21,286 basehttp "GET /app/importelab/ HTTP/1.1" 200 395675
+INFO 2026-02-05 16:36:13,713 autoreload C:\portale\backend\modules\importelab\models.py changed, reloading.
+INFO 2026-02-05 16:36:15,411 autoreload Watching for file changes with StatReloader
+INFO 2026-02-05 16:37:39,136 autoreload Watching for file changes with StatReloader
+INFO 2026-02-05 16:41:26,792 basehttp "GET /app/importelab/ HTTP/1.1" 200 395675
+WARNING 2026-02-05 16:41:27,368 log Not Found: /favicon.ico
+WARNING 2026-02-05 16:41:27,368 basehttp "GET /favicon.ico HTTP/1.1" 404 3776
+INFO 2026-02-05 16:41:32,057 basehttp "GET /app/importelab/batch/7/delete/ HTTP/1.1" 200 1149
+INFO 2026-02-05 16:41:33,714 basehttp "POST /app/importelab/batch/7/delete/ HTTP/1.1" 302 0
+INFO 2026-02-05 16:41:33,727 basehttp "GET /app/importelab/ HTTP/1.1" 200 2743
+INFO 2026-02-05 16:42:17,776 basehttp "POST /app/importelab/gold/sync/ HTTP/1.1" 302 0
+INFO 2026-02-05 16:42:18,003 basehttp "GET /app/importelab/?gold=1 HTTP/1.1" 200 20993
+INFO 2026-02-05 16:42:29,481 basehttp "POST /app/importelab/intermediate/regen/ HTTP/1.1" 302 0
+INFO 2026-02-05 16:42:29,494 basehttp "GET /app/importelab/ HTTP/1.1" 200 2743
+INFO 2026-02-05 16:42:48,415 basehttp "POST /app/importelab/ HTTP/1.1" 302 0
+INFO 2026-02-05 16:42:48,726 basehttp "GET /app/importelab/?batch=8 HTTP/1.1" 200 395675
+INFO 2026-02-05 16:42:59,603 basehttp "POST /app/importelab/intermediate/regen/ HTTP/1.1" 302 0
+INFO 2026-02-05 16:42:59,997 basehttp "GET /app/importelab/?batch=8&inter=1 HTTP/1.1" 200 420330
+INFO 2026-02-05 16:43:09,249 basehttp "GET /app/importelab/report/logistica/?batch=8 HTTP/1.1" 200 167421
+INFO 2026-02-05 16:43:12,839 basehttp "GET /app/importelab/?batch=8 HTTP/1.1" 200 395675
+INFO 2026-02-05 16:43:19,354 basehttp "GET /app/importelab/ordine/email/ HTTP/1.1" 200 1751
+INFO 2026-02-05 16:43:49,363 basehttp "POST /app/importelab/ordine/email/ HTTP/1.1" 200 5532
+INFO 2026-02-05 16:50:51,055 basehttp "GET /app/importelab/ HTTP/1.1" 200 395675
+INFO 2026-02-05 16:53:44,806 basehttp "POST /app/importelab/intermediate/regen/ HTTP/1.1" 302 0
+INFO 2026-02-05 16:53:45,260 basehttp "GET /app/importelab/?batch=8&inter=1 HTTP/1.1" 200 420330
+INFO 2026-02-05 16:55:07,797 basehttp "GET /app/importelab/ordine/email/ HTTP/1.1" 200 1751
+INFO 2026-02-05 17:19:22,281 autoreload Watching for file changes with StatReloader
+INFO 2026-02-05 17:19:31,670 basehttp "GET /app/importelab/ HTTP/1.1" 200 394835
+WARNING 2026-02-05 17:19:32,201 log Not Found: /favicon.ico
+WARNING 2026-02-05 17:19:32,206 basehttp "GET /favicon.ico HTTP/1.1" 404 3776
+INFO 2026-02-05 17:19:37,131 basehttp "GET /app/importelab/batch/8/delete/ HTTP/1.1" 200 1149
+INFO 2026-02-05 17:19:38,548 basehttp "POST /app/importelab/batch/8/delete/ HTTP/1.1" 302 0
+INFO 2026-02-05 17:19:38,557 basehttp "GET /app/importelab/ HTTP/1.1" 200 1953
+INFO 2026-02-05 17:20:23,186 basehttp "POST /app/importelab/gold/sync/ HTTP/1.1" 302 0
+INFO 2026-02-05 17:20:23,437 basehttp "GET /app/importelab/?gold=1 HTTP/1.1" 200 20203
+INFO 2026-02-05 17:20:47,009 basehttp "POST /app/importelab/?gold=1 HTTP/1.1" 302 0
+INFO 2026-02-05 17:20:47,376 basehttp "GET /app/importelab/?batch=9 HTTP/1.1" 200 395072
+INFO 2026-02-05 17:20:59,148 basehttp "GET /app/importelab/report/prezziacq/?batch=9 HTTP/1.1" 200 91660
+INFO 2026-02-05 17:21:09,965 basehttp "GET /app/importelab/?batch=9 HTTP/1.1" 200 394835
+INFO 2026-02-05 17:21:12,228 basehttp "GET /app/importelab/report/ean/?batch=9 HTTP/1.1" 200 5407
+INFO 2026-02-05 17:21:21,882 basehttp "GET /app/importelab/?batch=9 HTTP/1.1" 200 394835
+INFO 2026-02-05 17:21:24,970 basehttp "GET /app/importelab/report/logistica/?batch=9 HTTP/1.1" 200 167421
+INFO 2026-02-05 17:21:36,108 basehttp "GET /app/importelab/?batch=9 HTTP/1.1" 200 394835
+INFO 2026-02-05 17:21:39,125 basehttp "GET /app/importelab/ordine/email/ HTTP/1.1" 200 1737
+INFO 2026-02-05 17:22:15,347 basehttp "POST /app/importelab/ordine/email/ HTTP/1.1" 200 5532
+INFO 2026-02-05 17:22:20,218 basehttp "GET /app/importelab/ HTTP/1.1" 200 394835
+INFO 2026-02-05 17:25:38,441 autoreload Watching for file changes with StatReloader
+INFO 2026-02-05 17:25:58,123 basehttp "GET /app/asso_articoli/ HTTP/1.1" 200 1992955
+INFO 2026-02-05 17:59:17,852 autoreload C:\portale\backend\modules\asso_articoli\urls.py changed, reloading.
+INFO 2026-02-05 17:59:18,886 autoreload Watching for file changes with StatReloader
+INFO 2026-02-05 17:59:48,285 autoreload Watching for file changes with StatReloader
+INFO 2026-02-05 18:00:04,620 basehttp "GET /app/asso_articoli/ HTTP/1.1" 200 1376799
+INFO 2026-02-05 18:00:40,656 basehttp "GET /app/asso_articoli/api/linee/?ccom=800010 HTTP/1.1" 200 510
+INFO 2026-02-05 18:01:12,684 basehttp "GET /app/asso_articoli/?ccom=800010&rep=&srep=&fam=&search=&linea1=1&linea=80001001 HTTP/1.1" 200 994130
+INFO 2026-02-05 18:04:10,254 basehttp "GET /app/asso_articoli/api/linee/?ccom=800010 HTTP/1.1" 200 510
+INFO 2026-02-05 18:04:24,898 basehttp "GET /app/asso_articoli/?ccom=800010&rep=&srep=&fam=&search=&linea1=1&linea=80001001 HTTP/1.1" 200 994130
+INFO 2026-02-05 18:11:41,606 autoreload Watching for file changes with StatReloader
+INFO 2026-02-05 18:12:00,260 basehttp "GET /app/asso_articoli/ HTTP/1.1" 200 1376993
+INFO 2026-02-05 18:12:09,228 basehttp "GET /app/asso_articoli/api/linee/?ccom=800010 HTTP/1.1" 200 510
+INFO 2026-02-05 18:12:18,437 basehttp "GET /app/asso_articoli/?ccom=800010&rep=&srep=&fam=&search=&linea1=1&linea=80001001 HTTP/1.1" 200 994324
+INFO 2026-02-05 18:13:39,662 basehttp "GET /app/asso_articoli/api/linee/?ccom=800010 HTTP/1.1" 200 510
+INFO 2026-02-05 18:13:46,742 basehttp "GET /app/asso_articoli/api/linee/?ccom=800010 HTTP/1.1" 200 510
+INFO 2026-02-05 18:14:05,378 basehttp "GET /app/asso_articoli/?ccom=800010&rep=&srep=&fam=&search=&linea1=1&linea=80001001 HTTP/1.1" 200 994324
+INFO 2026-02-05 18:17:35,269 basehttp "GET /app/alloca-hostess/orari-hostess/ HTTP/1.1" 200 36558
+INFO 2026-02-05 18:17:46,545 basehttp "GET /app/asso_articoli/ HTTP/1.1" 200 1376993
+INFO 2026-02-05 18:17:54,249 basehttp "GET /app/asso_articoli/api/linee/?ccom=800010 HTTP/1.1" 200 510
+INFO 2026-02-05 18:18:01,774 basehttp "GET /app/asso_articoli/?ccom=800010&rep=&srep=&fam=&search=&linea1=1&linea=80001001 HTTP/1.1" 200 994324
+INFO 2026-02-05 18:19:46,160 basehttp "GET /app/alloca-hostess/orari-hostess/ HTTP/1.1" 200 36558
+INFO 2026-02-05 18:20:02,023 basehttp "GET /app/asso_articoli/ HTTP/1.1" 200 1377133
+INFO 2026-02-05 18:20:37,214 basehttp "GET /app/asso_articoli/api/linee/?ccom=800010 HTTP/1.1" 200 510
+INFO 2026-02-05 18:20:46,402 basehttp "GET /app/asso_articoli/?ccom=800010&rep=&srep=&fam=&search=&linea1=1&linea=80001001 HTTP/1.1" 200 994489
+INFO 2026-02-05 18:23:45,162 basehttp "GET /app/alloca-hostess/orari-hostess/ HTTP/1.1" 200 36558
+INFO 2026-02-05 18:23:56,364 basehttp "GET /app/asso_articoli/ HTTP/1.1" 200 1377731
+INFO 2026-02-05 18:24:06,096 basehttp "GET /app/asso_articoli/api/linee/?ccom=800010 HTTP/1.1" 200 510
+INFO 2026-02-05 18:24:14,367 basehttp "GET /app/asso_articoli/?ccom=800010&rep=&srep=&fam=&search=&linea1=1&linea=80001001 HTTP/1.1" 200 995087
+INFO 2026-02-05 18:24:34,625 basehttp "GET /app/asso_articoli/?ccom=800010&rep=11&srep=&fam=&search=&linea1=1&linea=80001001 HTTP/1.1" 200 995178
+INFO 2026-02-05 18:25:13,559 basehttp "GET /app/asso_articoli/?ccom=800010&rep=11&srep=202&fam=&search=&linea1=1&linea=80001001 HTTP/1.1" 200 945933
+INFO 2026-02-05 18:26:46,902 basehttp "GET /app/asso_articoli/ HTTP/1.1" 200 1377591
+INFO 2026-02-05 18:26:57,383 basehttp "GET /app/asso_articoli/api/linee/?ccom=800010 HTTP/1.1" 200 510
+INFO 2026-02-05 18:27:04,537 basehttp "GET /app/asso_articoli/?ccom=800010&rep=&srep=&fam=&search=&linea1=1&linea=80001001 HTTP/1.1" 200 994922
+INFO 2026-02-05 18:30:37,989 basehttp "GET /app/asso_articoli/ HTTP/1.1" 200 1377474
+INFO 2026-02-05 18:31:23,722 basehttp "GET /app/asso_articoli/api/linee/?ccom=800010 HTTP/1.1" 200 510

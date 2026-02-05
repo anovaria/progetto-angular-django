@@ -8,12 +8,19 @@
   <button type="submit">Carica e salva nel DB</button>
 </form>
 
+{% if upload_info %}
+  {% if upload_info.ok %}
+    <p class="muted"><strong>Upload completato</strong> ({{ upload_info.filename }}) — query intermedie rigenerate. {% if upload_info.counts %}Risultati: {{ upload_info.counts }}{% endif %}</p>
+  {% else %}
+    <p class="muted"><strong>Upload completato</strong> ({{ upload_info.filename }}) — <strong>attenzione</strong>: rigenerazione query intermedie non riuscita ({{ upload_info.error }}).</p>
+  {% endif %}
+{% endif %}
+
 <hr>
 
 <h3>Ordini</h3>
 <p>
   <a href="{% url 'importelab:ordine_email' %}">Invio ordine via Outlook (allega .ext)</a>
-  <span class="muted" style="margin-left:0.5rem;">(per ora: carica prova_Ordine.ext)</span>
 </p>
 
 
@@ -69,62 +76,6 @@
 {% endfor %}
 {% endif %}
 
-<hr>
-
-<h3>Query intermedie (staging)</h3>
-<form method="post" action="{% url 'importelab:regen_intermediate' %}" style="margin-bottom: 1rem;">
-  {% csrf_token %}
-  {% if selected_batch %}
-  <input type="hidden" name="batch_id" value="{{ selected_batch.id }}">
-  <button type="submit">Rigenera 3 query intermedie (batch selezionato)</button>
-  <span class="muted" style="margin-left:0.5rem;">Batch: <strong>{{ selected_batch.filename }}</strong></span>
-  {% else %}
-  <button type="submit">Rigenera 3 query intermedie (ultimo batch)</button>
-  <span class="muted" style="margin-left:0.5rem;">Nessun batch selezionato: verrà usato l'ultimo import.</span>
-  {% endif %}
-</form>
-
-{% if intermediate_info %}
-<p class="muted">
-  Ultima rigenerazione: {{ intermediate_info.created_at }} — batch {{ intermediate_info.batch_id }} ({{
-  intermediate_info.filename }})
-  {% if intermediate_info.counts %} — risultati: {{ intermediate_info.counts }}{% endif %}
-</p>
-{% endif %}
-
-{% if intermediate_preview %}
-<div style="display:grid; grid-template-columns: 1fr; gap: 0.8rem;">
-  {% for qname, rows in intermediate_preview.items %}
-  <details open>
-    <summary><strong>{{ qname }}</strong> — prime 5 righe</summary>
-    {% if rows and rows|length > 0 %}
-    <div style="overflow:auto; border:1px solid #ddd; padding:0.5rem; margin-top:0.5rem;">
-      <table style="border-collapse:collapse; width:100%;">
-        <thead>
-          <tr>
-            {% for k,v in rows.0.items %}
-            <th style="text-align:left; border-bottom:1px solid #ccc; padding:4px 6px;">{{ k }}</th>
-            {% endfor %}
-          </tr>
-        </thead>
-        <tbody>
-          {% for r in rows %}
-          <tr>
-            {% for k,v in r.items %}
-            <td style="border-bottom:1px solid #eee; padding:4px 6px; white-space:nowrap;">{{ v }}</td>
-            {% endfor %}
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-    {% else %}
-    <p class="muted">Nessuna riga prodotta (o tabella vuota).</p>
-    {% endif %}
-  </details>
-  {% endfor %}
-</div>
-{% endif %}
 <hr>
 
 <h3>File importati</h3>

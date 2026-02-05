@@ -1,3 +1,35 @@
+
+def _format_colliord_to_5digits(value) -> str:
+    """Format COLLIORD exactly like Access padding logic: 5 digits, no decimals."""
+    from decimal import Decimal
+    import re as _re
+    if value is None:
+        return "00000"
+    # Decimal / int / float cases
+    if isinstance(value, bool):
+        return "00001" if value else "00000"
+    if isinstance(value, int):
+        return str(value).zfill(5)
+    if isinstance(value, float):
+        # assume integer-ish
+        return str(int(round(value))).zfill(5)
+    if isinstance(value, Decimal):
+        try:
+            return str(int(value)).zfill(5)
+        except Exception:
+            pass
+
+    s = str(value).strip()
+    # normalize separators and remove quotes
+    s = s.strip('"\'')
+    s = s.replace(",", ".")
+    if "." in s:
+        s = s.split(".", 1)[0]
+    digits = _re.sub(r"\D", "", s)
+    if digits == "":
+        digits = "0"
+    return digits.zfill(5)
+
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from django.http import HttpResponse
@@ -370,8 +402,7 @@ def generate_ordine_ext_file(destination_dir: str) -> str:
         dcdcexcde = _safe_str(r.get("DCDCEXCDE"))
 
         espr3 = codartfo[:7]
-        espr5 = colliord.strip()
-        espr5 = espr5.zfill(5) if espr5.isdigit() else espr5.rjust(5, "0")[-5:]
+        espr5 = _format_colliord_to_5digits(r.get("COLLIORD"))
 
         # Mid(DCDCEXCDE, 8, 6) in Access => python [7:13]
         espr8 = dcdcexcde[7:13].ljust(6)
@@ -484,6 +515,26 @@ def dashboard_view(request):
             if objs:
                 ImportRow.objects.bulk_create(objs)
 
+            # Dopo l'upload, rigenera automaticamente le query intermedie (staging)
+            # per mantenere i report pronti senza step manuali.
+            try:
+                counts = rebuild_intermediate_queries(batch)
+                request.session['upload_last'] = {
+                    'ok': True,
+                    'batch_id': batch.id,
+                    'filename': batch.filename,
+                    'finished_at': datetime.now().isoformat(timespec='seconds'),
+                    'counts': counts,
+                }
+            except Exception as e:
+                request.session['upload_last'] = {
+                    'ok': False,
+                    'batch_id': batch.id,
+                    'filename': batch.filename,
+                    'finished_at': datetime.now().isoformat(timespec='seconds'),
+                    'error': str(e),
+                }
+
             url = reverse('importelab:dashboard')
             return redirect(f"{url}?batch={batch.id}")
     else:
@@ -507,10 +558,14 @@ def dashboard_view(request):
         gold_preview = get_preview_from_local(limit=5)
 
     
-    intermediate_preview = None
-    intermediate_info = request.session.get('intermediate_last')
-    if request.GET.get('inter') == '1' and selected_batch:
-        intermediate_preview = get_intermediate_previews(selected_batch, limit=5)
+    # Upload info (mostrata solo dopo completamento upload+query)
+    upload_info = request.session.get('upload_last')
+    if upload_info and selected_batch and upload_info.get('batch_id') != selected_batch.id:
+        # Non mostrare info di un altro batch se sto consultando uno diverso
+        upload_info = None
+    elif upload_info:
+        # Mostra una sola volta
+        request.session.pop('upload_last', None)
     context = {
         'form': form,
         'batches': batches,
@@ -519,8 +574,7 @@ def dashboard_view(request):
         'search_query': search_query,
         'gold_preview': gold_preview,
         'gold_sync_info': gold_sync_info,
-        'intermediate_preview': intermediate_preview,
-        'intermediate_info': intermediate_info,
+        'upload_info': upload_info,
     }
     return render(request, 'importelab/dashboard.html', context)
 def _normalize_codart_key(value):
