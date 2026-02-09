@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ titolo }}</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; padding: 30px; }
+        h1 { font-size: 1.4em; color: #c0392b; margin-bottom: 5px; }
+        .subtitle { color: #666; margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #1a5276; color: white; padding: 10px 12px; text-align: left; }
+        td { padding: 8px 12px; border-bottom: 1px solid #ddd; }
+        tr:nth-child(even) td { background: #f9f9f9; }
+        .negative { color: #c0392b; font-weight: 600; }
+        .btn-print { padding: 8px 16px; background: #2e86c1; color: white; border: none; border-radius: 4px; cursor: pointer; margin-bottom: 15px; }
+        @media print { .btn-print { display: none; } }
+    </style>
+</head>
+<body>
+
+<h1>⚠️ {{ titolo }}</h1>
+<p class="subtitle">{{ sottotitolo }}</p>
+
+<button class="btn-print" onclick="window.print()">🖨️ Stampa</button>
+
+<table>
+    <thead>
+        <tr>
+            <th>Ccom</th>
+            <th>Codice Articolo</th>
+            <th>Stato</th>
+            <th>Giacenza PDV</th>
+            <th>Giacenza Deposito</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for art in report_data %}
+        <tr>
+            <td>{{ art.ccom }}</td>
+            <td><strong>{{ art.codart }}</strong></td>
+            <td>{{ art.stato }}</td>
+            <td class="{% if art.giac_pdv != 0 %}negative{% endif %}">{{ art.giac_pdv }}</td>
+            <td class="{% if art.giac_dep != 0 %}negative{% endif %}">{{ art.giac_dep }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" style="text-align:center; padding:20px;">Nessun articolo con giacenza</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<p style="margin-top:15px; color:#888; font-size:0.85em;">
+    Totale: {{ report_data|length }} articoli da gestire manualmente
+</p>
+
+</body>
+</html>
