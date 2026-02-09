@@ -22,11 +22,11 @@ def get_current_user(request):
     username = None
     
     # DEBUG - rimuovi dopo
-    print(f"DEBUG META keys: {[k for k in request.META.keys() if 'USER' in k or 'AUTH' in k]}")
-    print(f"DEBUG request.user: {request.user}, authenticated: {request.user.is_authenticated if hasattr(request, 'user') else 'N/A'}")
-    print(f"DEBUG request.user: {getattr(request, 'user', 'NO USER')}")
-    print(f"DEBUG is_authenticated: {request.user.is_authenticated if hasattr(request, 'user') else 'N/A'}")
-    print(f"DEBUG REMOTE_USER: {request.META.get('REMOTE_USER', 'NONE')}")
+    #print(f"DEBUG META keys: {[k for k in request.META.keys() if 'USER' in k or 'AUTH' in k]}")
+    #print(f"DEBUG request.user: {request.user}, authenticated: {request.user.is_authenticated if hasattr(request, 'user') else 'N/A'}")
+    #print(f"DEBUG request.user: {getattr(request, 'user', 'NO USER')}")
+    #print(f"DEBUG is_authenticated: {request.user.is_authenticated if hasattr(request, 'user') else 'N/A'}")
+    #print(f"DEBUG REMOTE_USER: {request.META.get('REMOTE_USER', 'NONE')}")
 
     # Windows Auth
     if hasattr(request, 'META') and 'REMOTE_USER' in request.META:
@@ -36,7 +36,7 @@ def get_current_user(request):
     if not username and hasattr(request, 'user') and request.user.is_authenticated:
         username = request.user.username.lower()
     
-    print(f"DEBUG username finale: {username}")
+    #print(f"DEBUG username finale: {username}")
 
 
 # ============================================
@@ -367,7 +367,7 @@ def scelta_fornitore_hostess(request):
 # ============================================
 # API HTMX
 # ============================================
-
+@csrf_exempt
 @require_http_methods(["POST"])
 def assegna_pallet(request):
     """Assegna un pallet a un fornitore (HTMX)."""
@@ -397,7 +397,7 @@ def assegna_pallet(request):
         'periodo': periodo,
     })
 
-
+@csrf_exempt
 @require_http_methods(["POST"])
 def assegna_testata(request):
     """Assegna una testata a un fornitore (HTMX)."""

@@ -62,6 +62,7 @@ INSTALLED_APPS = [
     'modules.merchandiser',
     'modules.welfare',
     'modules.asso_articoli',
+    'modules.scaricopromo',
 ]
 
 # Middleware (Nessun cambiamento)

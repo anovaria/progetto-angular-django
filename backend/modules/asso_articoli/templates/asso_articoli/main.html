@@ -240,21 +240,27 @@
                                placeholder="Cod/Descr/EAN" value="{{ search_query }}">
                     </div>
                     
-                    <!-- Checkbox Fornitore Principale + Pulsante -->
+                    <!-- Checkbox Fornitore Principale + Pulsanti -->
                     <div class="col-lg-auto col-md-4 col-sm-6">
-                        <label class="form-label">&nbsp;</label>
                         <div class="form-check mb-2">
                             <input class="form-check-input" type="checkbox" name="linea1" value="1" 
-                                   id="linea1" {% if linea1_checked %}checked{% endif %}>
+                                id="linea1" {% if linea1_checked %}checked{% endif %}>
                             <label class="form-check-label" for="linea1" style="font-size: 0.85rem;">
                                 Fornitore Principale
                             </label>
                             <div class="text-muted" style="font-size: 0.7rem; margin-left: 1.5rem;">(abilita selezione Linee)</div>
                         </div>
-                        <button type="submit" class="btn btn-primary btn-sm w-100">
-                            <span class="material-icons" style="vertical-align: middle; font-size: 1rem;">filter_alt</span>
-                            Applica
-                        </button>
+                        <div class="d-flex gap-1">
+                            <button type="submit" class="btn btn-primary btn-sm">
+                                <span class="material-icons" style="vertical-align: middle; font-size: 1rem;">filter_alt</span>
+                                Applica
+                            </button>
+                            <a href="{% url 'asso_articoli:export_excel' %}?{{ request.GET.urlencode }}" 
+                            class="btn btn-success btn-sm">
+                                <span class="material-icons" style="vertical-align: middle; font-size: 1rem;">file_download</span>
+                                Excel
+                            </a>
+                        </div>
                     </div>
                 </div>
                 
@@ -299,37 +305,6 @@
                     </div>
                 </div>
             </form>
-        </div>
-
-        <!-- Azioni -->
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <div>
-                {% if selected_ccom %}
-                <span class="badge bg-primary">CCOM: {{ selected_ccom }}</span>
-                {% endif %}
-                {% if selected_rep %}
-                <span class="badge bg-success">Rep: {{ selected_rep }}</span>
-                {% endif %}
-                {% if selected_srep %}
-                <span class="badge bg-info">SRep: {{ selected_srep }}</span>
-                {% endif %}
-                {% if selected_fam %}
-                <span class="badge bg-warning text-dark">Fam: {{ selected_fam }}</span>
-                {% endif %}
-                {% if selected_linee %}
-                <span class="badge bg-purple" style="background-color: #764ba2;">Linee: {{ selected_linee|join:", " }}</span>
-                {% endif %}
-                {% if search_query %}
-                <span class="badge bg-dark">Ricerca: {{ search_query }}</span>
-                {% endif %}
-            </div>
-            <div>
-                <a href="{% url 'asso_articoli:export_excel' %}?{{ request.GET.urlencode }}" 
-                   class="btn btn-export btn-sm">
-                    <span class="material-icons" style="vertical-align: middle;">file_download</span>
-                    Export Excel
-                </a>
-            </div>
         </div>
 
         <!-- Tabella Articoli -->
@@ -413,6 +388,7 @@
         </div>
 
         <!-- Report Links -->
+<!--    
         <div class="row mt-4 mb-5">
             <div class="col-md-4">
                 <div class="card">
@@ -451,6 +427,7 @@
                 </div>
             </div>
         </div>
+    -->
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

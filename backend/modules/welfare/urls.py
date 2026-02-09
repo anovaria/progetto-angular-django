@@ -21,8 +21,8 @@ urlpatterns = [
     
     # Contabilità
     path('contabilita/', views.contabilita, name='contabilita'),
-    path('contabilita/export/', views.report_mensile_excel, name='report_excel'),
-    
+    path('contabilita/report/', views.report_contabilita, name='report_contabilita'),
+
     # Import Email
     path('import/', views.import_email, name='import_email'),
     path('import/valida/<int:pk>/', views.valida_provvisoria, name='valida_provvisoria'),

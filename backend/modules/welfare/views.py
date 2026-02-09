@@ -2,23 +2,27 @@
 Views Django per la gestione Welfare Aziendale
 """
 
+from io import BytesIO
+import zipfile
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
 from django.db.models import Sum, Count, Q
-from django.db.models.functions import TruncMonth, ExtractYear, ExtractMonth
 from django.utils import timezone
 from django.contrib import messages
-from datetime import datetime, timedelta
 from decimal import Decimal, InvalidOperation
-import json
 import re
-
+from openpyxl import Workbook
+from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import mm
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from .models import (
-    Ruolo, Utente, TaglioBuono, RichiestaWelfare, 
-    DettaglioBuono, RichiestaProvvisoria, EmailImportata,
-    VerificaEudaimon
+    TaglioBuono, RichiestaWelfare, 
+    DettaglioBuono, RichiestaProvvisoria
 )
 
 
@@ -301,46 +305,262 @@ def contabilita(request):
 
 @csrf_exempt
 @require_auth
-def report_mensile_excel(request):
-    """Esporta report mensile in CSV."""
-    anno = int(request.GET.get('anno', timezone.now().year))
-    mese = int(request.GET.get('mese', timezone.now().month))
+def report_contabilita(request):
+    """Genera report Excel + PDF in ZIP con i filtri applicati."""
     
+    # Leggi filtri
+    oggi = timezone.now().date()
+    anno = int(request.GET.get('anno', oggi.year))
+    mese = int(request.GET.get('mese', oggi.month))
+    giorno_param = request.GET.get('giorno', '')
+    giorno = int(giorno_param) if giorno_param else None
+    
+    # Stati filtro
+    mostra_pronto = request.GET.get('pronto', '') == '1'
+    mostra_elaborato = request.GET.get('elaborato', '') == '1'
+    mostra_consegnato = request.GET.get('consegnato', '1') == '1'
+    mostra_inevaso = request.GET.get('inevaso', '') == '1'
+    
+    stati_filtro = []
+    if mostra_pronto:
+        stati_filtro.append('PRONTO')
+    if mostra_elaborato:
+        stati_filtro.append('ELABORATO')
+    if mostra_consegnato:
+        stati_filtro.append('CONSEGNATO')
+    if mostra_inevaso:
+        stati_filtro.append('INEVASO')
+    
+    if not stati_filtro:
+        stati_filtro = ['CONSEGNATO']
+    
+    # Query
     richieste = RichiestaWelfare.objects.filter(
-        stato='CONSEGNATO',
+        stato__in=stati_filtro,
         data_consegna__year=anno,
         data_consegna__month=mese
-    ).order_by('data_consegna')
+    )
     
-    import csv
-    from io import StringIO
+    if giorno:
+        richieste = richieste.filter(data_consegna__day=giorno)
     
-    output = StringIO()
-    writer = csv.writer(output, delimiter=';')
+    richieste = richieste.order_by('data_consegna')
     
-    writer.writerow([
-        'Num. Richiesta', 'Nominativo', 'Azienda', 
-        'Valore Buono', 'Quantita', 'Totale',
-        'Data Consegna', 'Operatore'
-    ])
+    # Nome file base
+    if giorno:
+        nome_base = f"Welfare_{anno}_{mese:02d}_{giorno:02d}"
+    else:
+        nome_base = f"Welfare_{anno}_{mese:02d}"
     
-    for r in richieste:
-        writer.writerow([
-            r.num_richiesta,
-            r.nominativo,
-            r.nome_mittente,
-            r.valore_buono,
-            r.qta_buono,
-            r.totale_buono,
-            r.data_consegna.strftime('%d/%m/%Y %H:%M') if r.data_consegna else '',
-            r.utente_consegna
-        ])
+    # Genera Excel
+    excel_buffer = genera_excel_report(richieste, mese, anno)
     
-    response = HttpResponse(output.getvalue(), content_type='text/csv')
-    response['Content-Disposition'] = f'attachment; filename="welfare_{anno}_{mese:02d}.csv"'
+    # Genera PDF
+    pdf_buffer = genera_pdf_report(richieste, mese, anno)
+    
+    # Crea ZIP
+    zip_buffer = BytesIO()
+    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+        zip_file.writestr(f"{nome_base}.xlsx", excel_buffer.getvalue())
+        zip_file.writestr(f"{nome_base}.pdf", pdf_buffer.getvalue())
+    
+    zip_buffer.seek(0)
+    
+    response = HttpResponse(zip_buffer.getvalue(), content_type='application/zip')
+    response['Content-Disposition'] = f'attachment; filename="{nome_base}.zip"'
     return response
 
 
+def genera_excel_report(richieste, mese, anno):
+    """Genera il file Excel nel formato richiesto."""
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
+    
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Riepilogo"
+    
+    # Stili
+    header_font = Font(bold=True, size=14)
+    title_font = Font(bold=True, size=12)
+    border = Border(
+        left=Side(style='thin'),
+        right=Side(style='thin'),
+        top=Side(style='thin'),
+        bottom=Side(style='thin')
+    )
+    header_fill = PatternFill(start_color='E8F5E9', end_color='E8F5E9', fill_type='solid')
+    
+    # Intestazione
+    ws['A1'] = f"Riepilogo Buoni Welfare - Mese: {mese} Anno: {anno}"
+    ws['A1'].font = header_font
+    ws.merge_cells('A1:F1')
+    
+    # Header colonne
+    headers = ['TotaleBuono', 'Nominativo', 'Num_Richiesta', 'QtaBuono', 'ValoreBuono', 'Data_ConsegnaCliente']
+    for col, header in enumerate(headers, 1):
+        cell = ws.cell(row=3, column=col, value=header)
+        cell.font = title_font
+        cell.fill = header_fill
+        cell.border = border
+        cell.alignment = Alignment(horizontal='center')
+    
+    # Dati
+    row = 4
+    totale_generale = 0
+    totale_qta = 0
+    
+    for r in richieste:
+        ws.cell(row=row, column=1, value=float(r.totale_buono)).border = border
+        ws.cell(row=row, column=2, value=r.nominativo).border = border
+        ws.cell(row=row, column=3, value=r.num_richiesta).border = border
+        ws.cell(row=row, column=4, value=r.qta_buono).border = border
+        ws.cell(row=row, column=5, value=float(r.valore_buono)).border = border
+        data_cons = r.data_consegna.strftime('%d/%m/%Y') if r.data_consegna else ''
+        ws.cell(row=row, column=6, value=data_cons).border = border
+        
+        totale_generale += float(r.totale_buono)
+        totale_qta += r.qta_buono
+        row += 1
+    
+    # Riga totale
+    row += 1
+    ws.cell(row=row, column=1, value=totale_generale).font = Font(bold=True, size=12)
+    ws.cell(row=row, column=4, value=totale_qta).font = Font(bold=True, size=12)
+    
+    # Larghezza colonne
+    ws.column_dimensions['A'].width = 15
+    ws.column_dimensions['B'].width = 25
+    ws.column_dimensions['C'].width = 15
+    ws.column_dimensions['D'].width = 12
+    ws.column_dimensions['E'].width = 15
+    ws.column_dimensions['F'].width = 20
+    
+    buffer = BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+    return buffer
+
+
+def genera_pdf_report(richieste, mese, anno):
+    """Genera il file PDF nel formato richiesto."""
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.lib.units import mm
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+    from reportlab.lib.enums import TA_CENTER
+    
+    buffer = BytesIO()
+    
+    doc = SimpleDocTemplate(
+        buffer, 
+        pagesize=A4, 
+        topMargin=15*mm, 
+        bottomMargin=20*mm,
+        leftMargin=15*mm,
+        rightMargin=15*mm
+    )
+    
+    elements = []
+    
+    # Titolo
+    title_style = ParagraphStyle(
+        'Title',
+        fontName='Helvetica-Bold',
+        fontSize=12,
+        alignment=TA_CENTER,
+        spaceAfter=10*mm
+    )
+    elements.append(Paragraph(f"Riepilogo Buoni Wellfare Mese: {mese} Anno: {anno}", title_style))
+    
+    # Stili per le righe
+    riga1_style = ParagraphStyle(
+        'Riga1',
+        fontName='Helvetica',
+        fontSize=10,
+        leading=12
+    )
+    
+    riga2_style = ParagraphStyle(
+        'Riga2',
+        fontName='Helvetica',
+        fontSize=9,
+        leading=11,
+        leftIndent=10*mm
+    )
+    
+    totale_style = ParagraphStyle(
+        'Totale',
+        fontName='Helvetica-Bold',
+        fontSize=10,
+        spaceBefore=3*mm,
+        spaceAfter=8*mm
+    )
+    
+    # Raggruppa per valore buono
+    richieste_list = list(richieste)
+    valori_buono = {}
+    for r in richieste_list:
+        valore = int(r.valore_buono)
+        if valore not in valori_buono:
+            valori_buono[valore] = []
+        valori_buono[valore].append(r)
+    
+    # Per ogni gruppo di valore buono
+    for valore in sorted(valori_buono.keys(), reverse=True):
+        gruppo = valori_buono[valore]
+        totale_qta_gruppo = 0
+        totale_valore_gruppo = 0
+        
+        for r in gruppo:
+            data_cons = r.data_consegna.strftime('%d/%m/%Y') if r.data_consegna else '-'
+            totale = int(r.totale_buono)
+            qta = r.qta_buono
+            
+            # Riga 1: NOMINATIVO      N° RICHIESTA xxxxxxxx  Per un totale di XXX €
+            riga1 = f"<b>{r.nominativo}</b> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; N ° RICHIESTA <b>{r.num_richiesta}</b> &nbsp;&nbsp; Per un totale di <b>{totale} €</b>"
+            
+            # Riga 2: DETTAGLIO: N°X BUONI Da XX € --- Data Cons Cliente xx/xx/xxxx
+            riga2 = f"DETTAGLIO: N°{qta} BUONI Da {valore} € --- Data Cons Cliente {data_cons}"
+            
+            # Box con bordo
+            box_content = [
+                [Paragraph(riga1, riga1_style)],
+                [Paragraph(riga2, riga2_style)],
+            ]
+            
+            box = Table(box_content, colWidths=[170*mm])
+            box.setStyle(TableStyle([
+                ('BOX', (0, 0), (-1, -1), 0.5, colors.black),
+                ('TOPPADDING', (0, 0), (-1, -1), 3*mm),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 3*mm),
+                ('LEFTPADDING', (0, 0), (-1, -1), 3*mm),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 3*mm),
+            ]))
+            
+            elements.append(box)
+            elements.append(Spacer(1, 2*mm))
+            
+            totale_qta_gruppo += qta
+            totale_valore_gruppo += totale
+        
+        # Totale per valore buono
+        elements.append(Paragraph(
+            f"Totale buoni da {valore}€ X {totale_qta_gruppo} = {totale_valore_gruppo} €",
+            totale_style
+        ))
+    
+    # Numero pagina
+    def add_page_number(canvas, doc):
+        canvas.saveState()
+        canvas.setFont('Helvetica', 9)
+        canvas.drawCentredString(A4[0]/2, 10*mm, f"Pagina {doc.page}")
+        canvas.restoreState()
+    
+    doc.build(elements, onFirstPage=add_page_number, onLaterPages=add_page_number)
+    buffer.seek(0)
+    return buffer
 # ============================================================
 # IMPORT EMAIL (Admin)
 # ============================================================
