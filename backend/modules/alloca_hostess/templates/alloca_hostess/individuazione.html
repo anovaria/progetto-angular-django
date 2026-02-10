@@ -257,7 +257,50 @@
         <span class="badge bg-info">NHostess: {{ periodo.num_hostess }}</span>
     </div>
 </div>
-
+<!-- Navigazione Periodo -->
+<div class="periodo-navigator mb-3">
+    <div class="d-flex align-items-center gap-2 bg-white p-2 rounded shadow-sm">
+        {% if periodo_prec %}
+        <a href="?periodo={{ periodo_prec.id }}" class="btn btn-outline-secondary btn-sm" title="Periodo precedente">
+            <span class="material-icons" style="font-size: 18px;">skip_previous</span>
+        </a>
+        {% else %}
+        <button class="btn btn-outline-secondary btn-sm" disabled>
+            <span class="material-icons" style="font-size: 18px;">skip_previous</span>
+        </button>
+        {% endif %}
+        
+        <select class="form-select form-select-sm" style="width: auto; min-width: 280px;" 
+                onchange="window.location.href='?periodo=' + this.value">
+            {% for p in tutti_periodi %}
+            <option value="{{ p.id }}" {% if p.id == periodo.id %}selected{% endif %}>
+                Periodo {{ p.id }} ({{ p.data_inizio|date:"d/m/Y" }} - {{ p.data_fine|date:"d/m/Y" }})
+                {% if p.data_inizio <= oggi and p.data_fine >= oggi %}★{% endif %}
+            </option>
+            {% endfor %}
+        </select>
+        
+        {% if periodo_succ %}
+        <a href="?periodo={{ periodo_succ.id }}" class="btn btn-outline-secondary btn-sm" title="Periodo successivo">
+            <span class="material-icons" style="font-size: 18px;">skip_next</span>
+        </a>
+        {% else %}
+        <button class="btn btn-outline-secondary btn-sm" disabled>
+            <span class="material-icons" style="font-size: 18px;">skip_next</span>
+        </button>
+        {% endif %}
+        
+        <span class="badge {% if periodo.data_inizio <= oggi and periodo.data_fine >= oggi %}bg-success{% else %}bg-secondary{% endif %} ms-2">
+            {% if periodo.data_inizio > oggi %}
+                Futuro
+            {% elif periodo.data_fine < oggi %}
+                Passato
+            {% else %}
+                Corrente
+            {% endif %}
+        </span>
+    </div>
+</div>
 <!-- Navigazione giorno -->
 <div class="day-navigator">
     {% if giorno_prec %}

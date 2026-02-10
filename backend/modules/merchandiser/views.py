@@ -140,7 +140,11 @@ def slot_list(request):
     if utente_id:
         slots = slots.filter(utente_id=utente_id)
     if solo_attivi:
-        slots = slots.filter(attivo=True, data_fine__gte=oggi)
+        slots = slots.filter(
+            attivo=True,
+            data_inizio__lte=oggi,   # Già iniziato ✅
+            data_fine__gte=oggi      # Non ancora finito ✅
+    )
     
     slots = slots.order_by('-data_inizio')[:100]
     

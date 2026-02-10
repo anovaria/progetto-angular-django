@@ -41,7 +41,7 @@
         </a>
 
         <!-- PALLET-PROMOTER - Menu espandibile -->
-        <ng-container *ngIf="hasGroup(groups, ['pallet_manager', 'ufficio qualita', 'commerciale'])">
+        <ng-container *ngIf="hasGroup(groups, ['ufficio qualita', 'commerciale'])">
           <a mat-list-item (click)="togglePalletMenu()" class="menu-parent">
             <mat-icon>inventory_2</mat-icon>
             <span *ngIf="!isCollapsed">Pallet-Promoter</span>
@@ -70,7 +70,7 @@
           </div>
         </ng-container>
 
-        <!-- MERCHANDISER - Menu espandibile -->
+        <!-- MERCHANDISER - Menu espandibile (SENZA AGENZIE) -->
         <ng-container *ngIf="hasGroup(groups, ['merchandiser_manager', 'ufficio qualita'])">
           <a mat-list-item (click)="toggleMerchandiserMenu()" class="menu-parent">
             <mat-icon>store</mat-icon>
@@ -97,12 +97,16 @@
               <mat-icon>assignment</mat-icon>
               <span>Gestione Attività</span>
             </a>
-            <a mat-list-item routerLink="/django/merchandiser-agenzie" routerLinkActive="active">
-              <mat-icon>assignment</mat-icon>
-              <span>Gestione Agenzie</span>
-            </a>
+            <!-- RIMOSSO GESTIONE AGENZIE DA QUI -->
           </div>
         </ng-container>
+
+        <!-- GESTIONE AGENZIE - AL PRIMO LIVELLO (NUOVO) -->
+        <a mat-list-item *ngIf="hasGroup(groups, ['merchandiser_manager', 'ufficio qualita', 'centralino'])"
+          routerLink="/django/merchandiser-agenzie" routerLinkActive="active">
+          <mat-icon>business</mat-icon>
+          <span *ngIf="!isCollapsed">Gestione Agenzie</span>
+        </a>
 
         <!-- ALLOCA HOSTESS - Menu espandibile -->
         <ng-container *ngIf="hasGroup(groups, ['centralino', 'ufficio qualita'])">

@@ -65,19 +65,208 @@
     .hostess-name {
         font-weight: 600;
     }
+    
+    /* STILI PER STAMPA - OTTIMIZZATO PER 12 SLOT FISSI */
+    @media print {
+        /* Forza orientamento orizzontale e margini ottimali */
+        @page {
+            size: A4 landscape;
+            margin: 1.2cm 1cm;
+        }
+        
+        /* Nascondi elementi non necessari */
+        .no-print {
+            display: none !important;
+        }
+        
+        /* Header stampa */
+        .print-header {
+            display: block !important;
+            text-align: center;
+            margin-bottom: 10px;
+            border-bottom: 2px solid #333;
+            padding-bottom: 6px;
+        }
+        
+        .print-header h2 {
+            margin: 0;
+            font-size: 14pt;
+            font-weight: 700;
+        }
+        
+        .print-header h4 {
+            margin: 3px 0 0 0;
+            font-weight: normal;
+            font-size: 11pt;
+        }
+        
+        /* Tabella stampa - OTTIMIZZATA PER LEGGIBILITÀ */
+        .orari-table {
+            font-size: 8pt !important;
+            border-collapse: collapse;
+            width: 100%;
+            margin: 0;
+        }
+        
+        .orari-table th {
+            background: #333 !important;
+            color: white !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+            padding: 4px 3px !important;
+            border: 0.8px solid #333;
+            font-size: 8pt !important;
+            line-height: 1.2;
+            font-weight: 700;
+        }
+        
+        .orari-table td {
+            border: 0.8px solid #999;
+            padding: 3px 2px !important;
+            font-size: 7.5pt !important;
+            line-height: 1.2;
+        }
+        
+        .orari-table input {
+            border: none !important;
+            font-weight: 600;
+            text-align: center;
+            width: 100%;
+            background: transparent;
+            font-size: 7.5pt !important;
+            padding: 1px 0 !important;
+            margin: 0 !important;
+        }
+        
+        /* Larghezze colonne BILANCIATE per riempire A4 landscape */
+        .orari-table th:nth-child(1),
+        .orari-table td:nth-child(1) {
+            width: 30px !important;  /* Slot */
+        }
+        
+        .orari-table th:nth-child(2),
+        .orari-table td:nth-child(2) {
+            width: 95px !important;  /* Hostess */
+        }
+        
+        .orari-table th:nth-child(3),
+        .orari-table td:nth-child(3) {
+            width: 80px !important;  /* Agenzia */
+        }
+        
+        .orari-table th:nth-child(4),
+        .orari-table td:nth-child(4) {
+            width: 90px !important;  /* Fornitore */
+        }
+        
+        .orari-table th:nth-child(5),
+        .orari-table th:nth-child(6),
+        .orari-table th:nth-child(7),
+        .orari-table th:nth-child(8),
+        .orari-table td:nth-child(5),
+        .orari-table td:nth-child(6),
+        .orari-table td:nth-child(7),
+        .orari-table td:nth-child(8) {
+            width: 48px !important;  /* Orari */
+        }
+        
+        .orari-table th:nth-child(9),
+        .orari-table td:nth-child(9) {
+            width: auto !important;  /* Note - riempie spazio rimanente */
+            min-width: 80px !important;
+        }
+        
+        /* Card styling */
+        .card {
+            border: none;
+            box-shadow: none;
+            margin: 0 !important;
+        }
+        
+        .card-body {
+            padding: 0 !important;
+        }
+        
+        .card-header {
+            background: #f5f5f5 !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+            border-bottom: 1.5px solid #333;
+            padding: 5px 8px !important;
+            font-size: 9pt !important;
+            margin-bottom: 6px;
+            font-weight: 600;
+        }
+        
+        /* Evita page break */
+        .orari-table,
+        .card {
+            page-break-inside: avoid !important;
+        }
+        
+        .orari-table tr {
+            page-break-inside: avoid !important;
+            page-break-after: auto !important;
+        }
+        
+        /* Slot number e nomi leggibili */
+        .slot-number {
+            font-size: 7.5pt !important;
+            font-weight: 700;
+        }
+        
+        .hostess-name {
+            font-size: 7.5pt !important;
+            font-weight: 600;
+        }
+        
+        /* Footer stampa */
+        .print-footer {
+            display: block !important;
+            margin-top: 10px;
+            padding-top: 6px;
+            border-top: 1px solid #ccc;
+            font-size: 8pt;
+            text-align: center;
+            color: #666;
+        }
+        
+        /* Riduci spazi generali */
+        body {
+            margin: 0;
+            padding: 0;
+        }
+    }
+    
+    /* Header e footer nascosti di default */
+    .print-header,
+    .print-footer {
+        display: none;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
+<!-- Header stampa (visibile solo in stampa) -->
+<div class="print-header">
+    <h2>GROS CIDAC - Registrazione Orari Hostess</h2>
+    <h4>{{ data|date:"l d F Y"|upper }}</h4>
+</div>
+
+<!-- Header schermo -->
+<div class="d-flex justify-content-between align-items-center mb-4 no-print">
     <h4 class="mb-0">
         <span class="material-icons" style="vertical-align: middle;">access_time</span>
         Registrazione Orari Hostess
     </h4>
+    <button type="button" class="btn btn-primary" onclick="window.print()">
+        <span class="material-icons" style="vertical-align: middle; font-size: 18px;">print</span>
+        Stampa Report
+    </button>
 </div>
 
 <!-- Data fissa: solo giorno corrente -->
-<div class="date-selector">
+<div class="date-selector no-print">
     <h5>
         <span class="material-icons" style="vertical-align: middle; margin-right: 10px;">today</span>
         {{ data|date:"l d F Y"|upper }}
@@ -87,7 +276,7 @@
 <!-- Tabella Orari -->
 <div class="card">
     <div class="card-header">
-        <span class="material-icons" style="vertical-align: middle;">schedule</span>
+        <span class="material-icons no-print" style="vertical-align: middle;">schedule</span>
         Orari Giornalieri - {{ presenze_hostess|length }} Slot
     </div>
     <div class="card-body p-0">
@@ -97,22 +286,22 @@
                     <th style="width: 60px;">Slot</th>
                     <th>Hostess</th>
                     <th>Agenzia</th>
+                    <th>Fornitore</th>
                     <th>I.Mattino</th>
                     <th>U.Mattino</th>
                     <th>I.Pomeriggio</th>
                     <th>U.Pomeriggio</th>
-                    <th>Fornitore</th>
                     <th style="width: 150px;">Note</th>
-                    <th style="width: 60px;"></th>
+                    <th class="no-print" style="width: 60px;"></th>
                 </tr>
             </thead>
             <tbody>
                 {% for item in presenze_hostess %}
-                <tr data-slot="{{ item.slot }}" data-data="{{ data|date:'Y-m-d' }}">
+                <tr>
                     <td class="slot-number">{{ item.slot }}</td>
-                    <td>
+                    <td class="hostess-name">
                         {% if item.presenza.hostess %}
-                            <div class="hostess-name">{{ item.presenza.hostess.nominativo }}</div>
+                            {{ item.presenza.hostess.nominativo|truncatechars:25 }}
                         {% else %}
                             <span class="text-muted">-</span>
                         {% endif %}
@@ -125,34 +314,6 @@
                         {% endif %}
                     </td>
                     <td>
-                        <input type="time" 
-                               class="orario-input" 
-                               name="ingresso_mattino" 
-                               value="{% if item.presenza.ingresso_mattino %}{{ item.presenza.ingresso_mattino|time:'H:i' }}{% endif %}"
-                               ondblclick="setCurrentTime(this)">
-                    </td>
-                    <td>
-                        <input type="time" 
-                               class="orario-input" 
-                               name="uscita_mattino" 
-                               value="{% if item.presenza.uscita_mattino %}{{ item.presenza.uscita_mattino|time:'H:i' }}{% endif %}"
-                               ondblclick="setCurrentTime(this)">
-                    </td>
-                    <td>
-                        <input type="time" 
-                               class="orario-input" 
-                               name="ingresso_pomeriggio" 
-                               value="{% if item.presenza.ingresso_pomeriggio %}{{ item.presenza.ingresso_pomeriggio|time:'H:i' }}{% endif %}"
-                               ondblclick="setCurrentTime(this)">
-                    </td>
-                    <td>
-                        <input type="time" 
-                               class="orario-input" 
-                               name="uscita_pomeriggio" 
-                               value="{% if item.presenza.uscita_pomeriggio %}{{ item.presenza.uscita_pomeriggio|time:'H:i' }}{% endif %}"
-                               ondblclick="setCurrentTime(this)">
-                    </td>
-                    <td>
                         {% if item.presenza.fornitore %}
                             {{ item.presenza.fornitore.nome|truncatechars:25 }}
                         {% else %}
@@ -160,24 +321,59 @@
                         {% endif %}
                     </td>
                     <td>
+                        <input type="time" 
+                               name="ingresso_mattino" 
+                               value="{% if item.presenza.ingresso_mattino %}{{ item.presenza.ingresso_mattino|time:'H:i' }}{% endif %}"
+                               data-slot="{{ item.slot }}"
+                               data-campo="ingresso_mattino"
+                               ondblclick="setCurrentTime(this)">
+                    </td>
+                    <td>
+                        <input type="time" 
+                               name="uscita_mattino" 
+                               value="{% if item.presenza.uscita_mattino %}{{ item.presenza.uscita_mattino|time:'H:i' }}{% endif %}"
+                               data-slot="{{ item.slot }}"
+                               data-campo="uscita_mattino"
+                               ondblclick="setCurrentTime(this)">
+                    </td>
+                    <td>
+                        <input type="time" 
+                               name="ingresso_pomeriggio" 
+                               value="{% if item.presenza.ingresso_pomeriggio %}{{ item.presenza.ingresso_pomeriggio|time:'H:i' }}{% endif %}"
+                               data-slot="{{ item.slot }}"
+                               data-campo="ingresso_pomeriggio"
+                               ondblclick="setCurrentTime(this)">
+                    </td>
+                    <td>
+                        <input type="time" 
+                               name="uscita_pomeriggio" 
+                               value="{% if item.presenza.uscita_pomeriggio %}{{ item.presenza.uscita_pomeriggio|time:'H:i' }}{% endif %}"
+                               data-slot="{{ item.slot }}"
+                               data-campo="uscita_pomeriggio"
+                               ondblclick="setCurrentTime(this)">
+                    </td>
+                    <td>
                         <input type="text" 
                                name="nota" 
                                class="form-control form-control-sm" 
                                value="{{ item.presenza.nota|default:'' }}"
+                               data-slot="{{ item.slot }}"
+                               data-campo="nota"
                                placeholder="Note...">
                     </td>
-                    <td>
+                    <td class="no-print">
                         <button type="button" 
-                                class="btn btn-sm btn-outline-success btn-salva" 
-                                onclick="salvaRiga(this)">
+                                class="btn btn-sm btn-success" 
+                                onclick="salvaOrario({{ item.slot }})"
+                                title="Salva">
                             <span class="material-icons" style="font-size: 16px;">save</span>
                         </button>
                     </td>
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="10" class="text-center text-muted py-4">
-                        Nessuna presenza per questa data
+                    <td colspan="10" class="text-center text-muted">
+                        Nessun slot disponibile
                     </td>
                 </tr>
                 {% endfor %}
@@ -186,7 +382,13 @@
     </div>
 </div>
 
-<div class="mt-3 text-muted">
+<!-- Footer stampa (visibile solo in stampa) -->
+<div class="print-footer">
+    <p>Stampato il: {% now "d/m/Y H:i" %}</p>
+</div>
+
+<!-- Info utente -->
+<div class="mt-3 text-muted no-print">
     <span class="material-icons" style="font-size: 16px; vertical-align: middle;">info</span>
     Doppio click sui campi orario per inserire l'ora corrente
 </div>
@@ -194,60 +396,51 @@
 
 {% block extra_js %}
 <script>
-// Inserisce orario corrente su doppio click
+// Imposta ora corrente con doppio click
 function setCurrentTime(input) {
     const now = new Date();
     const hours = String(now.getHours()).padStart(2, '0');
     const minutes = String(now.getMinutes()).padStart(2, '0');
     input.value = `${hours}:${minutes}`;
-    input.focus();
+    
+    // Auto-salva dopo aver impostato l'ora
+    const slot = input.dataset.slot;
+    salvaOrario(slot);
 }
 
-function salvaRiga(btn) {
-    const row = btn.closest('tr');
-    const slot = row.dataset.slot;
-    const giorno = row.dataset.data;
-    
+// Salva orario singolo slot
+function salvaOrario(slot) {
     const formData = new FormData();
+    formData.append('giorno', '{{ data|date:"Y-m-d" }}');
     formData.append('slot', slot);
-    formData.append('giorno', giorno);
-    formData.append('ingresso_mattino', row.querySelector('[name="ingresso_mattino"]').value);
-    formData.append('uscita_mattino', row.querySelector('[name="uscita_mattino"]').value);
-    formData.append('ingresso_pomeriggio', row.querySelector('[name="ingresso_pomeriggio"]').value);
-    formData.append('uscita_pomeriggio', row.querySelector('[name="uscita_pomeriggio"]').value);
-    formData.append('nota', row.querySelector('[name="nota"]').value);
-    formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
     
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+    // Raccogli tutti i campi per questo slot
+    const inputs = document.querySelectorAll(`input[data-slot="${slot}"]`);
+    inputs.forEach(input => {
+        const campo = input.dataset.campo;
+        formData.append(campo, input.value || '');
+    });
     
-    fetch("{% url 'alloca_hostess:salva_orario_hostess' %}", {
+    fetch('{% url "alloca_hostess:salva_orario_hostess" %}', {
         method: 'POST',
         body: formData
     })
     .then(r => r.json())
     .then(data => {
         if (data.success) {
-            btn.innerHTML = '<span class="material-icons" style="font-size: 16px;">check</span>';
-            btn.classList.remove('btn-outline-success');
-            btn.classList.add('btn-success');
+            // Feedback visivo
+            const row = document.querySelector(`button[onclick="salvaOrario(${slot})"]`).closest('tr');
+            row.style.background = '#d4edda';
             setTimeout(() => {
-                btn.innerHTML = '<span class="material-icons" style="font-size: 16px;">save</span>';
-                btn.classList.remove('btn-success');
-                btn.classList.add('btn-outline-success');
-                btn.disabled = false;
-            }, 1500);
+                row.style.background = '';
+            }, 1000);
         } else {
-            alert(data.error || 'Errore durante il salvataggio');
-            btn.innerHTML = '<span class="material-icons" style="font-size: 16px;">error</span>';
-            btn.disabled = false;
+            alert('Errore: ' + (data.error || 'Sconosciuto'));
         }
     })
     .catch(err => {
-        console.error(err);
+        console.error('Errore:', err);
         alert('Errore durante il salvataggio');
-        btn.innerHTML = '<span class="material-icons" style="font-size: 16px;">error</span>';
-        btn.disabled = false;
     });
 }
 </script>

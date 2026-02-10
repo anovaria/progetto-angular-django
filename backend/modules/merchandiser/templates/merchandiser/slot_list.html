@@ -2,6 +2,24 @@
 
 {% block title %}Slot - Merchandiser{% endblock %}
 
+{% block extra_css %}
+<style>
+    .note-cell {
+        max-width: 300px;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+    }
+    
+    .note-highlight {
+        background: #fff9c4;
+        padding: 4px 8px;
+        border-radius: 4px;
+        display: inline-block;
+        border-left: 3px solid #ffd54f;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h4 class="mb-0">
@@ -78,7 +96,13 @@
                     <td>{{ slot.data_inizio|date:"d/m/Y" }}</td>
                     <td>{{ slot.data_fine|date:"d/m/Y" }}</td>
                     <td>{{ slot.giorni_attivi }}</td>
-                    <td>{{ slot.note|default:"-"|truncatechars:30 }}</td>
+                    <td class="note-cell">
+                        {% if slot.note %}
+                            <span class="note-highlight">{{ slot.note }}</span>
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
                     <td>
                         <a href="{% url 'merchandiser:slot_detail' slot.id %}" 
                            class="btn btn-sm btn-outline-primary" 

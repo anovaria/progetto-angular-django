@@ -77,6 +77,9 @@ def individuazione(request):
     oggi = timezone.now().date()
     periodo_id = request.GET.get('periodo')
     
+    # Carica tutti i periodi per il selettore (ordinati dal più recente)
+    tutti_periodi = Periodo.objects.all().order_by('-data_inizio')
+    
     if periodo_id:
         periodo = Periodo.objects.filter(pk=periodo_id).first()
     else:
@@ -89,7 +92,15 @@ def individuazione(request):
         periodo = Periodo.objects.filter(data_inizio__gt=oggi).order_by('data_inizio').first()
     
     if not periodo:
+        # Fallback: prendi l'ultimo periodo disponibile
+        periodo = Periodo.objects.order_by('-data_fine').first()
+    
+    if not periodo:
         return render(request, 'alloca_hostess/no_periodo.html')
+    
+    # Navigazione periodi (precedente e successivo)
+    periodo_prec = Periodo.objects.filter(data_fine__lt=periodo.data_inizio).order_by('-data_fine').first()
+    periodo_succ = Periodo.objects.filter(data_inizio__gt=periodo.data_fine).order_by('data_inizio').first()
     
     # Giorno selezionato
     giorno_str = request.GET.get('giorno')
@@ -110,7 +121,7 @@ def individuazione(request):
     elif giorno > periodo.data_fine:
         giorno = periodo.data_fine
     
-    # Navigazione
+    # Navigazione giorni
     giorno_prec = giorno - timedelta(days=1) if giorno > periodo.data_inizio else None
     giorno_succ = giorno + timedelta(days=1) if giorno < periodo.data_fine else None
     
@@ -142,6 +153,9 @@ def individuazione(request):
     
     context = {
         'periodo': periodo,
+        'tutti_periodi': tutti_periodi,
+        'periodo_prec': periodo_prec,
+        'periodo_succ': periodo_succ,
         'giorno': giorno,
         'giorno_prec': giorno_prec,
         'giorno_succ': giorno_succ,
@@ -153,9 +167,9 @@ def individuazione(request):
         'agenzie_list': agenzie_list,
         'buyer_list': Buyer.objects.all().order_by('nominativo'),
         'current_user': get_current_user(request),
+        'oggi': oggi,
     }
     return render(request, 'alloca_hostess/individuazione.html', context)
-
 
 @require_http_methods(["GET"])
 def cerca_fornitore(request):
