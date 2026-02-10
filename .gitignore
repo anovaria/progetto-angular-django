@@ -26,3 +26,4 @@ bazel-out/
 .DS_Store
 *.swp
 Thumbs.db
+backend/logs/django.log
