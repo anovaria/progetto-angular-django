@@ -16,6 +16,8 @@ urlpatterns = [
     # Report
     path('report/inventario/', views.report_inventario, name='report_inventario'),
     path('report/reparto/<str:tipo>/', views.report_reparto, name='report_reparto'),
+    path('export/excel/reparti/', views.export_excel_reparti_view, name='export_excel_reparti'),
+    path('report/bar/', views.report_bar, name='report_bar'),
     
     # API
     path('api/ccom/', views.api_ccom_list, name='api_ccom'),

@@ -1,5 +1,5 @@
-// src/app/login/login.component.ts - AGGIORNATO CON SSO
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+// src/app/login/login.component.ts
+import { Component } from '@angular/core';
 import { ApiService } from '../services/api';
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
@@ -26,11 +26,14 @@ export class LoginComponent {
   onLogin() {
     this.api.login(this.username, this.password).subscribe({
       next: res => {
-        console.log("RISPOSTA LOGIN:", res);
-        this.auth.setSession(res.username, res.groups || []);
+        console.log("RISPOSTA LOGIN COMPLETA:", JSON.stringify(res));
+        console.log("GROUPS:", res.groups);
+        this.auth.setSession(res.username, res.groups || [], res.apps || []);
+        console.log("SESSION SALVATA:", localStorage.getItem('session'));
         this.router.navigate(['/']);
       },
       error: err => {
+        console.log("ERRORE LOGIN:", err);
         this.errorMessage = err.status === 0
           ? 'Server non raggiungibile.'
           : err.status === 401

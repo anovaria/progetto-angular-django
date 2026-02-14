@@ -45,6 +45,7 @@ def index(request):
     selected_linee = request.GET.getlist('linea')  # Selezione multipla
     linea_1_filter = request.GET.get('linea1', '') == '1'
     search_query = request.GET.get('search', '')
+    selected_descr = request.GET.get('descr', '')
     
     # Lista linee per il CCOM selezionato (solo se L1 attivo e CCOM selezionato)
     linea_list = []
@@ -90,7 +91,9 @@ def index(request):
             Q(descrart__icontains=search_query) |
             Q(ean__icontains=search_query)
         )
-    
+    if selected_descr:
+        articoli_query = articoli_query.filter(descrart__icontains=selected_descr)
+
     # Ordina
     articoli_query = articoli_query.order_by('linea_prodotto', 'tipo_riordino', 'fam', 'codart')
     
@@ -99,53 +102,60 @@ def index(request):
     articoli = articoli_query[:page_size]
     
     # Arricchisci con giacenze
-    articoli_data = []
-    for art in articoli:
-        # Filtra per EANPRINC = 1 (EAN principale)
-        giacenze = AllArticolo.objects.using('goldreport').filter(
-            codart=art.codart,
-            eanprinc=1
-        ).first()
+    # Se nessun filtro applicato, non caricare dati
+    has_filters = any([selected_ccom, selected_rep, selected_srep, selected_fam, selected_linee, linea_1_filter, search_query])
+
+    if not has_filters:
+        articoli_data = []
+    else:
+        articoli_data = []
+        for art in articoli:
+            # Filtra per EANPRINC = 1 (EAN principale)
+            giacenze = AllArticolo.objects.using('goldreport').filter(
+                codart=art.codart,
+                eanprinc=1
+            ).first()
+            
+            if giacenze:
+                giacenza_pdv = giacenze.giacenza_pdv or 0
+                giacenza_dep = giacenze.giacenza_deposito or 0
+            else:
+                giacenza_pdv = 0
+                giacenza_dep = 0
+            
+            # Genera barcode SVG
+            ean_normalized = normalize_ean_for_barcode(art.ean, art.tipoean)
+            barcode_svg = None
+            if ean_normalized:
+                barcode_svg = generate_ean13_svg(ean_normalized)
+            
+            articoli_data.append({
+                'codart': art.codart,
+                'descrart': art.descrart,
+                'sett': art.sett,
+                'rep': art.rep,
+                'descrrep': art.descrrep,
+                'srep': art.srep,
+                'descrsrep': art.descrsrep,
+                'fam': art.fam,
+                'descrfam': art.descrfam,
+                'ccom': art.ccom,
+                'descrccom': art.descrccom,
+                'linea_prodotto': art.linea_prodotto,
+                'descr_linea': art.descr_linea,
+                'tipo_riordino': art.tipo_riordino,
+                'stato': art.stato,
+                'ean': art.ean,
+                'tipoean': art.tipoean,
+                'giacenza_pdv': float(giacenza_pdv) if giacenza_pdv else 0,
+                'giacenza_deposito': float(giacenza_dep) if giacenza_dep else 0,
+                'pracq': float(art.pracq) if art.pracq else 0,
+                'iva': float(art.iva) if art.iva else 0,
+                'descforn': art.descforn,
+                'barcode_svg': barcode_svg,
+                'codartfo': art.codartfo,
+            })
         
-        if giacenze:
-            giacenza_pdv = giacenze.giacenza_pdv or 0
-            giacenza_dep = giacenze.giacenza_deposito or 0
-        else:
-            giacenza_pdv = 0
-            giacenza_dep = 0
-        
-        # Genera barcode SVG
-        ean_normalized = normalize_ean_for_barcode(art.ean, art.tipoean)
-        barcode_svg = None
-        if ean_normalized:
-            barcode_svg = generate_ean13_svg(ean_normalized)
-        
-        articoli_data.append({
-            'codart': art.codart,
-            'descrart': art.descrart,
-            'sett': art.sett,
-            'rep': art.rep,
-            'descrrep': art.descrrep,
-            'srep': art.srep,
-            'descrsrep': art.descrsrep,
-            'fam': art.fam,
-            'descrfam': art.descrfam,
-            'ccom': art.ccom,
-            'descrccom': art.descrccom,
-            'linea_prodotto': art.linea_prodotto,
-            'descr_linea': art.descr_linea,
-            'tipo_riordino': art.tipo_riordino,
-            'stato': art.stato,
-            'ean': art.ean,
-            'tipoean': art.tipoean,
-            'giacenza_pdv': float(giacenza_pdv) if giacenza_pdv else 0,
-            'giacenza_deposito': float(giacenza_dep) if giacenza_dep else 0,
-            'pracq': float(art.pracq) if art.pracq else 0,
-            'iva': float(art.iva) if art.iva else 0,
-            'descforn': art.descforn,
-            'barcode_svg': barcode_svg,
-        })
-    
     context = {
         'ccom_list': ccom_list,
         'rep_list': rep_list,
@@ -161,8 +171,10 @@ def index(request):
         'linea1_checked': linea_1_filter,
         'search_query': search_query,
         'total_count': len(articoli_data),
+        'selected_descr': selected_descr,
+        'has_filters': has_filters,
     }
-    
+        
     return render(request, 'asso_articoli/main.html', context)
 
 
@@ -202,6 +214,7 @@ def export_excel_view(request):
     selected_linee = request.GET.getlist('linea')  # Selezione multipla
     linea_1_filter = request.GET.get('linea1', '') == '1'
     search_query = request.GET.get('search', '')
+    selected_descr = request.GET.get('descr', '')
     
     # Query
     articoli_query = MasterAssortimenti.objects.using('goldreport').select_related()
@@ -231,7 +244,9 @@ def export_excel_view(request):
             Q(descrart__icontains=search_query) |
             Q(ean__icontains=search_query)
         )
-    
+    if selected_descr:
+        articoli_query = articoli_query.filter(descrart__icontains=selected_descr)
+
     articoli_query = articoli_query.order_by('linea_prodotto', 'tipo_riordino', 'fam', 'codart')
     
     # Prepara dati per export
@@ -268,6 +283,7 @@ def export_excel_view(request):
             'pracq': float(art.pracq) if art.pracq else 0,
             'iva': float(art.iva) if art.iva else 0,
             'descforn': art.descforn,
+            'codartfo': art.codartfo,
         })
     
     # Genera Excel
@@ -284,7 +300,62 @@ def export_excel_view(request):
     
     return response
 
-
+def report_bar(request):
+    """
+    Report specifico per BAR
+    """
+    from .excel_utils import export_report_reparti
+    
+    # Famiglie BAR (dalla logica Access)
+    famiglie_bar = ['8979', '8940', '8943', '8970', '8971', '8942', '8962']
+    
+    # Query
+    articoli_query = MasterAssortimenti.objects.using('goldreport').filter(
+        fam__in=famiglie_bar,
+        fornprinc=1
+    ).order_by('fam', 'descrfam', 'codart') 
+    
+    # Prepara dati
+    articoli_data = []
+    for art in articoli_query:
+        # Filtro per lunghezza EAN (logica Access: Len([ean]) > 3 per alcune FAM)
+        if art.fam in ['8940', '8943', '8970']:
+            if not art.ean or len(str(art.ean)) <= 3:
+                continue
+        
+        giacenze = AllArticolo.objects.using('goldreport').filter(
+            codart=art.codart,
+            eanprinc=1
+        ).first()
+        
+        giacenza_pdv = giacenze.giacenza_pdv if giacenze else 0
+        giacenza_dep = giacenze.giacenza_deposito if giacenze else 0
+        
+    articoli_data.append({
+        'codart': art.codart,
+        'descrart': art.descrart,
+        'fam': art.fam,
+        'descrfam': art.descrfam,
+        'codartfo': art.codartfo,
+        'stato': art.stato,
+        'ean': art.ean,
+        'tipoean': art.tipoean,
+        'giacenza_pdv': float(giacenza_pdv) if giacenza_pdv else 0,
+        'descforn': art.descforn,  # AGGIUNGI QUESTO
+    })
+    
+    # Export Excel
+    excel_buffer = export_report_reparti(articoli_data, tipo_reparto='BAR')
+    
+    response = HttpResponse(
+        excel_buffer.getvalue(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    
+    filename = f'bar_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    
+    return response
 def report_inventario(request):
     """
     Report inventario (equivalente a r_StampaInv)
@@ -453,3 +524,93 @@ def api_ccom_list(request):
     ccom_list = list(ccom_query.order_by('ccom')[:50])
     
     return JsonResponse({'results': ccom_list})
+def export_excel_reparti_view(request):
+    """
+    Export Excel ridotto per reparti (senza CCOM, Linea, Prezzo, IVA, Fornitore)
+    """
+    from .excel_utils import export_report_reparti
+    
+    # Stessi filtri della vista principale
+    selected_ccom = request.GET.get('ccom', '')
+    selected_rep = request.GET.get('rep', '')
+    selected_srep = request.GET.get('srep', '')
+    selected_fam = request.GET.get('fam', '')
+    selected_linee = request.GET.getlist('linea')
+    linea_1_filter = request.GET.get('linea1', '') == '1'
+    search_query = request.GET.get('search', '')
+    selected_descr = request.GET.get('descr', '')
+    
+    # Query
+    articoli_query = MasterAssortimenti.objects.using('goldreport').select_related()
+    
+    if selected_ccom:
+        articoli_query = articoli_query.filter(
+            Q(ccom=selected_ccom) | Q(descrccom__icontains=selected_ccom)
+        )
+    
+    if selected_rep:
+        articoli_query = articoli_query.filter(rep=selected_rep)
+    
+    if selected_srep:
+        articoli_query = articoli_query.filter(srep=selected_srep)
+    
+    if selected_fam:
+        articoli_query = articoli_query.filter(fam=selected_fam)
+    
+    if linea_1_filter:
+        articoli_query = articoli_query.filter(fornprinc=1)
+        if selected_linee:
+            articoli_query = articoli_query.filter(linea_prodotto__in=selected_linee)
+    
+    if search_query:
+        articoli_query = articoli_query.filter(
+            Q(codart__icontains=search_query) |
+            Q(descrart__icontains=search_query) |
+            Q(ean__icontains=search_query)
+        )
+    
+    if selected_descr:
+        articoli_query = articoli_query.filter(descrart__icontains=selected_descr)
+    
+    articoli_query = articoli_query.order_by('linea_prodotto', 'tipo_riordino', 'fam', 'codart')
+    
+    # Prepara dati
+    articoli_data = []
+    for art in articoli_query[:500]:
+        giacenze = AllArticolo.objects.using('goldreport').filter(
+            codart=art.codart,
+            eanprinc=1
+        ).first()
+        
+        if giacenze:
+            giacenza_pdv = giacenze.giacenza_pdv or 0
+            giacenza_dep = giacenze.giacenza_deposito or 0
+        else:
+            giacenza_pdv = 0
+            giacenza_dep = 0
+        
+        articoli_data.append({
+            'codart': art.codart,
+            'descrart': art.descrart,
+            'fam': art.fam,
+            'descrfam': art.descrfam,
+            'codartfo': art.codartfo,
+            'stato': art.stato,
+            'ean': art.ean,
+            'tipoean': art.tipoean,
+            'giacenza_pdv': float(giacenza_pdv) if giacenza_pdv else 0,
+            'descforn': art.descforn,
+        })
+    
+    # Genera Excel
+    excel_buffer = export_report_reparti(articoli_data, tipo_reparto='Reparti')
+    
+    response = HttpResponse(
+        excel_buffer.getvalue(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    
+    filename = f'reparti_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    
+    return response

@@ -37,7 +37,18 @@ SECRET_KEY = os.environ.get(
 LDAP_SERVER = os.environ.get("LDAP_SERVER", "SRVDC1.groscidac.local")
 LDAP_DOMAIN = os.environ.get("LDAP_DOMAIN", "GROSCIDAC")
 
-
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+    'x-auth-user',  # ← aggiungi questo
+]
 # HOSTS consentiti (Solo per sviluppo/default, da sovrascrivere in prod.py)
 ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
 
@@ -63,6 +74,7 @@ INSTALLED_APPS = [
     'modules.welfare',
     'modules.asso_articoli',
     'modules.scaricopromo',
+    'modules.active_users',
 ]
 
 # Middleware (Nessun cambiamento)
@@ -75,6 +87,7 @@ MIDDLEWARE = [
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'modules.active_users.middleware.ActiveUserMiddleware',
 ]
 
 # Autenticazione / REST Framework (Nessun cambiamento)

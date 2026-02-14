@@ -18,6 +18,8 @@ urlpatterns = [
     path('app/welfare/', include('modules.welfare.urls')),
     path('app/asso_articoli/', include('modules.asso_articoli.urls')),
     path('app/scaricopromo/', include('modules.scaricopromo.urls')),
+    path('api/active-users/', include('modules.active_users.urls')),
+
     # Aggiungi qui le nuove app:
     # path('app/magazzino/', include('modules.magazzino.urls')),
     # path('app/ordini/', include('modules.ordini.urls')),

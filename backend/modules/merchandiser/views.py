@@ -146,7 +146,7 @@ def slot_list(request):
             data_fine__gte=oggi      # Non ancora finito ✅
     )
     
-    slots = slots.order_by('-data_inizio')[:100]
+    slots = slots.order_by('merchandiser__cognome', 'merchandiser__nome', '-data_inizio')[:100]
     
     for s in slots[:3]:  # Mostra primi 3
         print(f"    Slot {s.id}: attivo={s.attivo}, data_fine={s.data_fine}")
@@ -267,6 +267,7 @@ def solo_orari(request):
     
     # Trova tutti gli slot attivi per questa data
     slots_attivi = Slot.objects.filter(
+        attivo=True, 
         data_inizio__lte=data,
         data_fine__gte=data
     ).select_related('merchandiser', 'utente').order_by('merchandiser__cognome')

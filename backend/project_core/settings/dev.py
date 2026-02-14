@@ -174,3 +174,4 @@ CSRF_COOKIE_HTTPONLY = False
 # IFRAME - Permetti embedding in Angular (porte diverse in dev)
 # =========================================================================
 MIDDLEWARE = [m for m in MIDDLEWARE if m != 'django.middleware.clickjacking.XFrameOptionsMiddleware']
+PORTAL_ENVIRONMENT = 'dev'

@@ -6,6 +6,9 @@
     <title>Assortimenti - Gestione Articoli</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
     <style>
         body {
             background-color: #f5f7fa;
@@ -70,20 +73,6 @@
             font-size: 0.7rem;
             font-weight: 600;
         }
-        .btn-export {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border: none;
-            color: white;
-            font-weight: 600;
-            padding: 0.75rem 2rem;
-            border-radius: 8px;
-            transition: transform 0.2s;
-        }
-        .btn-export:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-            color: white;
-        }
         .stats-badge {
             background: #e3f2fd;
             color: #1976d2;
@@ -106,7 +95,6 @@
             color: #495057;
             margin-bottom: 0.3rem;
         }
-        /* Stile per select multipla linee */
         .linea-select-container {
             position: relative;
         }
@@ -121,17 +109,11 @@
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
         }
-        /* Disabilitato quando L1 non attivo o CCOM non selezionato */
-        .linea-disabled {
-            background-color: #e9ecef;
-            cursor: not-allowed;
-        }
         .linea-hint {
             font-size: 0.75rem;
             color: #6c757d;
             margin-top: 2px;
         }
-        /* Animazione caricamento */
         .loading-linee {
             text-align: center;
             padding: 10px;
@@ -141,9 +123,31 @@
             width: 1rem;
             height: 1rem;
         }
+        /* Spinner overlay */
+        #loadingOverlay {
+            display: flex;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.9);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+        }
     </style>
 </head>
 <body>
+    <!-- Loading Overlay (UNO SOLO) -->
+    <div id="loadingOverlay">
+        <div style="text-align: center;">
+            <div class="spinner-border" role="status" style="width: 3rem; height: 3rem; color: #667eea;">
+                <span class="visually-hidden">Caricamento...</span>
+            </div>
+            <p style="margin-top: 1rem; font-weight: 600; color: #495057;">Caricamento in corso...</p>
+        </div>
+    </div>
 
     <!-- Header -->
     <div class="header-section" style="padding: 0.5rem 0; margin-bottom: 1rem;">
@@ -240,9 +244,19 @@
                                placeholder="Cod/Descr/EAN" value="{{ search_query }}">
                     </div>
                     
-                    <!-- Checkbox Fornitore Principale + Pulsanti -->
+                    <!-- Descrizione -->
+                    <div class="col-lg col-md-4 col-sm-6">
+                        <label for="descr" class="form-label">
+                            <span class="material-icons" style="vertical-align: middle; font-size: 1rem;">description</span>
+                            Descrizione
+                        </label>
+                        <input type="text" name="descr" id="descr" class="form-control form-control-sm" 
+                            placeholder="Cerca descrizione..." value="{{ selected_descr }}">
+                    </div>
+                    
+                    <!-- Checkbox Fornitore Principale -->
                     <div class="col-lg-auto col-md-4 col-sm-6">
-                        <div class="form-check mb-2">
+                        <div class="form-check">
                             <input class="form-check-input" type="checkbox" name="linea1" value="1" 
                                 id="linea1" {% if linea1_checked %}checked{% endif %}>
                             <label class="form-check-label" for="linea1" style="font-size: 0.85rem;">
@@ -250,21 +264,48 @@
                             </label>
                             <div class="text-muted" style="font-size: 0.7rem; margin-left: 1.5rem;">(abilita selezione Linee)</div>
                         </div>
-                        <div class="d-flex gap-1">
-                            <button type="submit" class="btn btn-primary btn-sm">
-                                <span class="material-icons" style="vertical-align: middle; font-size: 1rem;">filter_alt</span>
-                                Applica
-                            </button>
-                            <a href="{% url 'asso_articoli:export_excel' %}?{{ request.GET.urlencode }}" 
-                            class="btn btn-success btn-sm">
-                                <span class="material-icons" style="vertical-align: middle; font-size: 1rem;">file_download</span>
-                                Excel
-                            </a>
+                    </div>
+                    </div>
+
+                <!-- RIGA PULSANTI -->
+                <div class="row g-2 mt-3">
+                    <div class="col-12">
+                        <div class="d-flex justify-content-between flex-wrap align-items-center">
+                            <!-- Pulsanti Filtro (sinistra) -->
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-primary">
+                                    <span class="material-icons" style="vertical-align: middle;">filter_alt</span>
+                                    Applica Filtri
+                                </button>
+                                <a href="{% url 'asso_articoli:index' %}" class="btn btn-outline-secondary">
+                                    <span class="material-icons" style="vertical-align: middle;">restart_alt</span>
+                                    Reset Filtri
+                                </a>
+                            </div>
+                            
+                            <!-- Pulsanti Export (destra) -->
+                            <div class="d-flex gap-2">
+                                <a href="{% url 'asso_articoli:export_excel' %}?{{ request.GET.urlencode }}" 
+                                class="btn btn-success" title="Export completo per segreteria">
+                                    <span class="material-icons" style="vertical-align: middle;">file_download</span>
+                                    Excel
+                                </a>
+                                <a href="{% url 'asso_articoli:export_excel_reparti' %}?{{ request.GET.urlencode }}" 
+                                class="btn btn-warning" title="Export ridotto per reparti">
+                                    <span class="material-icons" style="vertical-align: middle;">file_download</span>
+                                    Reparti
+                                </a>
+                                <a href="{% url 'asso_articoli:report_bar' %}" 
+                                class="btn btn-info" title="Report BAR">
+                                    <span class="material-icons" style="vertical-align: middle;">local_bar</span>
+                                    BAR
+                                </a>
+                            </div>
                         </div>
                     </div>
                 </div>
                 
-                <!-- RIGA 2: Selezione Linee (visibile solo quando L1 attivo e CCOM selezionato) -->
+                <!-- RIGA 2: Selezione Linee -->
                 <div class="row g-2 mt-2" id="lineaRow" style="{% if not linea1_checked or not selected_ccom %}display: none;{% endif %}">
                     <div class="col-12">
                         <div class="card bg-light">
@@ -321,11 +362,11 @@
                             <th style="min-width: 60px;">Fam</th>
                             <th style="min-width: 100px;">Linea</th>
                             <th style="min-width: 80px;">CCOM</th>
-                            <th style="min-width: 100px;">EAN</th>
                             <th style="min-width: 120px;">Barcode</th>
                             <th class="text-end" style="min-width: 80px;">Giac.PDV</th>
                             <th class="text-end" style="min-width: 80px;">Giac.Dep</th>
                             <th style="min-width: 60px;">Stato</th>
+                            <th style="min-width: 80px;">CodArtFo</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -343,7 +384,6 @@
                                 {% endif %}
                             </td>
                             <td><small>{{ articolo.ccom }}</small></td>
-                            <td><code style="font-size: 0.8rem;">{{ articolo.ean }}</code></td>
                             <td class="barcode-cell">
                                 {% if articolo.barcode_svg %}
                                     {{ articolo.barcode_svg|safe }}
@@ -366,6 +406,7 @@
                                     <span class="badge bg-secondary badge-stato">{{ articolo.stato }}</span>
                                 {% endif %}
                             </td>
+                            <td><small>{{ articolo.codartfo }}</small></td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -381,58 +422,25 @@
             
             {% else %}
             <div class="text-center py-5">
+                {% if not has_filters %}
+                <span class="material-icons" style="font-size: 4rem; color: #667eea;">filter_alt</span>
+                <p class="text-muted mt-3">Seleziona almeno un filtro per visualizzare gli articoli.</p>
+                {% else %}
                 <span class="material-icons" style="font-size: 4rem; color: #ccc;">search_off</span>
                 <p class="text-muted mt-3">Nessun articolo trovato con i filtri selezionati.</p>
+                {% endif %}
             </div>
             {% endif %}
         </div>
-
-        <!-- Report Links -->
-<!--    
-        <div class="row mt-4 mb-5">
-            <div class="col-md-4">
-                <div class="card">
-                    <div class="card-body text-center">
-                        <span class="material-icons" style="font-size: 3rem; color: #667eea;">inventory</span>
-                        <h5 class="card-title mt-2">Report Inventario</h5>
-                        <p class="card-text text-muted">Stampa inventario completo con barcode</p>
-                        <a href="{% url 'asso_articoli:report_inventario' %}" class="btn btn-outline-primary btn-sm">
-                            Visualizza
-                        </a>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card">
-                    <div class="card-body text-center">
-                        <span class="material-icons" style="font-size: 3rem; color: #764ba2;">local_bar</span>
-                        <h5 class="card-title mt-2">Report BAR</h5>
-                        <p class="card-text text-muted">Articoli specifici reparto BAR</p>
-                        <a href="{% url 'asso_articoli:report_reparto' tipo='bar' %}" class="btn btn-outline-primary btn-sm">
-                            Visualizza
-                        </a>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card">
-                    <div class="card-body text-center">
-                        <span class="material-icons" style="font-size: 3rem; color: #e91e63;">restaurant</span>
-                        <h5 class="card-title mt-2">Report MACELLERIA</h5>
-                        <p class="card-text text-muted">Articoli specifici reparto MACELLERIA</p>
-                        <a href="{% url 'asso_articoli:report_reparto' tipo='macelleria' %}" class="btn btn-outline-primary btn-sm">
-                            Visualizza
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    -->
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     
     <script>
+    // Nascondi spinner appena lo script viene eseguito
+    document.getElementById('loadingOverlay').style.display = 'none';
+    
     document.addEventListener('DOMContentLoaded', function() {
         const ccomSelect = document.getElementById('ccom');
         const linea1Checkbox = document.getElementById('linea1');
@@ -440,15 +448,14 @@
         const lineaSelect = document.getElementById('linea');
         const loadingLinee = document.getElementById('loadingLinee');
         const clearLineeBtn = document.getElementById('clearLinee');
+        let isInitialLoad = true;
         
-        // Funzione per mostrare/nascondere la sezione linee
         function toggleLineaSection() {
             const ccomSelected = ccomSelect.value !== '';
             const l1Checked = linea1Checkbox.checked;
             
             if (ccomSelected && l1Checked) {
                 lineaRow.style.display = 'block';
-                // Carica le linee SOLO se non è il primo caricamento
                 if (!isInitialLoad) {
                     loadLineePerCcom(ccomSelect.value);
                 }
@@ -460,26 +467,20 @@
             }
         }
         
-        // Funzione per caricare le linee via AJAX
         function loadLineePerCcom(ccom) {
             if (!ccom) {
                 lineaSelect.innerHTML = '';
                 return;
             }
             
-            // Mostra loading
             loadingLinee.style.display = 'block';
             lineaSelect.style.display = 'none';
             
-            // Chiamata API
             fetch(`{% url 'asso_articoli:api_linee' %}?ccom=${encodeURIComponent(ccom)}`)
                 .then(response => response.json())
                 .then(data => {
-                    // Nascondi loading
                     loadingLinee.style.display = 'none';
                     lineaSelect.style.display = 'block';
-                    
-                    // Popola select
                     lineaSelect.innerHTML = '';
                     
                     if (data.results && data.results.length > 0) {
@@ -490,13 +491,6 @@
                             if (linea.descr_linea) {
                                 option.textContent += ' - ' + linea.descr_linea;
                             }
-                            // Mantieni selezioni precedenti se presenti
-                            {% if selected_linee %}
-                            const selectedLinee = {{ selected_linee|safe }};
-                            if (selectedLinee.includes(linea.linea_prodotto)) {
-                                option.selected = true;
-                            }
-                            {% endif %}
                             lineaSelect.appendChild(option);
                         });
                     } else {
@@ -515,10 +509,7 @@
                 });
         }
         
-        // Event listeners
-        let isInitialLoad = true;
         ccomSelect.addEventListener('change', function() {
-            // Quando cambia CCOM, svuota le selezioni linee precedenti
             lineaSelect.innerHTML = '';
             isInitialLoad = false;
             toggleLineaSection();
@@ -529,20 +520,12 @@
             toggleLineaSection();
         });
         
-        // Pulsante pulisci linee
         clearLineeBtn.addEventListener('click', function() {
-            // Deseleziona tutte le opzioni
             for (let option of lineaSelect.options) {
                 option.selected = false;
             }
         });
         
-        // Inizializzazione: se la pagina carica con valori già selezionati
-        // (es. dopo un submit), mantieni lo stato
-        {% if linea1_checked and selected_ccom %}
-        // La sezione è già visibile dal server-side rendering
-        // Le opzioni sono già popolate
-        {% endif %}
         // Forza selezione dai parametri URL
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get('ccom')) {
@@ -557,6 +540,37 @@
         if (urlParams.get('fam')) {
             document.getElementById('fam').value = urlParams.get('fam');
         }
+        
+        // Select2
+        const select2Config = {
+            theme: 'bootstrap-5',
+            allowClear: true,
+            width: '100%'
+        };
+        
+        $('#ccom').select2({...select2Config, placeholder: '-- Cerca CCOM --'});
+        $('#rep').select2({...select2Config, placeholder: '-- Reparto --'});
+        $('#srep').select2({...select2Config, placeholder: '-- Sottorep. --'});
+        $('#fam').select2({...select2Config, placeholder: '-- Famiglia --'});
+        
+        // Spinner per form submit
+        document.getElementById('filterForm').addEventListener('submit', function() {
+            document.getElementById('loadingOverlay').style.display = 'flex';
+        });
+        
+        // Spinner per tutti i link (Reset, BAR, export)
+        document.querySelectorAll('.filter-card a').forEach(function(link) {
+            link.addEventListener('click', function() {
+                document.getElementById('loadingOverlay').style.display = 'flex';
+                
+                // Se è un download (export o report), nascondi dopo 3 secondi
+                if (link.href.includes('export') || link.href.includes('report')) {
+                    setTimeout(function() {
+                        document.getElementById('loadingOverlay').style.display = 'none';
+                    }, 3000);
+                }
+            });
+        });
     });
     </script>
 </body>

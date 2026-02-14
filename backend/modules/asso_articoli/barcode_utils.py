@@ -36,7 +36,7 @@ def generate_ean13_svg(ean_code, add_checksum=True):
             'module_height': 10.0,
             'quiet_zone': 2.0,
             'font_size': 8,
-            'text_distance': 2.0,
+            'text_distance': 5.0,  # era 2.0, aumentato per staccare i numeri
         })
         
         svg_content = buffer.getvalue().decode('utf-8')
@@ -48,33 +48,21 @@ def generate_ean13_svg(ean_code, add_checksum=True):
 
 def generate_ean13_png(ean_code, add_checksum=True):
     """
-    Genera barcode EAN13 come immagine PNG
-    
-    Args:
-        ean_code: Codice EAN (12 cifre)
-        add_checksum: Se True, calcola automaticamente il checksum digit
-    
-    Returns:
-        BytesIO: Buffer contenente l'immagine PNG
+    Genera barcode EAN13 come immagine PNG (senza numeri, per Excel)
     """
     if not ean_code or len(str(ean_code)) < 12:
         return None
     
     try:
-        # Prendi i primi 12 caratteri
         ean_12 = str(ean_code)[:12]
-        
-        # Genera il barcode EAN13
         ean = barcode.get('ean13', ean_12, writer=ImageWriter())
         
-        # Genera PNG in memoria
         buffer = BytesIO()
         ean.write(buffer, options={
-            'module_width': 0.3,
-            'module_height': 10.0,
+            'module_width': 0.4,      # più largo
+            'module_height': 15.0,    # più alto
             'quiet_zone': 2.0,
-            'font_size': 10,
-            'text_distance': 2.0,
+            'write_text': False,      # NIENTE NUMERI
         })
         
         buffer.seek(0)

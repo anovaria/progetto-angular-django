@@ -42,12 +42,18 @@ export const AuthInterceptor: HttpInterceptorFn = (
 
   if (!isLoginRequest) {
     const session = localStorage.getItem('session');
+    console.log('INTERCEPTOR - session:', session);
     let token = null;
 
     if (session) {
       try {
         const parsed = JSON.parse(session);
         token = parsed.access || null;
+        console.log('INTERCEPTOR - parsed.username:', parsed.username);
+
+        if (parsed.username) {
+          headers['X-Auth-User'] = parsed.username;
+        }
       } catch { }
     }
 

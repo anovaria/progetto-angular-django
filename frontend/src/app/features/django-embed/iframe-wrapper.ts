@@ -22,7 +22,7 @@ export class IframeWrapperComponent implements AfterViewInit, OnDestroy {
   constructor(
     private sanitizer: DomSanitizer,
     private cdr: ChangeDetectorRef
-  ) {}
+  ) { }
 
   ngAfterViewInit(): void {
     // Delay per evitare NG0100
@@ -31,7 +31,7 @@ export class IframeWrapperComponent implements AfterViewInit, OnDestroy {
     }, 0);
   }
 
-  ngOnDestroy(): void {}
+  ngOnDestroy(): void { }
 
   private buildIframeUrl(): void {
     try {
@@ -43,11 +43,24 @@ export class IframeWrapperComponent implements AfterViewInit, OnDestroy {
         baseUrl = environment.apiBase.replace('/api', '');
       }
 
-      const fullUrl = `${baseUrl}${this.djangoPath}`;
+      // Aggiungi username per tracciamento attività
+      const session = localStorage.getItem('session');
+      let authParam = '';
+      if (session) {
+        try {
+          const parsed = JSON.parse(session);
+          if (parsed.username) {
+            const separator = this.djangoPath.includes('?') ? '&' : '?';
+            authParam = `${separator}_auth_user=${parsed.username}`;
+          }
+        } catch { }
+      }
+
+      const fullUrl = `${baseUrl}${this.djangoPath}${authParam}`;
       console.log('IframeWrapper: loading URL:', fullUrl);
       this.iframeUrl = this.sanitizer.bypassSecurityTrustResourceUrl(fullUrl);
       this.cdr.detectChanges();
-      
+
     } catch (error) {
       console.error('Errore costruzione URL iframe:', error);
       this.hasError = true;
@@ -74,7 +87,7 @@ export class IframeWrapperComponent implements AfterViewInit, OnDestroy {
     this.hasError = false;
     this.iframeUrl = null;
     this.cdr.detectChanges();
-    
+
     setTimeout(() => {
       this.buildIframeUrl();
     }, 100);

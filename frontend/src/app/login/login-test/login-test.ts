@@ -45,7 +45,7 @@ export class LoginTestComponent {
         next: (response) => {
           // Successo: LDAP ha funzionato!
           this.isError = false;
-          this.message = `✅ Login LDAP riuscito! Utente: ${response.username}. Gruppi: ${response.groups.join(', ')}`;
+          this.message = `✅ Login LDAP riuscito! Utente: ${response.username}. Gruppi: ${(response.groups || []).join(', ')}`;
         },
         error: () => {
           // L'errore viene gestito nel catchError del pipe (evita di gestirlo due volte)

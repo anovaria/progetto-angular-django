@@ -11,7 +11,7 @@ import { MatListModule } from '@angular/material/list';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
 import { environment } from '../../../environments/environment';
-import { DJANGO_EMBED_ROUTES } from '../../features/django-embed/django-embed.routes';
+import { APP_PERMISSIONS, AppConfig, canAccessApp, canAccessChild } from '../../config/app-permissions';
 
 @Component({
   selector: 'app-main-layout',
@@ -41,13 +41,9 @@ export class MainLayoutComponent implements AfterViewInit {
   isCollapsed = false;
   isMobile = false;
 
-  // Menu espandibili
-  palletExpanded = false;
-  merchandiserExpanded = false;
-  allocaExpanded = false;
-  welfareExpanded = false;
-
-  djangoRoutes = DJANGO_EMBED_ROUTES;
+  // Configurazione app centralizzata
+  apps = APP_PERMISSIONS;
+  expandedMenus: Set<string> = new Set();
 
   constructor(
     private authService: AuthService,
@@ -64,7 +60,6 @@ export class MainLayoutComponent implements AfterViewInit {
       this.isCollapsed = false;
     });
 
-    // Espandi automaticamente il menu corretto in base all'URL corrente
     this.expandMenuBasedOnUrl();
   }
 
@@ -79,16 +74,50 @@ export class MainLayoutComponent implements AfterViewInit {
    */
   private expandMenuBasedOnUrl() {
     const url = this.router.url;
-
-    if (url.startsWith('/django/pallet-promoter')) {
-      this.palletExpanded = true;
-    } else if (url.startsWith('/django/merchandiser')) {
-      this.merchandiserExpanded = true;
-    } else if (url.startsWith('/django/alloca-hostess')) {
-      this.allocaExpanded = true;
-    } else if (url.startsWith('/django/welfare')) {
-      this.welfareExpanded = true;
+    for (const app of this.apps) {
+      if (app.children && url.startsWith(app.path)) {
+        this.expandedMenus.add(app.path);
+        break;
+      }
     }
+  }
+
+  /**
+   * Verifica se l'utente può vedere un'app
+   */
+  canAccess(app: AppConfig, groups: string[]): boolean {
+    const username = this.authService.getUsername() || '';
+    return canAccessApp(app, groups, username);
+  }
+
+  /**
+   * Verifica se l'utente può vedere un child
+   */
+  canAccessChildItem(parent: AppConfig, child: AppConfig, groups: string[]): boolean {
+    const username = this.authService.getUsername() || '';
+    return canAccessChild(parent, child, groups, username);
+  }
+
+  /**
+   * Toggle menu espandibile
+   */
+  toggleMenu(path: string) {
+    if (!this.isCollapsed) {
+      if (this.expandedMenus.has(path)) {
+        this.expandedMenus.delete(path);
+      } else {
+        this.expandedMenus.add(path);
+      }
+    } else {
+      this.router.navigate([path]);
+    }
+  }
+
+  /**
+   * Controlla se un menu è espanso
+   */
+  isExpanded(path: string): boolean {
+    return this.expandedMenus.has(path);
   }
 
   toggleSidebar() {
@@ -97,62 +126,10 @@ export class MainLayoutComponent implements AfterViewInit {
     } else {
       this.isCollapsed = !this.isCollapsed;
       if (this.isCollapsed) {
-        // Chiudi tutti i submenu quando si collassa la sidebar
-        this.palletExpanded = false;
-        this.merchandiserExpanded = false;
-        this.allocaExpanded = false;
-        this.welfareExpanded = false;
+        this.expandedMenus.clear();
       }
     }
     this.forceLayoutUpdate();
-  }
-
-  /**
-   * Toggle menu Pallet-Promoter
-   */
-  togglePalletMenu() {
-    if (!this.isCollapsed) {
-      this.palletExpanded = !this.palletExpanded;
-    } else {
-      // Se sidebar è collassata, vai alla dashboard
-      this.router.navigate(['/django/pallet-promoter']);
-    }
-  }
-
-  /**
-   * Toggle menu Merchandiser
-   */
-  toggleMerchandiserMenu() {
-    if (!this.isCollapsed) {
-      this.merchandiserExpanded = !this.merchandiserExpanded;
-    } else {
-      // Se sidebar è collassata, vai alla dashboard
-      this.router.navigate(['/django/merchandiser']);
-    }
-  }
-
-  /**
-   * Toggle menu Alloca Hostess
-   */
-  toggleAllocaMenu() {
-    if (!this.isCollapsed) {
-      this.allocaExpanded = !this.allocaExpanded;
-    } else {
-      // Se sidebar è collassata, vai alla dashboard
-      this.router.navigate(['/django/alloca-hostess']);
-    }
-  }
-
-  /**
-   * Toggle menu Welfare
-   */
-  toggleWelfareMenu() {
-    if (!this.isCollapsed) {
-      this.welfareExpanded = !this.welfareExpanded;
-    } else {
-      // Se sidebar è collassata, vai alla dashboard
-      this.router.navigate(['/django/welfare']);
-    }
   }
 
   private forceLayoutUpdate() {
@@ -160,9 +137,6 @@ export class MainLayoutComponent implements AfterViewInit {
     setTimeout(() => {
       window.dispatchEvent(new Event('resize'));
     }, 0);
-    setTimeout(() => {
-      document.body.offsetHeight;
-    }, 50);
   }
 
   logout() {
@@ -177,14 +151,5 @@ export class MainLayoutComponent implements AfterViewInit {
 
   closeDrawerIfMobile() {
     if (this.isMobile) this.opened = false;
-  }
-
-  isAdmin(groups: string[]): boolean {
-    return groups.includes('itd');
-  }
-
-  hasGroup(groups: string[], allowedGroups: string[]): boolean {
-    if (groups.includes('itd')) return true;
-    return allowedGroups.some(g => groups.includes(g.toLowerCase()));
   }
 }

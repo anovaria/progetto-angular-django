@@ -8,7 +8,6 @@ export const routes: Routes = [
     path: '',
     component: MainLayoutComponent,
     canActivate: [AuthGuard],
-    data: { groups: ['ITD', 'Vendita'] },
     children: [
       {
         path: 'admin',
@@ -21,7 +20,18 @@ export const routes: Routes = [
       {
         path: 'django',
         loadChildren: () => import('./features/django-embed/django-embed.routes').then(m => m.DJANGO_EMBED_ROUTES)
-      }
+      },
+      {
+        path: 'unauthorized',
+        loadComponent: () => import('./services/unauthorized.component').then(m => m.UnauthorizedComponent)
+      },
+      {
+        path: 'active-users',
+        loadComponent: () =>
+          import('./features/active-users/active-users.component')
+            .then(m => m.ActiveUsersComponent),
+        data: { groups: ['itd'] }  // Solo ITD vede questa dashboard
+      },
     ]
   },
   {
