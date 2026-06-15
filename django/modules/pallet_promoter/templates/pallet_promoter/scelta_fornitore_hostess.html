@@ -1,0 +1,429 @@
+{% extends "pallet_promoter/base_minimal.html" %}
+{# Descrizione del template: Griglia settimanale per la scelta del fornitore per ogni slot hostess. Le righe sono i giorni del periodo e le colonne gli slot hostess. Il salvataggio è automatico (per slot) via AJAX al blur/selezione; il bottone "Salva Tutto" esegue un salvataggio massivo. #}
+{% load pallet_tags %}
+{% block title %}Scelta Fornitore per Hostess - Pallet-Promoter{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ── Header compatto ── */
+    .page-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        background: white;
+        padding: 8px 14px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 12px;
+        flex-wrap: wrap;
+    }
+
+    .page-header .back-btn {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        color: #555;
+        text-decoration: none;
+        font-size: 0.85em;
+        white-space: nowrap;
+    }
+    .page-header .back-btn:hover { color: #1976d2; }
+
+    .page-header .divider {
+        color: #ccc;
+        font-size: 1.2em;
+    }
+
+    .page-header .title {
+        font-weight: 600;
+        font-size: 0.95em;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        color: #333;
+    }
+    .page-header .title .bi { font-size: 18px; color: #1976d2; }
+
+    /* Dropdown periodi */
+    .periodo-select-wrap {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-left: auto;
+    }
+    .periodo-select-wrap label {
+        font-size: 0.8em;
+        color: #666;
+        white-space: nowrap;
+        margin: 0;
+    }
+    .periodo-select-wrap select {
+        font-size: 0.82em;
+        padding: 4px 8px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        color: #333;
+        cursor: pointer;
+        max-width: 240px;
+    }
+    .periodo-select-wrap select:focus { outline: none; border-color: #1976d2; }
+
+    .badge-hostess {
+        background: #e3f2fd;
+        color: #1565c0;
+        border-radius: 12px;
+        padding: 3px 10px;
+        font-size: 0.78em;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    /* ── Grid ── */
+    .grid-container {
+        background: white;
+        color: #212529;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        overflow: hidden;
+    }
+
+    .grid-scroll {
+        max-height: calc(100vh - 130px);
+        overflow-y: auto;
+    }
+
+    .grid-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.85em;
+    }
+
+    .grid-table th {
+        background: #1976d2;
+        color: white;
+        padding: 10px 8px;
+        text-align: center;
+        font-weight: 600;
+        position: sticky;
+        top: 0;
+        z-index: 2;
+    }
+
+    .grid-table th:first-child { text-align: left; min-width: 150px; }
+
+    .grid-table td {
+        padding: 4px;
+        border-bottom: 1px solid #eee;
+        vertical-align: top;
+    }
+
+    .grid-table tr:hover { background: #f5f9fc; }
+
+    .day-cell {
+        font-weight: 500;
+        padding: 8px !important;
+        white-space: nowrap;
+    }
+    .day-cell.weekend { color: #e91e63; }
+
+    .slot-cell { min-width: 140px; }
+
+    .slot-input-group { display: flex; flex-direction: column; gap: 2px; }
+
+    .fornitore-mini-search { position: relative; }
+
+    .fornitore-mini-search input {
+        width: 100%;
+        padding: 4px 6px;
+        border: 1px solid #ddd;
+        border-radius: 3px;
+        font-size: 0.85em;
+    }
+    .fornitore-mini-search input:focus { border-color: #1976d2; outline: none; }
+
+    .fornitore-dropdown {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 3px;
+        max-height: 150px;
+        overflow-y: auto;
+        z-index: 1000;
+        display: none;
+    }
+    .fornitore-dropdown.show { display: block; }
+
+    .fornitore-option {
+        padding: 5px 8px;
+        cursor: pointer;
+        font-size: 0.8em;
+        border-bottom: 1px solid #eee;
+    }
+    .fornitore-option:hover { background: #e3f2fd; }
+
+    .selected-forn {
+        font-size: 0.75em;
+        background: #e8f5e9;
+        color: #212529;
+        padding: 2px 5px;
+        border-radius: 3px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 2px;
+    }
+    .selected-forn .remove {
+        cursor: pointer;
+        color: #f44336;
+        font-weight: bold;
+        margin-left: 5px;
+    }
+
+    .nota-input {
+        width: 100%;
+        padding: 3px 5px;
+        border: 1px solid #ddd;
+        border-radius: 3px;
+        font-size: 0.8em;
+        margin-top: 2px;
+    }
+    .nota-input:focus { border-color: #1976d2; outline: none; }
+
+    .note-row td { padding-top: 0 !important; padding-bottom: 8px !important; }
+    .note-label { color: #e91e63; font-weight: 500; font-size: 0.8em; }
+
+    .btn-save-all {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        z-index: 100;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+{# Sezione: header compatto — titolo, badge numero hostess, dropdown selezione periodo #}
+<!-- HEADER MINIMALE -->
+<div class="page-header">
+    <span class="divider">|</span>
+    <div class="title">
+        <i class="bi bi-table"></i>
+        Scelta Fornitore Hostess
+    </div>
+    <span class="badge-hostess">
+        <i class="bi bi-people" style="font-size:13px;vertical-align:middle;"></i>
+        {{ num_slots }} Hostess
+    </span>
+
+    {# Dropdown periodi: al cambio chiama cambiaPeriodo() che ricarica la pagina con ?periodo=ID #}
+    <!-- DROPDOWN PERIODI -->
+    <div class="periodo-select-wrap">
+        <label for="periodo-select">
+            <i class="bi bi-calendar-range" style="font-size:14px;vertical-align:middle;"></i>
+            Periodo:
+        </label>
+        <select id="periodo-select" onchange="cambiaPeriodo(this.value)">
+            {# Opzione selezionata = periodo attivo; le altre sono i periodi recenti passati in contesto #}
+            {% for p in periodi %}
+            <option value="{{ p.id }}" {% if p.id == periodo.id %}selected{% endif %}>
+                {{ p.data_inizio|date:"d/m/Y" }} → {{ p.data_fine|date:"d/m/Y" }}
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+</div>
+
+{# Sezione: griglia principale — tabella giorni × slot con ricerca fornitore e nota per ogni cella #}
+<!-- GRIGLIA -->
+<div class="grid-container">
+    <div class="grid-scroll">
+        <table class="grid-table" id="grid-fornitore">
+            <thead>
+                <tr>
+                    <th>Giorno</th>
+                    {# Intestazioni colonne slot: formattate con zero padding (01, 02, ...) #}
+                    {% for s in slots %}
+                    <th>Hostess {{ s|stringformat:"02d" }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {# Per ogni giorno del periodo: una riga fornitore e una riga note #}
+                {% for g in giorni %}
+                {# La riga porta data-giorno per il JS che legge il giorno al salvataggio #}
+                <tr class="data-row" data-giorno="{{ g.data|date:'Y-m-d' }}">
+                    {# La classe "weekend" colora in rosso i giorni di sabato (w=6) e domenica (w=0) #}
+                    <td class="day-cell {% if g.data|date:'w' == '0' or g.data|date:'w' == '6' %}weekend{% endif %}">
+                        <div>{{ g.data|date:"l"|slice:":3" }} {{ g.data|date:"d/m/Y" }}</div>
+                    </td>
+                    {# Per ogni slot della riga: campo ricerca fornitore + hidden id + badge fornitore selezionato #}
+                    {% for s in slots %}
+                    {% with presenza=g.presenze|get_item:s %}
+                    <td class="slot-cell">
+                        <div class="slot-input-group">
+                            <div class="fornitore-mini-search">
+                                <input type="text" placeholder="Cerca fornitore..." class="forn-search"
+                                    data-giorno="{{ g.data|date:'Y-m-d' }}" data-slot="{{ s }}"
+                                    autocomplete="off">
+                                <div class="fornitore-dropdown"></div>
+                            </div>
+                            {# Campo hidden che conserva il codice fornitore selezionato per il salvataggio #}
+                            <input type="hidden" name="forn_{{ g.data|date:'Y-m-d' }}_{{ s }}" class="forn-id"
+                                value="{% if presenza and presenza.fornitore %}{{ presenza.fornitore.codice }}{% endif %}">
+                            {# Badge fornitore: visibile se già assegnato, nascosto altrimenti #}
+                            {% if presenza and presenza.fornitore %}
+                            <div class="selected-forn" id="sel-{{ g.data|date:'Y-m-d' }}-{{ s }}">
+                                <span>{{ presenza.fornitore.nome|truncatechars:20 }}</span>
+                                <span class="remove" onclick="clearForn('{{ g.data|date:'Y-m-d' }}', {{ s }})">&times;</span>
+                            </div>
+                            {% else %}
+                            <div class="selected-forn" id="sel-{{ g.data|date:'Y-m-d' }}-{{ s }}" style="display:none;"></div>
+                            {% endif %}
+                        </div>
+                    </td>
+                    {% endwith %}
+                    {% endfor %}
+                </tr>
+                {# Riga note: un campo testo per ogni slot, salvato automaticamente al blur #}
+                <tr class="note-row">
+                    <td><span class="note-label">NOTE:</span></td>
+                    {% for s in slots %}
+                    {% with presenza=g.presenze|get_item:s %}
+                    <td>
+                        <input type="text" class="nota-input"
+                            name="nota_{{ g.data|date:'Y-m-d' }}_{{ s }}"
+                            data-giorno="{{ g.data|date:'Y-m-d' }}" data-slot="{{ s }}"
+                            value="{{ presenza.nota_fornitore|default:'' }}" placeholder="Nota...">
+                    </td>
+                    {% endwith %}
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<button class="btn btn-primary btn-lg btn-save-all" onclick="salvaTutto()">
+    <i class="bi bi-floppy" style="vertical-align: middle;"></i>
+    Salva Tutto
+</button>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Cambio periodo tramite dropdown
+    function cambiaPeriodo(id) {
+        window.location.href = '?periodo=' + id;
+    }
+
+    // Ricerca fornitore
+    document.querySelectorAll('.forn-search').forEach(input => {
+        let timeout;
+        const giorno = input.dataset.giorno;
+        const slot = input.dataset.slot;
+        const dropdown = input.nextElementSibling;
+
+        input.addEventListener('keyup', function () {
+            clearTimeout(timeout);
+            const q = this.value;
+            if (q.length < 2) {
+                dropdown.innerHTML = '';
+                dropdown.classList.remove('show');
+                return;
+            }
+            timeout = setTimeout(() => {
+                fetch(`{% url 'pallet_promoter:cerca_fornitore' %}?q=${encodeURIComponent(q)}`)
+                    .then(r => r.text())
+                    .then(html => {
+                        const temp = document.createElement('div');
+                        temp.innerHTML = html;
+                        let options = '';
+                        temp.querySelectorAll('.fornitore-item').forEach(item => {
+                            options += `<div class="fornitore-option" data-id="${item.dataset.id}" data-nome="${item.dataset.nome}">${item.textContent}</div>`;
+                        });
+                        dropdown.innerHTML = options || '<div class="p-2 text-muted">Nessun risultato</div>';
+                        dropdown.classList.add('show');
+                    });
+            }, 300);
+        });
+
+        dropdown.addEventListener('click', function (e) {
+            const opt = e.target.closest('.fornitore-option');
+            if (opt) {
+                const id = opt.dataset.id;
+                const nome = opt.dataset.nome;
+                const row = input.closest('tr');
+                const hiddenInput = row.querySelector(`input[name="forn_${giorno}_${slot}"]`);
+                hiddenInput.value = id;
+                const selDiv = document.getElementById(`sel-${giorno}-${slot}`);
+                selDiv.innerHTML = `<span>${nome.substring(0, 20)}</span><span class="remove" onclick="clearForn('${giorno}', ${slot})">&times;</span>`;
+                selDiv.style.display = 'flex';
+                input.value = '';
+                dropdown.classList.remove('show');
+                salvaSlot(giorno, slot);
+            }
+        });
+    });
+
+    document.addEventListener('click', function (e) {
+        if (!e.target.closest('.fornitore-mini-search')) {
+            document.querySelectorAll('.fornitore-dropdown').forEach(d => d.classList.remove('show'));
+        }
+    });
+
+    document.querySelectorAll('.nota-input').forEach(input => {
+        input.addEventListener('blur', function () {
+            salvaSlot(this.dataset.giorno, this.dataset.slot);
+        });
+    });
+
+    function clearForn(giorno, slot) {
+        document.querySelector(`input[name="forn_${giorno}_${slot}"]`).value = '';
+        document.getElementById(`sel-${giorno}-${slot}`).style.display = 'none';
+        salvaSlot(giorno, slot);
+    }
+
+    function salvaSlot(giorno, slot) {
+        const fornId = document.querySelector(`input[name="forn_${giorno}_${slot}"]`).value;
+        const nota = document.querySelector(`input[name="nota_${giorno}_${slot}"]`).value;
+        const formData = new FormData();
+        formData.append('giorno', giorno);
+        formData.append('slot', slot);
+        formData.append('fornitore_id', fornId);
+        formData.append('nota', nota);
+        formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+        fetch("{% url 'pallet_promoter:salva_fornitore_slot' %}", { method: 'POST', body: formData });
+    }
+
+    function salvaTutto() {
+        const btn = document.querySelector('.btn-save-all');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Salvataggio...';
+        const rows = document.querySelectorAll('.data-row');
+        const promises = [];
+        rows.forEach(row => {
+            const giorno = row.dataset.giorno;
+            {% for s in slots %}
+            promises.push(new Promise(resolve => { salvaSlot(giorno, {{ s }}); resolve(); }));
+            {% endfor %}
+        });
+        Promise.all(promises).then(() => {
+            setTimeout(() => {
+                btn.innerHTML = '<i class="bi bi-check" style="vertical-align: middle;"></i> Salvato!';
+                btn.classList.replace('btn-primary', 'btn-success');
+                setTimeout(() => {
+                    btn.innerHTML = '<i class="bi bi-floppy" style="vertical-align: middle;"></i> Salva Tutto';
+                    btn.classList.replace('btn-success', 'btn-primary');
+                    btn.disabled = false;
+                }, 2000);
+            }, 500);
+        });
+    }
+</script>
+{% endblock %}

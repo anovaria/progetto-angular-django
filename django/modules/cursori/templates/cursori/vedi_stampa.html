@@ -1,0 +1,86 @@
+{% extends 'cursori/base_cursori.html' %}
+{# Descrizione del template: visualizzazione e gestione della coda di stampa frontalini #}
+{# Permette di modificare le quantità, eliminare singoli articoli e avviare la stampa #}
+
+{% block title %}Lista Articoli{% endblock %}
+{% block page_title %}Lista Articoli{% endblock %}
+
+{% block content %}
+
+{# Se si è verificato un errore durante l'invio alla stampante, mostralo #}
+{% if errore %}<div class="msg-err">{{ errore }}</div>{% endif %}
+
+{# La sezione seguente viene mostrata solo se ci sono articoli in coda #}
+{% if items %}
+
+{# Sezione: form nascosti per la cancellazione singola articolo (uno per ogni riga della tabella) #}
+{# Tecnica necessaria perché un bottone in un form diverso non può fare submit del form principale #}
+{% for item in items %}
+<form id="del-{{ item.pk }}" method="post" action="{% url 'cursori:stampa_cancella' %}">
+    {% csrf_token %}
+    <input type="hidden" name="pk" value="{{ item.pk }}">
+</form>
+{% endfor %}
+
+{# Sezione: form principale per aggiornamento quantità di tutti gli articoli in coda #}
+<form method="post" action="{% url 'cursori:stampa_salva_qta' %}">
+{% csrf_token %}
+<table class="tbl-cursori">
+    <thead>
+        <tr>
+            <th></th>
+            <th>CdArt</th>
+            <th>Descr.</th>
+            <th>Qta</th>
+            <th>Prz</th>
+            <th>CCom</th>
+            <th>Forn.</th>
+        </tr>
+    </thead>
+    <tbody>
+    {# Ogni riga mostra un articolo in coda con campo quantità modificabile #}
+    {% for item in items %}
+    <tr>
+        <td>
+            {# Il bottone X è collegato al form di cancellazione corrispondente tramite l'attributo form= #}
+            <button type="submit" form="del-{{ item.pk }}" class="btn btn-sm btn-clr">X</button>
+        </td>
+        <td>{{ item.cod_articolo }}</td>
+        <td style="max-width:90px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+            {{ item.descrizione|truncatechars:14 }}</td>
+        <td>
+            {# Il nome del campo qta_<pk> permette alla view di identificare quale articolo aggiornare #}
+            <input type="number" name="qta_{{ item.pk }}" value="{{ item.num_cursori }}"
+                   min="0" style="width:72px; background:#0f3460; color:#fff;
+                   border:1px solid #555; border-radius:4px; padding:4px 6px;
+                   font-size:1rem; text-align:center;">
+        </td>
+        <td>{{ item.prezzo_vend }}</td>
+        <td>{{ item.ccom }}</td>
+        <td style="max-width:80px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+            {{ item.descforn|truncatechars:12 }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+<button type="submit" class="btn btn-terminal btn-blu w-100 mt-2">SALVA QTA</button>
+</form>
+
+{# Sezione: azioni finali — invia alla stampante o torna alla scansione #}
+<div class="d-flex gap-2 mt-2">
+    <form method="post" action="{% url 'cursori:stampa_invia' %}" class="flex-fill">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-terminal btn-ok w-100">STAMPA</button>
+    </form>
+    <a href="{% url 'cursori:stampa' %}" class="btn btn-terminal btn-home">&#8592;</a>
+</div>
+
+{# Coda vuota: messaggio informativo e link per tornare alla scansione #}
+{% else %}
+<div style="color:#aaa; text-align:center; margin-top:30px;">Coda vuota.</div>
+<div class="mt-3">
+    <a href="{% url 'cursori:stampa' %}" class="btn btn-terminal btn-home">&#8592; Indietro</a>
+</div>
+{% endif %}
+
+{% endblock %}

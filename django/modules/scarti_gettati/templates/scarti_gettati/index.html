@@ -1,0 +1,246 @@
+{% extends 'portal/base.html' %}
+{# Inserimento scarti e gettato banco taglio (causale 12). #}
+
+{% block title %}Scarti Gettati — Banco Taglio{% endblock %}
+
+{% block extra_css %}
+<style>
+  .sg-container { padding: 24px; }
+  .card-inserimento {
+    background: #fff;
+    border-radius: 10px;
+    padding: 20px 24px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    margin-bottom: 20px;
+  }
+  .card-inserimento h5 { color: #2E5090; font-weight: 700; margin-bottom: 16px; }
+  .ean-input-group { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+  .ean-input-group .form-control { font-size: 1.1rem; letter-spacing: 1px; max-width: 280px; }
+  .anteprima-articolo {
+    background: #e8f4fd;
+    border: 1px solid #b3d7f0;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-top: 14px;
+    display: none;
+  }
+  .anteprima-articolo .art-codart { font-weight: 700; color: #1F4E79; font-size: 1rem; }
+  .anteprima-articolo .art-descr  { color: #333; font-size: 0.95rem; }
+  .anteprima-articolo .art-peso   { color: #555; font-size: 0.9rem; }
+  .errore-ean {
+    color: #dc3545;
+    font-size: 0.88rem;
+    margin-top: 6px;
+    display: none;
+  }
+  .card-lista {
+    background: #fff;
+    border-radius: 10px;
+    padding: 20px 24px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+  .card-lista h5 { color: #2E5090; font-weight: 700; margin-bottom: 14px; }
+  .table thead th {
+    background: #2E5090;
+    color: #fff;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    font-weight: 600;
+    padding: 8px 10px;
+  }
+  .table tbody td { font-size: 0.88rem; vertical-align: middle; padding: 7px 10px; }
+  .table tbody tr:hover { background: #f0f6ff; }
+  .btn-elimina { background: none; border: none; color: #dc3545; cursor: pointer; padding: 2px 6px; }
+  .btn-elimina:hover { color: #a71d2a; }
+  .toolbar-lista { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px; }
+  .totale-badge {
+    background: #e3f2fd;
+    color: #1976d2;
+    padding: 5px 14px;
+    border-radius: 20px;
+    font-weight: 700;
+    font-size: 0.9rem;
+  }
+</style>
+{% endblock %}
+
+{% block page_content %}
+<div class="sg-container">
+
+  {# ── CARD INSERIMENTO ── #}
+  <div class="card-inserimento">
+    <h5><i class="bi bi-upc-scan"></i> Inserimento scarto — {{ data_oggi|date:"d/m/Y" }}</h5>
+
+    <div class="ean-input-group">
+      <div>
+        <label class="form-label fw-semibold" for="inputEan">Codice EAN</label>
+        <input type="text" id="inputEan" class="form-control" placeholder="Scansiona o digita EAN..."
+               maxlength="30" autocomplete="off" autofocus>
+      </div>
+      <div>
+        <label class="form-label fw-semibold" for="inputPeso">Peso (kg)</label>
+        <input type="number" id="inputPeso" class="form-control" style="max-width:120px"
+               step="0.001" min="0" placeholder="0.000">
+      </div>
+      <div class="align-self-end">
+        <button type="button" id="btnAggiungi" class="btn btn-primary" disabled>
+          <i class="bi bi-plus-circle"></i> Aggiungi
+        </button>
+      </div>
+    </div>
+
+    <div class="errore-ean" id="erroreEan"></div>
+
+    <div class="anteprima-articolo" id="anteprimaArticolo">
+      <div class="art-codart" id="artCodart"></div>
+      <div class="art-descr"  id="artDescr"></div>
+      <div class="art-peso"   id="artPeso"></div>
+    </div>
+
+    {# Form nascosto — inviato da JS #}
+    <form id="formSalva" method="POST" action="{% url 'scarti_gettati_salva' %}" style="display:none">
+      {% csrf_token %}
+      <input type="hidden" name="codice_ean"    id="fEan">
+      <input type="hidden" name="codart"        id="fCodart">
+      <input type="hidden" name="descrart"      id="fDescr">
+      <input type="hidden" name="ean_principale" id="fEanPrinc">
+      <input type="hidden" name="peso_kg"       id="fPeso">
+    </form>
+  </div>
+
+  {# ── CARD LISTA ── #}
+  <div class="card-lista">
+    <div class="toolbar-lista">
+      <h5 class="mb-0"><i class="bi bi-list-ul"></i> Scarti inseriti oggi</h5>
+      <div class="d-flex gap-2 align-items-center flex-wrap">
+        <span class="totale-badge">Totale: {{ totale_kg|floatformat:3 }} kg</span>
+        <a href="{% url 'scarti_gettati_riepilogo' %}" class="btn btn-sm btn-outline-primary">
+          <i class="bi bi-bar-chart-line"></i> Riepilogo
+        </a>
+      </div>
+    </div>
+
+    {% if scarti %}
+    <div class="table-responsive">
+      <table class="table table-bordered table-sm">
+        <thead>
+          <tr>
+            <th>CodArt</th>
+            <th>Descrizione</th>
+            <th>EAN letto</th>
+            <th>EAN anagrafica</th>
+            <th class="text-end">Peso (kg)</th>
+            <th>Ora</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in scarti %}
+          <tr>
+            <td>{{ s.codart }}</td>
+            <td>{{ s.descrart }}</td>
+            <td><code>{{ s.codice_ean_letto }}</code></td>
+            <td>{{ s.ean_principale }}</td>
+            <td class="text-end">{{ s.peso_kg|floatformat:3 }}</td>
+            <td>{{ s.creato_il|date:"H:i" }}</td>
+            <td class="text-center">
+              <form method="POST" action="{% url 'scarti_gettati_elimina' s.pk %}"
+                    onsubmit="return confirm('Eliminare questo scarto?')">
+                {% csrf_token %}
+                <button type="submit" class="btn-elimina" title="Elimina">
+                  <i class="bi bi-trash3"></i>
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="text-muted mb-0"><i class="bi bi-inbox"></i> Nessuno scarto inserito oggi.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  const inputEan   = document.getElementById('inputEan');
+  const inputPeso  = document.getElementById('inputPeso');
+  const btnAgg     = document.getElementById('btnAggiungi');
+  const anteprimaEl = document.getElementById('anteprimaArticolo');
+  const erroreEl   = document.getElementById('erroreEan');
+  const formSalva  = document.getElementById('formSalva');
+
+  let statoArticolo = null;
+  let timerLookup   = null;
+
+  function resetStato() {
+    statoArticolo = null;
+    btnAgg.disabled = true;
+    anteprimaEl.style.display = 'none';
+    erroreEl.style.display = 'none';
+  }
+
+  function mostraArticolo(dati) {
+    statoArticolo = dati;
+    document.getElementById('artCodart').textContent = 'Cod. ' + dati.codart;
+    document.getElementById('artDescr').textContent  = dati.descrart;
+    document.getElementById('artPeso').textContent   = 'Peso estratto: ' + dati.peso_kg.toFixed(3) + ' kg';
+    inputPeso.value = dati.peso_kg.toFixed(3);
+    anteprimaEl.style.display = 'block';
+    erroreEl.style.display = 'none';
+    btnAgg.disabled = false;
+  }
+
+  function mostraErrore(msg) {
+    statoArticolo = null;
+    erroreEl.textContent = msg;
+    erroreEl.style.display = 'block';
+    anteprimaEl.style.display = 'none';
+    btnAgg.disabled = true;
+  }
+
+  function eseguiLookup(ean) {
+    if (ean.length < 8) { resetStato(); return; }
+    fetch(`{% url 'scarti_gettati_lookup_ean' %}?ean=${encodeURIComponent(ean)}`)
+      .then(r => r.json().then(d => ({ ok: r.ok, d })))
+      .then(({ ok, d }) => { ok ? mostraArticolo(d) : mostraErrore(d.errore || 'Errore'); })
+      .catch(() => mostraErrore('Errore di rete'));
+  }
+
+  inputEan.addEventListener('input', function () {
+    clearTimeout(timerLookup);
+    resetStato();
+    const val = this.value.trim();
+    if (val.length >= 13) {
+      eseguiLookup(val);
+    } else if (val.length >= 8) {
+      timerLookup = setTimeout(() => eseguiLookup(val), 600);
+    }
+  });
+
+  inputEan.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      clearTimeout(timerLookup);
+      const val = this.value.trim();
+      if (val.length >= 8) eseguiLookup(val);
+    }
+  });
+
+  btnAgg.addEventListener('click', function () {
+    if (!statoArticolo) return;
+    const peso = parseFloat(inputPeso.value) || statoArticolo.peso_kg;
+    document.getElementById('fEan').value      = inputEan.value.trim();
+    document.getElementById('fCodart').value   = statoArticolo.codart;
+    document.getElementById('fDescr').value    = statoArticolo.descrart;
+    document.getElementById('fEanPrinc').value = statoArticolo.ean_principale;
+    document.getElementById('fPeso').value     = peso;
+    formSalva.submit();
+  });
+})();
+</script>
+{% endblock %}

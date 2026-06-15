@@ -1,0 +1,33 @@
+{% extends 'portal/base.html' %}
+{# Descrizione del template: Base layout per il modulo Merchandiser con stili condivisi per card e stat-card. Eredita da portal/base.html e definisce il colore primario arancione del modulo. #}
+
+{% block extra_css %}
+<style>
+    :root { --primary-color: #ff5722; }
+
+    .card { border: none; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-radius: 8px; }
+    .card-header { background: white; border-bottom: 1px solid #eee; font-weight: 600; }
+
+    .stat-card { background: white; border-radius: 8px; padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .stat-card .stat-icon { width: 50px; height: 50px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 24px; color: white; }
+    .stat-card .stat-value { font-size: 2rem; font-weight: 700; color: #333; }
+    .stat-card .stat-label { color: #666; font-size: 0.9rem; }
+</style>
+{% endblock %}
+
+{# Sezione: Contenuto principale della pagina con gestione messaggi di sistema #}
+{% block page_content %}
+<div class="container-fluid py-4 px-4">
+    {# Mostra i messaggi Django (success, error, warning) se presenti #}
+    {% if messages %}
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    {% block content %}{% endblock %}
+</div>
+{% endblock %}

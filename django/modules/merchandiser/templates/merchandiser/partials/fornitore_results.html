@@ -1,0 +1,11 @@
+{# Descrizione del template: Partial HTML restituito dall'API cerca_fornitore per l'autocomplete. Ogni elemento è cliccabile nel form di assegnazione fornitore allo slot. #}
+
+{# Sezione: Lista risultati fornitore - ogni div porta gli attributi data-id e data-nome per il JS #}
+{% for f in fornitori %}
+<div class="fornitore-item" data-id="{{ f.codice }}" data-nome="{{ f.nome }}">
+    {{ f.codice }} - {{ f.nome|truncatechars:40 }}
+</div>
+{# Se non ci sono risultati per la ricerca, mostra messaggio vuoto #}
+{% empty %}
+<div class="p-2 text-muted">Nessun risultato</div>
+{% endfor %}

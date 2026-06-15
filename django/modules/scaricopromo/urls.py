@@ -1,0 +1,31 @@
+"""Scarico Promo - URL Configuration"""
+from django.urls import path
+from . import views
+
+app_name = 'scaricopromo'
+
+urlpatterns = [
+    # Dashboard principale (replica M_esporta)
+    path('', views.dashboard, name='dashboard'),
+    path('attributi/', views.attributi, name='attributi'),
+    path('storico/', views.storico, name='storico'),
+
+    # Gestione "Mettere in X"
+    path('mettere/<str:stato>/', views.mettere_in, name='mettere_in'),
+    path('mettere/<str:stato>/elimina/<int:pk>/', views.elimina_articolo, name='elimina_articolo'),
+
+    # Azioni (pulsanti M_esporta)
+    path('azione/valida-a/', views.azione_valida_a, name='azione_valida_a'),
+    path('azione/crea-attributi/', views.azione_crea_attributi, name='azione_crea_attributi'),
+    path('azione/esporta-csv/', views.azione_esporta_csv, name='azione_esporta_csv'),
+
+    # Report
+    path('report/non-posso-a/', views.report_non_posso, name='report_non_posso'),
+
+    # API
+    path('api/conteggi/', views.api_conteggi, name='api_conteggi'),
+    path('api/verifica-codart/', views.api_verifica_codart, name='api_verifica_codart'),
+    path('api/verifica-ccom/', views.api_verifica_ccom, name='api_verifica_ccom'),
+    path('api/carica-da-ccom/<str:stato>/', views.api_carica_da_ccom, name='api_carica_da_ccom'),
+    path('api/incolla-codici/<str:stato>/', views.api_incolla_codici, name='api_incolla_codici'),
+]

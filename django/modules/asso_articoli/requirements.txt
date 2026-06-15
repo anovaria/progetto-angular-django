@@ -1,0 +1,12 @@
+# Dipendenze per AssoArticoli app
+
+# Barcode generation
+python-barcode==0.15.1
+
+# Excel export
+openpyxl==3.1.2
+
+# Image handling (per barcode PNG in Excel)
+Pillow==10.2.0
+
+# Note: Django, pyodbc, e altre dipendenze base sono già presenti nel progetto

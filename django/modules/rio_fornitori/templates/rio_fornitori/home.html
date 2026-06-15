@@ -1,0 +1,50 @@
+{% extends 'rio_fornitori/base_rio_fornitori.html' %}
+
+{% block page_title %}Ricerca fornitore{% endblock %}
+
+{% block rio_content %}
+<div class="row justify-content-center">
+    <div class="col-md-5">
+        <div class="card shadow-sm">
+            <div class="card-body p-4">
+                <h5 class="card-title mb-4">
+                    <i class="bi bi-search me-2 text-primary"></i>Cerca fornitore
+                </h5>
+
+                {% if errore %}
+                <div class="alert alert-danger d-flex align-items-center gap-2">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    {{ errore }}
+                </div>
+                {% endif %}
+
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Codice contratto (CCOM)</label>
+                        <input
+                            type="text"
+                            name="ccom"
+                            value="{{ ccom|default:'' }}"
+                            maxlength="6"
+                            inputmode="numeric"
+                            pattern="\d{6}"
+                            autofocus
+                            autocomplete="off"
+                            class="form-control form-control-lg text-center fw-bold {% if errore %}is-invalid{% endif %}"
+                            placeholder="000000"
+                            style="letter-spacing: 6px; font-size: 1.5rem;"
+                        >
+                        <div class="form-text">Inserire esattamente 6 cifre numeriche</div>
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-search me-2"></i>Cerca
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

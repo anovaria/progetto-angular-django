@@ -1,0 +1,383 @@
+{% extends 'importelab/base_minimal.html' %}
+
+{% block extra_css %}
+{{ block.super }}
+<style>
+/* Importelab preview readability */
+#importelab-preview-table th,
+#importelab-preview-table td { color:#111 !important; }
+
+#importelab-loading-overlay{
+  position: fixed;
+  inset: 0;
+  background: rgba(255,255,255,.72);
+  backdrop-filter: blur(2px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+}
+#importelab-loading-overlay.hidden{ display:none; }
+.importelab-spinner{
+  width: 48px;
+  height: 48px;
+  border: 5px solid #d9d9d9;
+  border-top-color: #0d6efd;
+  border-radius: 50%;
+  animation: importelab-spin 1s linear infinite;
+  margin-bottom: 12px;
+}
+@keyframes importelab-spin{
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+</style>
+
+<style>
+/* Importelab: make preview area readable regardless of portal background */
+#importelab-preview-scroll { background:#fff !important; }
+#importelab-preview-table { background:#fff !important; }
+#importelab-preview-table th,
+#importelab-preview-table td {
+  background:#fff !important;
+  color:#111 !important;
+}
+</style>
+
+{% endblock %}
+{% block content %}
+
+<div id="importelab-loading-overlay" class="hidden">
+  <div class="importelab-spinner"></div>
+  <div style="font-weight:600;">Aggiornamento dati GoldReport in corso…</div>
+  <div class="muted" style="margin-top:4px;">Attendere il completamento</div>
+</div>
+
+<h1 style="margin:0 0 6px 0;">Rossetto</h1>
+<div class="muted" style="margin-bottom:14px;">Gestione flusso dati e ordini verso il fornitore Rossetto.</div>
+
+
+<!-- 1) Tabelle Gold: primo step del flusso -->
+<h2>1) Tabelle Gold (SQL Server)</h2>
+<div id="gold-sync-box" style="padding:12px; border:1px solid #ddd; border-radius:8px;">
+  <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+    <button id="gold-sync-btn" type="button">Sincronizza tabelle Gold</button>
+    <span class="muted" id="gold-sync-status">Sincronizzazione verrà avviata automaticamente all’apertura. Se necessario puoi anche risincronizzare manualmente.</span>
+  </div>
+
+  <div id="gold-sync-last" style="margin-top:10px;">
+    {% if gold_sync_info %}
+    <p class="muted">
+      Ultima sync: {{ gold_sync_info.synced_at }} —
+      {% for t, s in gold_sync_info.summary.items %}
+      {{ t }}: {{ s.rows_fetched }} righe{% if not forloop.last %} • {% endif %}
+      {% endfor %}
+    </p>
+    {% endif %}
+  </div>
+
+  <div id="gold-preview-area" style="margin-top:10px;">
+    {% if gold_preview %}
+      <h4>Verifica: prime 5 righe</h4>
+      {% for table_name, rows in gold_preview.items %}
+      <details style="margin: .75rem 0;">
+        <summary><strong>{{ table_name }}</strong> ({{ rows|length }} righe mostrate)</summary>
+        {% if rows %}
+        <div style="overflow:auto; max-height: 280px; border: 1px solid #ddd; margin-top: .5rem;">
+          <table>
+            <thead>
+              <tr>
+                {% for k, v in rows.0.items %}
+                <th>{{ k }}</th>
+                {% endfor %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for r in rows %}
+              <tr>
+                {% for k, v in r.items %}
+                <td>{{ v }}</td>
+                {% endfor %}
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <p class="muted">Nessun dato locale per questa tabella.</p>
+        {% endif %}
+      </details>
+      {% endfor %}
+    {% endif %}
+  </div>
+</div>
+
+<hr>
+
+<!-- 2) Upload file: secondo step del flusso -->
+<h2>2) Upload file</h2>
+<form method="post" enctype="multipart/form-data" style="margin-bottom: 1.0rem;">
+  {% csrf_token %}
+  {{ form.file.label_tag }} {{ form.file }}
+  <button type="submit" style="margin-left:.5rem;">Carica e salva nel DB</button>
+</form>
+
+{% if upload_info %}
+  {% if upload_info.ok %}
+    <p class="muted"><strong>Upload completato</strong> ({{ upload_info.filename }}) — query intermedie rigenerate. {% if upload_info.counts %}Risultati: {{ upload_info.counts }}{% endif %}</p>
+  {% else %}
+    <p class="muted"><strong>Upload completato</strong> ({{ upload_info.filename }}) — <strong>attenzione</strong>: rigenerazione query intermedie non riuscita ({{ upload_info.error }}).</p>
+  {% endif %}
+{% endif %}
+
+
+{% if batches %}
+  <div style="margin: 10px 0 6px 0;">
+    <div class="muted" style="margin-bottom:6px;">File caricati finora (clicca sul file per aprirlo)</div>
+    <div style="display:flex; gap:12px; align-items:flex-start; flex-wrap:wrap;">
+      <select id="batch-select" size="6" style="min-width:520px; max-width:100%; padding:6px;">
+        {% for b in batches %}
+          <option value="{{ b.id }}" {% if selected_batch and b.id == selected_batch.id %}selected{% endif %}>
+            {{ b.filename }} — {{ b.uploaded_at|date:"d/m/Y H:i" }}
+          </option>
+        {% endfor %}
+      </select>
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        {% if selected_batch %}
+<a class="btn" href="{% url 'importelab:delete_batch' selected_batch.id %}" onclick="return confirm('Eliminare il file selezionato?');">Elimina selezionato</a>
+        {% else %}
+          <span class="muted">Seleziona un file per abilitarne i comandi.</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+{% endif %}
+
+{% if selected_batch %}
+  <div style="margin-top:10px;">
+    <div class="muted" style="margin-bottom:6px;">Anteprima file (batch selezionato: <strong>{{ selected_batch.filename }}</strong>)</div>
+    <div style="border:1px solid #ddd; border-radius:8px; padding:10px;">
+      
+<div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin:8px 0 10px 0;">
+  <label for="importelab-preview-filter" style="margin:0; font-weight:600;">Cerca nel file:</label>
+  <input id="importelab-preview-filter" type="text" placeholder="Filtra su tutti i campi…" style="min-width:260px; padding:6px 8px; border:1px solid #ccc; border-radius:6px;">
+  <button id="importelab-preview-clear" type="button" style="padding:6px 10px; border:1px solid #ccc; background:#f2f2f2; border-radius:6px; cursor:pointer;">Pulisci</button>
+  <span id="importelab-preview-count" class="muted" style="margin-left:auto;"></span>
+</div>
+
+<div id="importelab-preview-scroll" style="overflow:auto; max-height: 260px; border: 1px solid #eee; background:#fff;">
+        <table style="min-width: 1400px;" id="importelab-preview-table">
+          <thead>
+            <tr>
+              {% for h in preview_headers %}
+                <th style="position:sticky; top:0; background:#fff;">{{ h }}</th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in preview_rows %}
+              <tr>
+                <td>{{ r.line_number }}</td>
+                <td>{{ r.cod_art_fo }}</td>
+                <td>{{ r.descrizione_articolo }}</td>
+                <td>{{ r.iva }}</td>
+                <td>{{ r.prz_acq }}</td>
+                <td>{{ r.pz_x_crt }}</td>
+                <td>{{ r.crt_x_str }}</td>
+                <td>{{ r.str_x_plt }}</td>
+                <td>{{ r.tot_colli }}</td>
+                <td>{{ r.ean }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="muted" style="margin-top:6px;">
+        (Finestra alta ~10 righe: usa lo scroll verticale per vedere le altre. Se le colonne non entrano, scorri orizzontalmente.)
+        {% if preview_total %}<br>Righe totali: <strong>{{ preview_total }}</strong>{% endif %}
+        {% if preview_truncated %}<br><strong>Nota:</strong> per performance sono mostrate le prime 10.000 righe.{% endif %}
+      </div>
+    </div>
+  </div>
+{% else %}
+  <p class="muted">Seleziona un file (o caricane uno nuovo) per vedere l’anteprima e i report.</p>
+{% endif %}
+
+
+<hr>
+
+<!-- 3) Report: terzo step del flusso -->
+{% if selected_batch %}
+<div style="margin-top:0; padding:12px; border:1px solid #ddd; border-radius:8px;">
+  <h2 style="margin:0 0 8px 0;">3) Report stampabili (batch selezionato)</h2>
+  <div style="display:flex; gap:10px; flex-wrap:wrap;">
+    <a class="btn" href="{% url 'importelab:report_r_aggprezziacq' %}?batch={{ selected_batch.id }}">Report Prezzi di listino</a>
+    <a class="btn" href="{% url 'importelab:report_r_aggean' %}?batch={{ selected_batch.id }}">Report Aggiornamento EAN</a>
+    <a class="btn" href="{% url 'importelab:report_r_agglogistica' %}?batch={{ selected_batch.id }}">Report Aggiornamento Logistica</a>
+  </div>
+  <p style="margin:10px 0 0; color:#666;">Ogni report consente: <strong>Stampa</strong> (browser) oppure <strong>Scarica PDF</strong>.</p>
+</div>
+{% endif %}
+
+<hr>
+
+<!-- 4) Ordini: quarto step del flusso -->
+<h2>4) Ordini</h2>
+<p>
+  <a href="{% url 'importelab:ordine_email' %}" class="importelab-order-link">Invio ordine via Outlook (allega .ext)</a>
+</p>
+
+<!-- rimosso: dettaglio completo opzionale, per evitare ridondanza e confusione -->
+
+<script>
+(function() {
+  const overlay = document.getElementById('importelab-loading-overlay');
+  function showOverlay() {
+    if (overlay) overlay.classList.remove('hidden');
+  }
+  function hideOverlay() {
+    if (overlay) overlay.classList.add('hidden');
+  }
+
+  const needsSync = {{ needs_gold_sync|yesno:"true,false" }};
+  const btn = document.getElementById('gold-sync-btn');
+  const statusEl = document.getElementById('gold-sync-status');
+  const lastEl = document.getElementById('gold-sync-last');
+  const previewEl = document.getElementById('gold-preview-area');
+
+  // Batch selector (storico file importati)
+  const batchSel = document.getElementById('batch-select');
+  if (batchSel) {
+    batchSel.addEventListener('change', () => {
+      const id = batchSel.value;
+      if (id) window.location.search = `?batch=${encodeURIComponent(id)}`;
+    });
+  }
+
+  function escapeHtml(str) {
+    return String(str)
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#039;');
+  }
+
+  function renderSummary(data) {
+    if (!data || !data.summary) return '';
+    const parts = [];
+    for (const [t, s] of Object.entries(data.summary)) {
+      parts.push(`${escapeHtml(t)}: ${escapeHtml(s.rows_fetched)} righe`);
+    }
+    return `Ultima sync: ${escapeHtml(data.synced_at)} — ${parts.join(' • ')}`;
+  }
+
+  function renderPreview(preview) {
+    if (!preview) return '';
+    let html = '<h4>Verifica: prime 5 righe</h4>';
+    for (const [tableName, rows] of Object.entries(preview)) {
+      const count = Array.isArray(rows) ? rows.length : 0;
+      html += `<details style="margin:.75rem 0;"><summary><strong>${escapeHtml(tableName)}</strong> (${count} righe mostrate)</summary>`;
+      if (count > 0) {
+        const keys = Object.keys(rows[0] || {});
+        html += '<div style="overflow:auto; max-height:280px; border:1px solid #ddd; margin-top:.5rem;">';
+        html += '<table><thead><tr>' + keys.map(k => `<th>${escapeHtml(k)}</th>`).join('') + '</tr></thead><tbody>';
+        for (const r of rows) {
+          html += '<tr>' + keys.map(k => `<td>${escapeHtml(r[k])}</td>`).join('') + '</tr>';
+        }
+        html += '</tbody></table></div>';
+      } else {
+        html += '<p class="muted">Nessun dato locale per questa tabella.</p>';
+      }
+      html += '</details>';
+    }
+    return html;
+  }
+
+  async function runSync() {
+    showOverlay();
+    btn.disabled = true;
+    statusEl.textContent = 'Sincronizzazione in corso… attendere.';
+    try {
+      const resp = await fetch('{% url "importelab:sync_gold" %}?ajax=1', {
+        headers: { 'Accept': 'application/json' },
+        credentials: 'same-origin'
+      });
+      const data = await resp.json();
+      if (!data.ok) throw new Error('Sync non riuscita');
+
+      lastEl.innerHTML = `<p class="muted">${renderSummary(data)}</p>`;
+      previewEl.innerHTML = renderPreview(data.preview);
+      hideOverlay();
+        statusEl.textContent = 'Sincronizzazione completata.';
+    } catch (e) {
+      statusEl.textContent = 'Errore durante la sincronizzazione (verificare log server).';
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  btn.addEventListener('click', function() {
+    runSync();
+  });
+
+  if (needsSync) {
+    showOverlay();
+    // Auto-sync: trigger as soon as the script runs (works even with portal navigation that may skip DOMContentLoaded).
+    // Use a tiny delay so the initial DOM paints before we flip the status label.
+    setTimeout(runSync, 50);
+  }
+})();
+</script>
+
+
+
+<script>
+(function() {
+  const input = document.getElementById('importelab-preview-filter');
+  const clearBtn = document.getElementById('importelab-preview-clear');
+  const table = document.getElementById('importelab-preview-table');
+  const countEl = document.getElementById('importelab-preview-count');
+  if (!input || !clearBtn || !table) return;
+
+  const tbody = (table.tBodies && table.tBodies.length) ? table.tBodies[0] : null;
+  if (!tbody) return;
+
+  const rows = Array.from(tbody.rows);
+
+  function updateCount() {
+    if (!countEl) return;
+    const visible = rows.filter(r => r.style.display !== 'none').length;
+    countEl.textContent = `Righe visibili: ${visible} / ${rows.length}`;
+  }
+
+  function applyFilter(raw) {
+    const q = (raw || '').trim().toLowerCase();
+    window.requestAnimationFrame(() => {
+      rows.forEach(row => {
+        if (!q) { row.style.display = ''; return; }
+        row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+      });
+      updateCount();
+    });
+  }
+
+  let timer = null;
+  input.addEventListener('input', function() {
+    const v = input.value;
+    window.clearTimeout(timer);
+    timer = window.setTimeout(() => applyFilter(v), 120);
+  });
+
+  clearBtn.addEventListener('click', function() {
+    input.value = '';
+    applyFilter('');
+    input.focus();
+  });
+
+  updateCount();
+})();
+</script>
+
+{% endblock %}

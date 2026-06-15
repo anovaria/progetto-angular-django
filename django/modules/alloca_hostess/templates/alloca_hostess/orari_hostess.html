@@ -1,0 +1,518 @@
+{% extends 'merchandiser/base_minimal.html' %}
+{# Descrizione del template: Registrazione degli orari giornalieri delle hostess per il Punto Info.
+   Mostra una tabella con tutti gli slot (1-12) e i campi ingresso/uscita mattino e pomeriggio.
+   I dati di giorni diversi da oggi sono in sola lettura. Supporta la stampa ottimizzata A4 landscape. #}
+
+
+{% block title %}Registrazione Orari Hostess{% endblock %}
+
+{% block extra_css %}
+{# Sezione: Stili CSS per la tabella orari e per la stampa #}
+<style>
+    .date-selector {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 20px;
+    }
+
+    .date-selector h5 {
+        margin: 0;
+        text-align: center;
+    }
+
+    .orari-table {
+        font-size: 0.9em;
+    }
+
+    .orari-table th {
+        background: #9c27b0;
+        color: white;
+        text-align: center;
+        padding: 12px 8px;
+        font-weight: 500;
+    }
+
+    .orari-table td {
+        text-align: center;
+        vertical-align: middle;
+        padding: 8px 5px;
+    }
+
+    .orari-table input[type="time"] {
+        width: 85px;
+        padding: 4px 6px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 0.85em;
+        cursor: pointer;
+    }
+
+    .orari-table input[type="time"]:focus {
+        border-color: #9c27b0;
+        outline: none;
+    }
+    {# Campi orario con valore compilato evidenziati in giallo per distinguerli dai vuoti #}
+    .orari-table input[type="time"].has-value { background: #fff9c4; border-color: #fbc02d; }
+
+    .orari-table input[type="text"] {
+        width: 100%;
+        padding: 4px 6px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 0.85em;
+    }
+
+    .slot-number {
+        font-weight: 600;
+        color: #9c27b0;
+    }
+
+    .hostess-name {
+        font-weight: 600;
+    }
+
+    /* STILI PER STAMPA - OTTIMIZZATO PER 12 SLOT FISSI */
+    @media print {
+        /* Forza orientamento orizzontale e margini ottimali */
+        @page {
+            size: A4 landscape;
+            margin: 1.2cm 1cm;
+        }
+
+        /* Nascondi elementi non necessari in stampa (navigazione, pulsanti, ecc.) */
+        .no-print {
+            display: none !important;
+        }
+
+        /* Header stampa: visibile solo in modalità stampa */
+        .print-header {
+            display: block !important;
+            text-align: center;
+            margin-bottom: 10px;
+            border-bottom: 2px solid #333;
+            padding-bottom: 6px;
+        }
+
+        .print-header h2 {
+            margin: 0;
+            font-size: 14pt;
+            font-weight: 700;
+        }
+
+        .print-header h4 {
+            margin: 3px 0 0 0;
+            font-weight: normal;
+            font-size: 11pt;
+        }
+
+        /* Tabella stampa - OTTIMIZZATA PER LEGGIBILITÀ */
+        .orari-table {
+            font-size: 8pt !important;
+            border-collapse: collapse;
+            width: 100%;
+            margin: 0;
+        }
+
+        .orari-table th {
+            background: #333 !important;
+            color: white !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+            padding: 4px 3px !important;
+            border: 0.8px solid #333;
+            font-size: 8pt !important;
+            line-height: 1.2;
+            font-weight: 700;
+        }
+
+        .orari-table td {
+            border: 0.8px solid #999;
+            padding: 3px 2px !important;
+            font-size: 7.5pt !important;
+            line-height: 1.2;
+        }
+
+        .orari-table input {
+            border: none !important;
+            font-weight: 600;
+            text-align: center;
+            width: 100%;
+            background: transparent;
+            font-size: 7.5pt !important;
+            padding: 1px 0 !important;
+            margin: 0 !important;
+        }
+
+        /* Larghezze colonne BILANCIATE per riempire A4 landscape */
+        .orari-table th:nth-child(1),
+        .orari-table td:nth-child(1) {
+            width: 30px !important;  /* Slot */
+        }
+
+        .orari-table th:nth-child(2),
+        .orari-table td:nth-child(2) {
+            width: 95px !important;  /* Hostess */
+        }
+
+        .orari-table th:nth-child(3),
+        .orari-table td:nth-child(3) {
+            width: 80px !important;  /* Agenzia */
+        }
+
+        .orari-table th:nth-child(4),
+        .orari-table td:nth-child(4) {
+            width: 90px !important;  /* Fornitore */
+        }
+
+        .orari-table th:nth-child(5),
+        .orari-table th:nth-child(6),
+        .orari-table th:nth-child(7),
+        .orari-table th:nth-child(8),
+        .orari-table td:nth-child(5),
+        .orari-table td:nth-child(6),
+        .orari-table td:nth-child(7),
+        .orari-table td:nth-child(8) {
+            width: 48px !important;  /* Orari */
+        }
+
+        .orari-table th:nth-child(9),
+        .orari-table td:nth-child(9) {
+            width: 80px !important;  /* Nota slot */
+        }
+
+        .orari-table th:nth-child(10),
+        .orari-table td:nth-child(10) {
+            width: auto !important;  /* Note - riempie lo spazio rimanente */
+            min-width: 80px !important;
+        }
+
+        /* Card styling in stampa: rimuovi ombra e bordi */
+        .card {
+            border: none;
+            box-shadow: none;
+            margin: 0 !important;
+        }
+
+        .card-body {
+            padding: 0 !important;
+        }
+
+        .card-header {
+            background: #f5f5f5 !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+            border-bottom: 1.5px solid #333;
+            padding: 5px 8px !important;
+            font-size: 9pt !important;
+            margin-bottom: 6px;
+            font-weight: 600;
+        }
+
+        /* Evita interruzioni di pagina all'interno della tabella */
+        .orari-table,
+        .card {
+            page-break-inside: avoid !important;
+        }
+
+        .orari-table tr {
+            page-break-inside: avoid !important;
+            page-break-after: auto !important;
+        }
+
+        .slot-number {
+            font-size: 7.5pt !important;
+            font-weight: 700;
+        }
+
+        .hostess-name {
+            font-size: 7.5pt !important;
+            font-weight: 600;
+        }
+
+        /* Footer stampa con data/ora di stampa */
+        .print-footer {
+            display: block !important;
+            margin-top: 10px;
+            padding-top: 6px;
+            border-top: 1px solid #ccc;
+            font-size: 8pt;
+            text-align: center;
+            color: #666;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+        }
+    }
+
+    /* Header e footer di stampa nascosti nella visualizzazione normale */
+    .print-header,
+    .print-footer {
+        display: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+{# Sezione: Header di stampa (visibile solo quando si stampa la pagina) #}
+<div class="print-header">
+    <h2>GROS CIDAC - Registrazione Orari Hostess</h2>
+    <h4>{{ data|date:"l d F Y"|upper }}</h4>
+</div>
+
+{# Sezione: Header schermo con titolo e pulsante stampa (nascosto in stampa) #}
+<div class="d-flex justify-content-between align-items-center mb-4 no-print">
+    <h4 class="mb-0">
+        <i class="bi bi-clock" style="vertical-align: middle;"></i>
+        Registrazione Orari Hostess
+    </h4>
+    <button type="button" class="btn btn-primary" onclick="window.print()">
+        <i class="bi bi-printer" style="vertical-align: middle; font-size: 18px;"></i>
+        Stampa Report
+    </button>
+</div>
+
+{# Sezione: Navigazione tra i giorni (nascosta in stampa) #}
+<div class="date-selector no-print">
+    <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+        <a href="?data={{ data_prec|date:'Y-m-d' }}" class="btn btn-sm btn-outline-secondary" title="Giorno precedente">
+            <i class="bi bi-chevron-left"></i>
+        </a>
+        <h5 style="margin:0;">
+            <i class="bi bi-calendar-date" style="vertical-align: middle; margin-right: 10px;"></i>
+            {{ data|date:"l d F Y"|upper }}
+        </h5>
+        <a href="?data={{ data_succ|date:'Y-m-d' }}" class="btn btn-sm btn-outline-secondary" title="Giorno successivo">
+            <i class="bi bi-chevron-right"></i>
+        </a>
+        {# Badge sola lettura: mostrato quando si visualizza un giorno diverso da oggi #}
+        {% if is_readonly %}
+        <span class="badge bg-warning text-dark" style="font-size:0.85rem;">
+            <i class="bi bi-eye" style="vertical-align:middle;"></i> Sola lettura
+        </span>
+        {% endif %}
+    </div>
+</div>
+
+{# Sezione: Tabella orari degli slot con tutti i campi di ingresso/uscita #}
+<div class="card">
+    <div class="card-header">
+        <i class="bi bi-clock no-print" style="vertical-align: middle;"></i>
+        Orari Giornalieri - {{ presenze_hostess|length }} Slot
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-bordered orari-table mb-0">
+            <thead>
+                <tr>
+                    <th style="width: 60px;">Slot</th>
+                    <th>Hostess</th>
+                    <th>Agenzia</th>
+                    <th>Fornitore</th>
+                    <th>I.Mattino</th>
+                    <th>U.Mattino</th>
+                    <th>I.Pomeriggio</th>
+                    <th>U.Pomeriggio</th>
+                    <th style="width: 120px;">Nota slot</th>
+                    <th style="width: 150px;">Note</th>
+                    {# Colonna azioni (pulsante salva): nascosta in stampa #}
+                    <th class="no-print" style="width: 60px;"></th>
+                </tr>
+            </thead>
+            <tbody>
+                {# Itera su tutti gli slot del giorno (con o senza hostess assegnata) #}
+                {% for item in presenze_hostess %}
+                <tr>
+                    <td class="slot-number">{{ item.slot }}</td>
+                    <td class="hostess-name">
+                        {# Mostra nominativo hostess oppure trattino se slot vuoto #}
+                        {% if item.presenza.hostess %}
+                            {{ item.presenza.hostess.nominativo|truncatechars:25 }}
+                        {% else %}
+                            <span class="text-muted">-</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {# Mostra agenzia oppure trattino se non assegnata #}
+                        {% if item.presenza.agenzia %}
+                            {{ item.presenza.agenzia.descrizione|truncatechars:20 }}
+                        {% else %}
+                            <span class="text-muted">-</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {# Mostra fornitore oppure trattino se non assegnato #}
+                        {% if item.presenza.fornitore %}
+                            {{ item.presenza.fornitore.nome|truncatechars:25 }}
+                        {% else %}
+                            <span class="text-muted">-</span>
+                        {% endif %}
+                    </td>
+                    {# Campi orario: in sola lettura se la data non è oggi, altrimenti con doppio click per ora corrente #}
+                    <td>
+                        <input type="time"
+                               name="ingresso_mattino"
+                               value="{% if item.presenza.ingresso_mattino %}{{ item.presenza.ingresso_mattino|time:'H:i' }}{% endif %}"
+                               data-slot="{{ item.slot }}"
+                               data-campo="ingresso_mattino"
+                               {% if not is_readonly %}ondblclick="setCurrentTime(this)"{% else %}disabled{% endif %}>
+                    </td>
+                    <td>
+                        <input type="time"
+                               name="uscita_mattino"
+                               value="{% if item.presenza.uscita_mattino %}{{ item.presenza.uscita_mattino|time:'H:i' }}{% endif %}"
+                               data-slot="{{ item.slot }}"
+                               data-campo="uscita_mattino"
+                               {% if not is_readonly %}ondblclick="setCurrentTime(this)"{% else %}disabled{% endif %}>
+                    </td>
+                    <td>
+                        <input type="time"
+                               name="ingresso_pomeriggio"
+                               value="{% if item.presenza.ingresso_pomeriggio %}{{ item.presenza.ingresso_pomeriggio|time:'H:i' }}{% endif %}"
+                               data-slot="{{ item.slot }}"
+                               data-campo="ingresso_pomeriggio"
+                               {% if not is_readonly %}ondblclick="setCurrentTime(this)"{% else %}disabled{% endif %}>
+                    </td>
+                    <td>
+                        <input type="time"
+                               name="uscita_pomeriggio"
+                               value="{% if item.presenza.uscita_pomeriggio %}{{ item.presenza.uscita_pomeriggio|time:'H:i' }}{% endif %}"
+                               data-slot="{{ item.slot }}"
+                               data-campo="uscita_pomeriggio"
+                               {% if not is_readonly %}ondblclick="setCurrentTime(this)"{% else %}disabled{% endif %}>
+                    </td>
+                    {# Nota fornitore: solo lettura (proviene dall'allocazione, non modificabile qui) #}
+                    <td class="text-muted" style="font-size: 0.85em;">
+                        {{ item.presenza.nota_fornitore|default:'' }}
+                    </td>
+                    <td>
+                        {# Campo note libere: modificabile solo se oggi, disabilitato per altri giorni #}
+                        <input type="text"
+                               name="nota"
+                               class="form-control form-control-sm"
+                               value="{{ item.presenza.nota|default:'' }}"
+                               data-slot="{{ item.slot }}"
+                               data-campo="nota"
+                               placeholder="Note..."
+                               {% if is_readonly %}disabled{% endif %}>
+                    </td>
+                    {# Pulsante salva slot: visibile solo se la data è oggi (non in sola lettura) e non in stampa #}
+                    <td class="no-print">
+                        {% if not is_readonly %}
+                        <button type="button"
+                                class="btn btn-sm btn-success"
+                                onclick="salvaOrario({{ item.slot }})"
+                                title="Salva">
+                            <i class="bi bi-floppy" style="font-size: 16px;"></i>
+                        </button>
+                        {% endif %}
+                    </td>
+                </tr>
+                {# Messaggio se non ci sono slot disponibili #}
+                {% empty %}
+                <tr>
+                    <td colspan="10" class="text-center text-muted">
+                        Nessun slot disponibile
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{# Sezione: Footer di stampa con data/ora (visibile solo in modalità stampa) #}
+<div class="print-footer">
+    <p>Stampato il: {% now "d/m/Y H:i" %}</p>
+</div>
+
+{# Sezione: Info utente (suggerimento doppio click) - nascosta in stampa #}
+<div class="mt-3 text-muted no-print">
+    <i class="bi bi-info-circle" style="font-size: 16px; vertical-align: middle;"></i>
+    Doppio click sui campi orario per inserire l'ora corrente
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function getCookie(name) {
+    const c = document.cookie.split('; ').find(r => r.startsWith(name + '='));
+    return c ? decodeURIComponent(c.split('=')[1]) : '';
+}
+const csrfToken = getCookie('csrftoken');
+
+// Inizializzazione: aggiunge la classe has-value ai campi orario già compilati
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.orari-table input[type="time"]').forEach(function(input) {
+        if (input.value) input.classList.add('has-value');
+    });
+    // Aggiunge has-value anche quando l'utente modifica un campo
+    document.querySelector('.orari-table').addEventListener('input', function(e) {
+        if (e.target.type === 'time') e.target.classList.add('has-value');
+    });
+});
+
+// Imposta l'ora corrente nel campo orario con doppio click e auto-salva
+function setCurrentTime(input) {
+    const now = new Date();
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    input.value = `${hours}:${minutes}`;
+
+    // Auto-salva subito dopo aver impostato l'ora corrente
+    const slot = input.dataset.slot;
+    salvaOrario(slot);
+}
+
+// Salva tutti i campi orario e note di uno slot tramite chiamata AJAX
+function salvaOrario(slot) {
+    const formData = new FormData();
+    formData.append('giorno', '{{ data|date:"Y-m-d" }}');
+    formData.append('slot', slot);
+
+    // Raccoglie tutti gli input con data-slot corrispondente (orari + nota)
+    const inputs = document.querySelectorAll(`input[data-slot="${slot}"]`);
+    inputs.forEach(input => {
+        const campo = input.dataset.campo;
+        formData.append(campo, input.value || '');
+    });
+
+    fetch('{% url "alloca_hostess:salva_orario_hostess" %}', {
+        method: 'POST',
+        headers: {'X-CSRFToken': csrfToken},
+        body: formData
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            const btn = document.querySelector(`button[onclick="salvaOrario(${slot})"]`);
+            const row = btn.closest('tr');
+            // Aggiorna la classe has-value per tutti i campi orario della riga
+            row.querySelectorAll('input[type="time"]').forEach(function(input) {
+                if (input.value) input.classList.add('has-value');
+                else input.classList.remove('has-value');
+            });
+            // Feedback visivo sulla riga: sfondo verde per 1,5 secondi
+            row.style.background = '#d4edda';
+            setTimeout(() => { row.style.background = ''; }, 1500);
+            // Feedback sul pulsante: icona check per 1,5 secondi poi ripristino
+            const icon = btn.querySelector('i');
+            btn.classList.replace('btn-success', 'btn-primary');
+            icon.classList.replace('bi-floppy', 'bi-check-lg');
+            setTimeout(() => {
+                btn.classList.replace('btn-primary', 'btn-success');
+                icon.classList.replace('bi-check-lg', 'bi-floppy');
+            }, 1500);
+        } else {
+            alert('Errore: ' + (data.error || 'Sconosciuto'));
+        }
+    })
+    .catch(err => {
+        console.error('Errore:', err);
+        alert('Errore durante il salvataggio');
+    });
+}
+</script>
+{% endblock %}

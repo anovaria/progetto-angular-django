@@ -1,0 +1,39 @@
+{% extends 'portal/base.html' %}
+{% load static %}
+
+{% block title %}Proposte Ordine — {% block page_title %}{% endblock %}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .rio-header {
+        background: white;
+        border-bottom: 1px solid #dee2e6;
+        padding: 16px 24px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    .rio-header h4 { margin: 0; color: #2E5090; font-weight: 700; }
+    .rio-header .breadcrumb { margin: 0; font-size: 13px; }
+    .rio-body { padding: 24px; }
+</style>
+{% block module_css %}{% endblock %}
+{% endblock %}
+
+{% block page_content %}
+<div class="rio-header">
+    <i class="bi bi-truck fs-4 text-primary"></i>
+    <div>
+        <h4>Proposte Ordine Fornitori</h4>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-0">
+                <li class="breadcrumb-item"><a href="{% url 'rio_fornitori:home' %}">Ricerca</a></li>
+                {% block breadcrumb_extra %}{% endblock %}
+            </ol>
+        </nav>
+    </div>
+</div>
+<div class="rio-body">
+    {% block rio_content %}{% endblock %}
+</div>
+{% endblock %}

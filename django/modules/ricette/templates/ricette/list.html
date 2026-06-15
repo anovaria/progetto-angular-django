@@ -1,0 +1,110 @@
+{% extends 'portal/base.html' %}
+
+{% block extra_css %}
+<style>
+.rc-wrap      { display:flex; flex-direction:column; min-height:calc(100vh - 64px); }
+.rc-toolbar   { background:#fff; padding:12px 20px; border-bottom:1px solid #e0e0e0;
+                display:flex; gap:12px; align-items:center; border-radius:8px 8px 0 0; flex-wrap:wrap; }
+.rc-search    { flex:1; min-width:200px; max-width:400px; padding:7px 12px;
+                border:1px solid #ddd; border-radius:4px; font-size:13px; }
+.rc-search:focus { outline:none; border-color:#2E5090; }
+.btn-rc       { padding:7px 14px; border:none; border-radius:4px; cursor:pointer;
+                font-size:13px; display:inline-flex; align-items:center; gap:5px; text-decoration:none; }
+.btn-primary  { background:#2E5090; color:#fff; }
+.btn-primary:hover { background:#1e3a6a; color:#fff; }
+.btn-success  { background:#4CAF50; color:#fff; }
+.btn-success:hover { background:#388E3C; color:#fff; }
+.badge-count  { background:#e3f2fd; color:#1565c0; padding:5px 14px; border-radius:20px;
+                font-size:13px; font-weight:500; margin-left:auto; }
+.rc-table-wrap { flex:1; overflow:auto; background:#fff; border-radius:0 0 8px 8px;
+                 box-shadow:0 2px 8px rgba(0,0,0,.1); }
+.rc-table     { width:100%; border-collapse:collapse; }
+.rc-table th  { background:#2E5090; color:#fff; padding:9px 12px; text-align:left;
+                font-size:12px; font-weight:600; position:sticky; top:0; white-space:nowrap; }
+.rc-table td  { padding:8px 12px; border-bottom:1px solid #eee; font-size:13px; vertical-align:middle; }
+.rc-table tr:hover td { background:#f0f4ff; }
+.badge-cat    { background:#e8f5e9; color:#2e7d32; padding:2px 8px; border-radius:10px; font-size:11px; }
+.badge-diff   { padding:2px 8px; border-radius:10px; font-size:11px; }
+.diff-bassa   { background:#e3f2fd; color:#1565c0; }
+.diff-media   { background:#fff3e0; color:#e65100; }
+.diff-alta    { background:#fce4ec; color:#c62828; }
+.mrg-pos      { color:#2e7d32; font-weight:600; }
+.mrg-neg      { color:#c62828; font-weight:600; }
+.actions a    { margin-right:6px; font-size:12px; color:#2E5090; text-decoration:none; }
+.actions a:hover { text-decoration:underline; }
+.empty-state  { text-align:center; padding:60px 20px; color:#999; font-size:15px; }
+</style>
+{% endblock %}
+
+{% block page_content %}
+<div class="rc-wrap">
+  <form method="get" class="rc-toolbar">
+    <input class="rc-search" name="q" value="{{ q }}" placeholder="Cerca per descrizione, codice, categoria…">
+    <button type="submit" class="btn-rc btn-primary">🔍 Cerca</button>
+    {% if q %}<a href="?" class="btn-rc" style="border:1px solid #ddd;color:#666;">✕ Reset</a>{% endif %}
+    <a href="{% url 'ricette:create' %}" class="btn-rc btn-success">＋ Nuova Ricetta</a>
+    <span class="badge-count">{{ ricette|length }} ricett{% if ricette|length == 1 %}a{% else %}e{% endif %}</span>
+  </form>
+
+  <div class="rc-table-wrap">
+    {% if ricette %}
+    <table class="rc-table">
+      <thead>
+        <tr>
+          <th>Codice</th>
+          <th>Descrizione</th>
+          <th>Categoria</th>
+          <th>Difficoltà</th>
+          <th style="text-align:right">Ingredienti</th>
+          <th style="text-align:right">Imballaggi</th>
+          <th style="text-align:right">Prezzo (c/IVA)</th>
+          <th style="text-align:right">Margine %</th>
+          <th>Aggiornata</th>
+          <th>Azioni</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in ricette %}
+        <tr>
+          <td style="font-family:monospace;font-weight:600">{{ r.codice_articolo|default:"—" }}</td>
+          <td><a href="{% url 'ricette:detail' r.pk %}" style="color:#2E5090;font-weight:500;text-decoration:none">{{ r.descrizione }}</a></td>
+          <td>{% if r.categoria %}<span class="badge-cat">{{ r.categoria }}</span>{% else %}—{% endif %}</td>
+          <td>
+            {% if r.difficolta %}
+            <span class="badge-diff diff-{{ r.difficolta }}">{{ r.get_difficolta_display }}</span>
+            {% else %}—{% endif %}
+          </td>
+          <td style="text-align:right">{{ r.ingredienti.count }}</td>
+          <td style="text-align:right">{{ r.imballaggi.count }}</td>
+          <td style="text-align:right">
+            {% if r.prezzo_vendita_iva %}€ {{ r.prezzo_vendita_iva|floatformat:2 }}{% else %}—{% endif %}
+          </td>
+          <td style="text-align:right">
+            {% if r.margine_pct is not None %}
+              <span class="{% if r.margine_pct >= 0 %}mrg-pos{% else %}mrg-neg{% endif %}">
+                {{ r.margine_pct|floatformat:1 }}%
+              </span>
+            {% else %}—{% endif %}
+          </td>
+          <td style="font-size:11px;color:#888">{{ r.aggiornato_il|date:"d/m/Y" }}</td>
+          <td class="actions">
+            <a href="{% url 'ricette:detail' r.pk %}">👁 Vedi</a>
+            <a href="{% url 'ricette:edit' r.pk %}">✏️ Modifica</a>
+            <form method="post" action="{% url 'ricette:delete' r.pk %}" style="display:inline"
+                  onsubmit="return confirm('Eliminare la ricetta «{{ r.descrizione }}»?')">
+              {% csrf_token %}
+              <button type="submit" style="background:none;border:none;cursor:pointer;color:#c62828;font-size:12px;padding:0">🗑 Elimina</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+      {% if q %}Nessuna ricetta trovata per "<strong>{{ q }}</strong>".{% else %}Nessuna ricetta presente. <a href="{% url 'ricette:create' %}">Crea la prima!</a>{% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

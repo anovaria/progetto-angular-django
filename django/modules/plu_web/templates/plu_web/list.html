@@ -1,0 +1,214 @@
+{% extends 'portal/base.html' %}
+{# Descrizione del template: Lista PLU con filtri (reparto, banco, fornitore, ricerca testo, flag Cervinia). Supporta ordinamento dinamico per colonna, export Excel e apertura pagina stampa barcode in una nuova scheda. I barcode EAN13 sono renderizzati lato client tramite JsBarcode. #}
+
+{% block extra_css %}
+<style>
+    .plu-container { display: flex; flex-direction: column; min-height: calc(100vh - 64px); }
+    .filters { background: white; color: #212529; padding: 16px 20px; border-bottom: 1px solid #e0e0e0; display: flex; gap: 15px; flex-wrap: wrap; align-items: flex-end; border-radius: 8px 8px 0 0; }
+    .filter-group { display: flex; flex-direction: column; gap: 5px; }
+    .filter-group label { font-size: 12px; color: #666; font-weight: 500; }
+    .filter-group select, .filter-group input { padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; min-width: 150px; }
+    .filter-group select:focus, .filter-group input:focus { outline: none; border-color: #2E5090; }
+    .btn-plu { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; display: inline-flex; align-items: center; gap: 5px; text-decoration: none; }
+    .btn-plu-primary { background: #2E5090; color: white; }
+    .btn-plu-primary:hover { background: #1e3a6a; }
+    .btn-plu-success { background: #4CAF50; color: white; }
+    .btn-plu-success:hover { background: #388E3C; }
+    .btn-plu-outline { background: white; border: 1px solid #ddd; color: #666; }
+    .btn-plu-outline:hover { background: #f5f5f5; }
+    .btn-cervinia { background: white; border: 1px solid #1565c0; color: #1565c0; text-decoration: none; padding: 8px 16px; border-radius: 4px; display: inline-flex; align-items: center; gap: 5px; font-size: 14px; cursor: pointer; }
+    .btn-cervinia:hover { background: #e3f2fd; }
+    .btn-cervinia-active { background: #1565c0; color: white; text-decoration: none; padding: 8px 16px; border-radius: 4px; display: inline-flex; align-items: center; gap: 5px; font-size: 14px; }
+    .btn-cervinia-active:hover { background: #0d47a1; }
+    .btn-no-cervinia { background: white; border: 1px solid #e65100; color: #e65100; text-decoration: none; padding: 8px 16px; border-radius: 4px; display: inline-flex; align-items: center; gap: 5px; font-size: 14px; cursor: pointer; }
+    .btn-no-cervinia:hover { background: #fff3e0; }
+    .btn-no-cervinia-active { background: #e65100; color: white; text-decoration: none; padding: 8px 16px; border-radius: 4px; display: inline-flex; align-items: center; gap: 5px; font-size: 14px; }
+    .btn-no-cervinia-active:hover { background: #bf360c; }
+    .totale-badge { margin-left: auto; align-self: center; background: #e3f2fd; color: #1565c0; padding: 5px 14px; border-radius: 20px; font-size: 13px; font-weight: 500; white-space: nowrap; }
+    .table-container { background: white; color: #212529; border-radius: 0 0 8px 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); flex: 1; display: flex; flex-direction: column; min-height: 0; }
+    .plu-table { width: 100%; border-collapse: collapse; }
+    .plu-table th { background: #2E5090; padding: 12px; text-align: left; font-weight: 600; color: #fff; border-bottom: 2px solid #1e3a6a; position: sticky; top: 0; z-index: 1; }
+    .plu-table th a { color: #fff; text-decoration: none; display: flex; align-items: center; gap: 4px; }
+    .plu-table th a:hover { color: #cfe2ff; }
+    .sort-icon { font-size: 11px; color: rgba(255,255,255,0.5); }
+    .sort-icon.active { color: #fff; }
+    .plu-table td { padding: 10px 12px; border-bottom: 1px solid #eee; vertical-align: middle; }
+    .plu-table tr:hover { background: #f8f9fa; }
+    .plu-table tr:nth-child(even) { background: #fafafa; }
+    .plu-table tr:nth-child(even):hover { background: #f0f0f0; }
+    .plu-badge { background: #2E5090; color: white; padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 13px; }
+    .reparto-chip { background: #e3f2fd; color: #1565c0; padding: 4px 10px; border-radius: 12px; font-size: 12px; }
+    .banco-chip { background: #fff3e0; color: #e65100; padding: 4px 10px; border-radius: 12px; font-size: 12px; }
+    .ean-code { font-family: 'Consolas', monospace; font-size: 13px; color: #555; }
+    .barcode-container { display: flex; align-items: center; }
+    .barcode-container svg { height: 40px; }
+    .empty-state { text-align: center; padding: 60px 20px; color: #999; }
+    .empty-state h3 { margin-bottom: 10px; color: #666; }
+    .actions { display: flex; gap: 10px; }
+    .table-scroll { flex: 1; overflow-y: auto; min-height: 0; max-height: calc(100vh - 280px); }
+</style>
+{% endblock %}
+
+{% block page_content %}
+<div class="plu-container">
+
+    {# Sezione: Barra filtri — form GET con sottomissione automatica al cambio dei select #}
+    <form method="get" class="filters">
+
+        {# Filtro per reparto: sottomette il form al cambio selezione #}
+        <div class="filter-group">
+            <label>Reparto</label>
+            <select name="reparto" onchange="this.form.submit()">
+                <option value="">Tutti i reparti</option>
+                {% for code, name in filter_options.reparti %}
+                <option value="{{ code }}" {% if filters.reparto == code %}selected{% endif %}>{{ name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        {# Filtro per banco bilancia #}
+        <div class="filter-group">
+            <label>Banco</label>
+            <select name="banco" onchange="this.form.submit()">
+                <option value="">Tutti i banchi</option>
+                {% for code, name in filter_options.banchi %}
+                <option value="{{ code }}" {% if filters.banco == code %}selected{% endif %}>Banco {{ name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        {# Filtro per fornitore #}
+        <div class="filter-group">
+            <label>Fornitore</label>
+            <select name="fornitore" onchange="this.form.submit()">
+                <option value="">Tutti i fornitori</option>
+                {% for code, name in filter_options.fornitori %}
+                <option value="{{ code }}" {% if filters.fornitore == code %}selected{% endif %}>{{ name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        {# Campo testo libero: ricerca su PLU, codice articolo e descrizione #}
+        <div class="filter-group">
+            <label>Cerca</label>
+            <input type="text" name="search" value="{{ filters.search|default:'' }}" placeholder="PLU, codice, descrizione...">
+        </div>
+
+        {# Toggle Cervinia: se attivo mostra solo articoli presenti nel listino Cervinia (JOIN dinamico nella query) #}
+        <div class="filter-group">
+            <label>&nbsp;</label>
+            {% if filters.cervinia %}
+            {# Cervinia attivo: il link rimuove il parametro cervinia dall'URL mantenendo gli altri filtri #}
+            <a href="?reparto={{ filters.reparto|default:'' }}&banco={{ filters.banco|default:'' }}&fornitore={{ filters.fornitore|default:'' }}&search={{ filters.search|default:'' }}"
+               class="btn-cervinia-active">🏔 Cervinia attivo</a>
+            {% else %}
+            <button type="submit" name="cervinia" value="1" class="btn-cervinia">🏔 Solo Cervinia</button>
+            {% endif %}
+        </div>
+
+        {# Sezione: Pulsanti azione — cerca, reset, export Excel, stampa barcode #}
+        <div class="actions">
+            <button type="submit" class="btn-plu btn-plu-primary">🔍 Cerca</button>
+            <a href="?" class="btn-plu btn-plu-outline">✕ Reset</a>
+            {# Export Excel: passa i filtri correnti come parametri GET #}
+            <a href="{% url 'plu_web:export' %}?{{ request.GET.urlencode }}" class="btn-plu btn-plu-success">📥 Export Excel</a>
+            {# Il pulsante stampa barcode è visibile solo se ci sono articoli nei risultati #}
+            {% if articoli %}
+            <a href="{% url 'plu_web:stampa' %}?{{ request.GET.urlencode }}" target="_blank" class="btn-plu" style="background:#9c27b0;color:white;">🖨 Stampa Barcode</a>
+            {% endif %}
+        </div>
+
+        {# Badge con il conteggio totale degli articoli trovati: visibile solo dopo una ricerca #}
+        {% if articoli is not None %}<div class="totale-badge">{{ totale }} articoli</div>{% endif %}
+    </form>
+
+    {# Sezione: Contenitore risultati — tre stati: nessun filtro applicato, risultati presenti, lista vuota #}
+    <div class="table-container">
+        {% if articoli is None %}
+        {# Stato iniziale: nessun filtro applicato, la query non è stata eseguita #}
+        <div class="empty-state">
+            <h3>Applica un filtro per visualizzare i risultati</h3>
+            <p>Seleziona reparto, banco, fornitore o digita nella ricerca</p>
+        </div>
+        {% elif articoli %}
+
+        {# Sezione: Tabella PLU con intestazioni ordinabili #}
+        <div class="table-scroll">
+            <table class="plu-table">
+                <thead>
+                    <tr>
+                        {# Intestazioni con ordinamento dinamico: cur=colonna attiva, dir=direzione corrente #}
+                        {% with cur=filters.sort dir=filters.dir %}
+                        {% for col, label in columns_sortable %}
+                        <th>
+                            {% if col %}
+                                {# Colonna ordinabile: inverte la direzione se è già la colonna attiva #}
+                                {% if cur == col %}
+                                    {% if dir == 'desc' %}
+                                    {# Ordinamento corrente discendente: il click passerà ad ascendente #}
+                                    <a href="?{% for k,v in request.GET.items %}{% if k != 'sort' and k != 'dir' %}{{ k }}={{ v }}&{% endif %}{% endfor %}sort={{ col }}&dir=asc">{{ label }} <span class="sort-icon active">▼</span></a>
+                                    {% else %}
+                                    {# Ordinamento corrente ascendente: il click passerà a discendente #}
+                                    <a href="?{% for k,v in request.GET.items %}{% if k != 'sort' and k != 'dir' %}{{ k }}={{ v }}&{% endif %}{% endfor %}sort={{ col }}&dir=desc">{{ label }} <span class="sort-icon active">▲</span></a>
+                                    {% endif %}
+                                {% else %}
+                                    {# Colonna non attiva: il click attiverà l'ordinamento ascendente #}
+                                    <a href="?{% for k,v in request.GET.items %}{% if k != 'sort' and k != 'dir' %}{{ k }}={{ v }}&{% endif %}{% endfor %}sort={{ col }}&dir=asc">{{ label }} <span class="sort-icon">↕</span></a>
+                                {% endif %}
+                            {% else %}
+                                {# Colonna non ordinabile (es. barcode): mostra solo il label #}
+                                {{ label }}
+                            {% endif %}
+                        </th>
+                        {% endfor %}
+                        {% endwith %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {# Itera gli articoli PLU filtrati e ordinati dalla vista #}
+                    {% for art in articoli %}
+                    <tr>
+                        <td><span class="plu-badge">{{ art.plu }}</span></td>
+                        <td>{{ art.codArticolo }}</td>
+                        <td>{{ art.descrizione }}</td>
+                        <td><span class="ean-code">{{ art.ean_formatted }}</span></td>
+                        {# Il barcode SVG è inizialmente vuoto: viene popolato da JsBarcode nel blocco extra_js #}
+                        <td><div class="barcode-container"><svg class="barcode" data-ean="{{ art.ean_formatted }}"></svg></div></td>
+                        <td><span class="reparto-chip">{{ art.reparto_nome }}</span></td>
+                        <td><span class="banco-chip">{{ art.bancobilancia }}</span></td>
+                        <td>{{ art.descrccom|default:"-" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        {# Stato vuoto: filtri applicati ma nessun articolo corrisponde ai criteri #}
+        <div class="empty-state">
+            <h3>Nessun articolo trovato</h3>
+            <p>Prova a modificare i filtri di ricerca</p>
+        </div>
+        {% endif %}
+
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{# JsBarcode: libreria client-side per generare SVG barcode EAN13 #}
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Itera tutti gli elementi SVG con classe "barcode" e genera il barcode EAN13
+        document.querySelectorAll('.barcode').forEach(function(svg) {
+            const ean = svg.dataset.ean;
+            // Genera il barcode solo se l'EAN è presente e ha 13 cifre (EAN13 standard)
+            if (ean && ean.length === 13) {
+                try {
+                    JsBarcode(svg, ean, { format: 'EAN13', width: 1.5, height: 40, displayValue: false, margin: 0 });
+                } catch (e) { console.error('Errore barcode:', ean, e); }
+            }
+        });
+    });
+</script>
+{% endblock %}

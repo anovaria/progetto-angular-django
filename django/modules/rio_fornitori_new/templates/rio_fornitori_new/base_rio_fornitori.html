@@ -1,0 +1,51 @@
+{% extends 'portal/base.html' %}
+{% load static %}
+
+{% block title %}Proposte Ordine [TEST] — {% block page_title %}{% endblock %}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .rio-header {
+        background: white;
+        border-bottom: 1px solid #dee2e6;
+        padding: 16px 24px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    .rio-header h4 { margin: 0; color: #2E5090; font-weight: 700; }
+    .rio-header .breadcrumb { margin: 0; font-size: 13px; }
+    .rio-body { padding: 24px; }
+    .rio-test-banner {
+        background: #fff3cd;
+        border-bottom: 2px solid #ffc107;
+        padding: 6px 24px;
+        font-size: 13px;
+        font-weight: 600;
+        color: #664d03;
+    }
+</style>
+{% block module_css %}{% endblock %}
+{% endblock %}
+
+{% block page_content %}
+<div class="rio-test-banner">
+    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+    AMBIENTE DI TEST — srviisnew — Le proposte d'ordine vengono inviate a Gold
+</div>
+<div class="rio-header">
+    <i class="bi bi-truck fs-4 text-primary"></i>
+    <div>
+        <h4>Proposte Ordine Fornitori <span class="badge bg-warning text-dark ms-2" style="font-size:12px;">TEST</span></h4>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-0">
+                <li class="breadcrumb-item"><a href="{% url 'rio_fornitori_new:home' %}">Ricerca</a></li>
+                {% block breadcrumb_extra %}{% endblock %}
+            </ol>
+        </nav>
+    </div>
+</div>
+<div class="rio-body">
+    {% block rio_content %}{% endblock %}
+</div>
+{% endblock %}

@@ -1,0 +1,35 @@
+{% extends 'cursori/base_cursori.html' %}
+{# Descrizione del template: menu principale del terminale palmare cursori #}
+{# Mostra i pulsanti di navigazione verso le funzioni disponibili #}
+
+{% block title %}Menu Cursori{% endblock %}
+{% block page_title %}Menu principale{% endblock %}
+
+{% block content %}
+{# Sezione: contenitore centrato con larghezza massima per schermi palmari #}
+<div style="max-width:400px; margin:20px auto;">
+    <div style="text-align:center; margin-bottom:20px; color:#aaa; font-size:0.9rem;">
+        Terminale palmare — seleziona funzione
+    </div>
+
+    {# Sezione: griglia di pulsanti di navigazione principali #}
+    <div class="d-grid gap-3">
+        <a href="{% url 'cursori:dettaglio' %}" class="btn btn-terminal btn-blu text-center">
+            Dettaglio Articolo
+        </a>
+        <a href="{% url 'cursori:stampa' %}" class="btn btn-terminal btn-blu text-center">
+            Lista Articoli
+        </a>
+        {% if pos_enabled %}
+        <a href="{% url 'cursori:pos_articoli' %}" class="btn btn-terminal btn-blu text-center">
+            Posizione Articoli
+        </a>
+        {% endif %}
+    </div>
+
+    {# Link di ritorno al portale principale #}
+    <div style="text-align:center; margin-top:30px;">
+        <a href="/portal/" style="color:#555; font-size:0.8rem;">&#8592; Portale</a>
+    </div>
+</div>
+{% endblock %}

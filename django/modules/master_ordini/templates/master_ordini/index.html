@@ -1,0 +1,130 @@
+{% extends "portal/base.html" %}
+{# Descrizione del template: Pagina di ricerca e consultazione degli ordini fornitori (Master Ordini). Permette di filtrare per numero ordine, date e stato; mostra i risultati in tabella e offre l'esportazione in Excel. #}
+
+{% block title %}Master Ordini{% endblock %}
+
+{% block extra_css %}
+{# Libreria Select2 per la dropdown ricercabile del numero ordine #}
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+<style>
+    .preview-table-wrapper { overflow-x: auto; }
+    .preview-table thead th { background-color: #2F5496; color: #fff; white-space: nowrap; position: sticky; top: 0; }
+    .preview-table tbody tr:hover { background-color: #f0f4ff; }
+</style>
+{% endblock %}
+
+{% block page_content %}
+<div class="container-fluid mt-4">
+    <h2 class="mb-4">Master Ordini</h2>
+
+    {# Sezione: form di ricerca con filtri per numero ordine, date e stato #}
+    <form method="get" action="{% url 'master_ordini:index' %}">
+        <div class="row g-3">
+
+            {# Filtro per numero ordine: select2 per ricerca rapida #}
+            <div class="col-md-3">
+                <label class="form-label">Numero Ordine</label>
+                <select name="num_ordine" id="num_ordine" class="form-select">
+                    <option value="">-- Tutti --</option>
+                    {% for num in num_ordini %}
+                    {# Mantiene selezionato il valore corrente dopo il submit #}
+                    <option value="{{ num }}" {% if filters.num_ordine == num %}selected{% endif %}>{{ num }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-md-2">
+                <label class="form-label">Data Ordine Da</label>
+                <input type="date" name="data_ordine_da" class="form-control" value="{{ filters.data_ordine_da }}">
+            </div>
+
+            <div class="col-md-2">
+                <label class="form-label">Data Ordine A</label>
+                <input type="date" name="data_ordine_a" class="form-control" value="{{ filters.data_ordine_a }}">
+            </div>
+
+            <div class="col-md-2">
+                <label class="form-label">Data Consegna Da</label>
+                <input type="date" name="data_consegna_da" class="form-control" value="{{ filters.data_consegna_da }}">
+            </div>
+
+            <div class="col-md-2">
+                <label class="form-label">Data Consegna A</label>
+                <input type="date" name="data_consegna_a" class="form-control" value="{{ filters.data_consegna_a }}">
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label">Stato Ordine</label>
+                <select name="stato" class="form-select">
+                    <option value="">-- Tutti --</option>
+                    {# Itera le tuple (TRAD, STATO) restituite da get_stati() #}
+                    {% for trad, stato in stati %}
+                    <option value="{{ trad }}" {% if filters.stato == trad %}selected{% endif %}>{{ trad }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+        </div>
+
+        <div class="mt-4 d-flex gap-2">
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-search"></i> Cerca
+            </button>
+            {# Il bottone Excel è visibile solo se ci sono risultati (rows non None) #}
+            {% if rows is not None %}
+            <a href="{% url 'master_ordini:export_excel' %}?{{ params_qs }}" class="btn btn-success">
+                <i class="bi bi-file-earmark-excel"></i> Esporta Excel
+            </a>
+            {% endif %}
+        </div>
+    </form>
+
+    {# Sezione: risultati della ricerca #}
+    {% if rows is not None %}
+    <div class="mt-4">
+        <p class="text-muted">{{ rows|length }} righe trovate</p>
+        {# Mostra la tabella solo se ci sono risultati, altrimenti il messaggio "Nessun risultato" #}
+        {% if rows %}
+        <div class="preview-table-wrapper">
+            <table class="table table-sm table-bordered preview-table">
+                <thead>
+                    <tr>
+                        {# Intestazioni dinamiche dalla lista HEADERS definita nella view #}
+                        {% for h in headers %}<th>{{ h }}</th>{% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {# Itera le righe restituite dalla query SQL #}
+                    {% for row in rows %}
+                    <tr>
+                        {# Itera le celle di ogni riga #}
+                        {% for cell in row %}<td>{{ cell }}</td>{% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted">Nessun risultato trovato.</p>
+        {% endif %}
+    </div>
+    {% endif %}
+
+</div>
+{% endblock page_content %}
+
+{% block extra_js %}
+{# jQuery e Select2 per il campo numero ordine ricercabile #}
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+    {# Inizializza Select2 sul campo numero ordine con tema Bootstrap 5 #}
+    $('#num_ordine').select2({
+        theme: 'bootstrap-5',
+        allowClear: true,
+        placeholder: '-- Tutti --',
+        width: '100%',
+    });
+</script>
+{% endblock %}

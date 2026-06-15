@@ -1,0 +1,101 @@
+{% extends 'portal/base.html' %}
+{# Descrizione del template: Pannello di gestione dei permessi individuali sulle app del portale, accessibile solo al gruppo ITD. Permette di assegnare o revocare l'accesso a specifiche app per singoli utenti, indipendentemente dai gruppi LDAP. Mostra un form di aggiunta e la lista completa dei permessi attivi con possibilità di eliminazione. #}
+{% block title %}Gestione Permessi{% endblock %}
+
+{% block page_content %}
+<div class="p-4">
+
+    {# Sezione: Intestazione della pagina #}
+    <div class="d-flex justify-content-between align-items-start mb-4">
+        <div>
+            <h4 style="color:#212529; margin-bottom:4px;">
+                <i class="bi bi-shield-check align-middle me-2"></i>
+                Gestione Permessi
+            </h4>
+            <small class="text-muted">Aggiungi o rimuovi accessi individuali alle app</small>
+        </div>
+    </div>
+
+    {# Sezione: Form per aggiungere un nuovo permesso individuale utente/app #}
+    <div class="card mb-4">
+        <div class="card-header">
+            <strong><i class="bi bi-plus-circle me-2"></i>Aggiungi permesso</strong>
+        </div>
+        <div class="card-body">
+            <form method="post" class="row g-3">
+                {% csrf_token %}
+                {# Campo hidden che indica al backend l'azione da eseguire #}
+                <input type="hidden" name="azione" value="aggiungi">
+                <div class="col-md-5">
+                    <label class="form-label">Username</label>
+                    <input type="text" name="username" class="form-control" placeholder="mario.rossi" required>
+                </div>
+                <div class="col-md-5">
+                    <label class="form-label">App</label>
+                    {# Select popolata dinamicamente con le app disponibili da MENU_CONFIG #}
+                    <select name="app_name" class="form-select" required>
+                        <option value="">-- Seleziona --</option>
+                        {# Itera le coppie (app_name, label) costruite dalla view dalla MENU_CONFIG #}
+                        {% for app_name, label in apps_disponibili %}
+                        <option value="{{ app_name }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-plus-lg me-1"></i>Aggiungi
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {# Sezione: Tabella dei permessi individuali attivi nel database #}
+    <div class="card">
+        <div class="card-header">
+            <strong><i class="bi bi-list-ul me-2"></i>Permessi attivi</strong>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Username</th>
+                        <th>App</th>
+                        <th>Aggiunto il</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {# Itera tutti i permessi attivi, ordinati per username e nome app #}
+                    {% for p in permessi %}
+                    <tr>
+                        <td class="align-middle">{{ p.username }}</td>
+                        <td class="align-middle">{{ p.app_name }}</td>
+                        <td class="align-middle"><small class="text-muted">{{ p.created_at|date:"d/m/Y H:i" }}</small></td>
+                        <td class="align-middle text-end">
+                            {# Ogni riga ha il proprio form di eliminazione con l'ID del permesso #}
+                            <form method="post">
+                                {% csrf_token %}
+                                <input type="hidden" name="azione" value="elimina">
+                                <input type="hidden" name="id" value="{{ p.id }}">
+                                <button type="submit" class="btn btn-sm btn-outline-danger">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    {# Messaggio mostrato se non ci sono permessi individuali configurati #}
+                    <tr>
+                        <td colspan="4" class="text-center text-muted py-4">
+                            Nessun permesso individuale configurato
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

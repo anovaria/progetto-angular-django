@@ -1,0 +1,124 @@
+{% extends 'portal/base.html' %}
+{# Pagina Imposta Attributi: gestione tabelle "Mettere in X" e generazione file CSV per Gold. #}
+
+{% block extra_css %}
+<style>
+    .container { max-width: 900px; margin: 20px auto; padding: 0 20px; }
+    .section { background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 20px; padding: 20px; }
+    .section-title { font-size: 1.1em; font-weight: 600; margin-bottom: 15px; color: #1a5276; border-bottom: 2px solid #2e86c1; padding-bottom: 8px; }
+
+    .stato-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin-bottom: 15px; }
+    .stato-card { text-align: center; padding: 15px 10px; border-radius: 6px; border: 2px solid #ddd; cursor: pointer; transition: all 0.2s; text-decoration: none; color: #333; display: block; }
+    .stato-card:hover { border-color: #2e86c1; background: #eaf2f8; transform: translateY(-2px); }
+    .stato-card .label { font-size: 0.85em; color: #666; margin-bottom: 5px; }
+    .stato-card .count { font-size: 1.8em; font-weight: 700; color: #1a5276; }
+    .stato-card.has-items { border-color: #27ae60; background: #eafaf1; }
+    .stato-card.has-items .count { color: #27ae60; }
+
+    .actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 15px; }
+    .btn { padding: 10px 20px; border: none; border-radius: 6px; font-size: 0.95em; font-weight: 500; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 8px; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-primary { background: #2e86c1; color: white; }
+    .btn-primary:hover:not(:disabled) { background: #1a5276; }
+
+    .toast { position: fixed; top: 80px; right: 20px; padding: 15px 25px; border-radius: 8px; color: white; font-weight: 500; box-shadow: 0 4px 12px rgba(0,0,0,0.2); z-index: 1001; transform: translateX(120%); transition: transform 0.3s; }
+    .toast.show { transform: translateX(0); }
+    .toast.success { background: #27ae60; }
+    .toast.error { background: #e74c3c; }
+
+    .loading { display: none; }
+    .loading.active { display: inline-block; }
+    .spinner { width: 16px; height: 16px; border: 2px solid #fff; border-top-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite; display: inline-block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+{% endblock %}
+
+{% block page_content %}
+<div class="container">
+
+    <div class="section">
+        <div class="section-title">Imposta Attributi</div>
+
+        <div class="stato-grid">
+            {% for stato, count in conteggi.items %}
+            <a href="{% url 'scaricopromo:mettere_in' stato %}" class="stato-card {% if count > 0 %}has-items{% endif %}">
+                <div class="label">Mettere in {{ stato }}</div>
+                <div class="count" id="count-{{ stato }}">{{ count }}</div>
+            </a>
+            {% endfor %}
+        </div>
+
+        <div class="actions">
+            <button class="btn btn-primary" id="btn-crea-attributi"
+                    {% if not can_crea_attributi %}disabled{% endif %}
+                    onclick="creaAttributi()">
+                <span class="loading" id="load-attr"><span class="spinner"></span></span>
+                📋 Crea File per import Attributi
+            </button>
+        </div>
+    </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function getCsrfToken() {
+    return document.cookie.split(';').map(c => c.trim()).find(c => c.startsWith('csrftoken='))?.split('=')[1] || '';
+}
+
+function showToast(msg, type) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast ' + type + ' show';
+    setTimeout(() => t.classList.remove('show'), 4000);
+}
+
+function downloadBlob(response) {
+    const disposition = response.headers.get('Content-Disposition') || '';
+    const match = disposition.match(/filename="?([^"]+)"?/);
+    const filename = match ? match[1] : 'download';
+    return response.blob().then(blob => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+    });
+}
+
+function creaAttributi() {
+    const btn = document.getElementById('btn-crea-attributi');
+    const load = document.getElementById('load-attr');
+    btn.disabled = true;
+    load.classList.add('active');
+
+    fetch("{% url 'scaricopromo:azione_crea_attributi' %}", { method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() } })
+        .then(r => {
+            if (!r.ok) return r.json().then(d => Promise.reject(d.message));
+            const tot = r.headers.get('X-Tot-Records') || '?';
+            return downloadBlob(r).then(() => tot);
+        })
+        .then(tot => {
+            load.classList.remove('active');
+            showToast(`File creato! ${tot} righe (articoli selezionati + transizioni N→I automatiche).`, 'success');
+            document.querySelectorAll('.stato-card').forEach(card => {
+                card.classList.remove('has-items');
+                const cnt = card.querySelector('.count');
+                if (cnt) cnt.textContent = '0';
+            });
+            document.getElementById('btn-crea-attributi').disabled = true;
+        })
+        .catch(err => {
+            load.classList.remove('active');
+            showToast(err || 'Errore di connessione', 'error');
+            btn.disabled = false;
+        });
+}
+</script>
+{% endblock %}

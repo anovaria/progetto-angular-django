@@ -1,0 +1,67 @@
+{% extends 'alloca_hostess/base_minimal.html' %}
+{# Descrizione del template: Anagrafica delle hostess. Mostra una tabella con nominativo, ruolo,
+   note e stato (attiva/non attiva) per ciascuna hostess nel sistema. #}
+
+
+{% block title %}Anagrafica Hostess{% endblock %}
+
+{% block content %}
+{# Sezione: Intestazione pagina #}
+<div class="card mb-4">
+    <div class="card-body">
+        <h4 class="mb-0">
+            <i class="bi bi-person-badge" style="vertical-align: middle; font-size: 28px;"></i>
+            Anagrafica Hostess
+        </h4>
+    </div>
+</div>
+
+{# Sezione: Tabella elenco hostess #}
+<div class="card">
+    <div class="card-body">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Nominativo</th>
+                    <th>Ruolo</th>
+                    <th>Note</th>
+                    <th>Stato</th>
+                </tr>
+            </thead>
+            <tbody>
+                {# Itera su tutte le hostess passate dalla view #}
+                {% for hostess in hostess_list %}
+                <tr>
+                    <td><strong>{{ hostess.nominativo }}</strong></td>
+                    <td>
+                        {# Mostra il ruolo oppure un trattino se non definito #}
+                        {% if hostess.ruolo %}
+                            {{ hostess.ruolo }}
+                        {% else %}
+                            <span class="text-muted">-</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ hostess.nota|default:"-" }}</td>
+                    <td>
+                        {# Badge verde per hostess attiva, grigio per non attiva #}
+                        {% if hostess.attiva %}
+                        <span class="badge bg-success">Attiva</span>
+                        {% else %}
+                        <span class="badge bg-secondary">Non Attiva</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {# Messaggio mostrato se la lista è vuota (nessuna hostess trovata) #}
+                {% empty %}
+                <tr>
+                    <td colspan="4" class="text-center text-muted py-5">
+                        <i class="bi bi-person-slash" style="font-size: 48px;"></i>
+                        <p class="mt-2">Nessuna hostess trovata</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

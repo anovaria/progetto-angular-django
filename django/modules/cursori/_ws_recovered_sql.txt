@@ -1,0 +1,167 @@
+ delete t_posArticoli  where codarticolo = '
+
+ select * from V_coordArticoli where codarticolo = '
+
+ select Min,Max,facing from t_posarticoliglob where codarticolo = '
+
+ select qtavend from goldcursori.dbo.t_vendutonow where CodiceArticolo = '
+
+ update t_posArticoli  set Capienza ='
+
+ update t_posArticoli  set elab = 'D'  dataupg ='
+
+' and  Elab = '' 
+
+' and  Elab = 'D' 
+
+' and Elab = '' and NumeroRichiesta = '
+
+' and Elab = 'D'
+
+' and Elab = 'D' and NumeroRichiesta = '
+
+' and [elaborato] ='NO' and ip ='
+
+' and capienza = '' and NumeroRichiesta = '
+
+' and elab = '0' order by id asc 
+
+' and elab = 0
+
+' and elaborato = 'NO' order by id asc
+
+' where NumeroRichiesta = '
+
+' where codarticolo = '
+
+',  Elab = '1'  where codarticolo = '
+
+',  minimorio = '
+
+', elab = 0 where [NumeroRichiesta] = '
+
+@elab
+
+INSERT INTO [dbo].[t_ListaArticoli] ([NumeroRichiesta], [codArticolo], [Descrizione], [Stato], [PrVendita], [qtaXCrt], [qtaR], [GiacPdv], [GiacDep], [dOrdA], [qtaO], [buyer], [flStampato], [flInvEmail], [cdEan], [elab], [data], [CodPromo], [PrPromo], [DataInizio], [DataFine], [CodForn], [DescrForn], [CodArtFo]) VALUES (@NumeroRichiesta, @codArticolo, @Descrizione, @Stato, @PrVendita, @qtaXCrt, @qtaR, @GiacPdv, @GiacDep, @dOrdA, @qtaO, @buyer, @flStampato, @flInvEmail, @cdEan, @elab, @data, @CodPromo, @PrPromo, @DataInizio, @DataFine, @CodForn, @DescrForn, @CodArtFo)
+
+INSERT INTO [dbo].[t_ListaArticoli](NumeroRichiesta, codArticolo, Descrizione, cdEan, Stato, PrVendita, qtaXCrt, qtaR, GiacPDV, GiacDep, dOrdA, qtaO, buyer, elab, CodPromo, PrPromo, DataInizio, DataFine, CodForn, DescrForn, CodArtFo ) VALUES ('
+
+INSERT INTO [dbo].[t_PosArticoli](NumeroRichiesta, Corsia, Campata, codArticolo, Descrizione, Stato, qtaXCrt, cdEan, Capienza, Min,  Max,  dataIns, facing, Elab )  VALUES ('
+
+INSERT INTO [dbo].[t_StampaCursori]([NumeroRichiesta], [codArticolo], [Descrizione], [spazio], [tipoCursore],[numCursori], [elaborato], [ip]) VALUES ('
+
+Il valore della colonna 'CodArtFo' nella tabella 't_ListaArticoli' 
+
+Il valore della colonna 'CodForn' nella tabella 't_ListaArticoli' 
+
+Il valore della colonna 'CodPromo' nella tabella 't_ListaArticoli' 
+
+Il valore della colonna 'DataFine' nella tabella 't_ListaArticoli' 
+
+Il valore della colonna 'DataInizio' nella tabella 't_ListaArticoli' 
+
+Il valore della colonna 'DescrForn' nella tabella 't_ListaArticoli' 
+
+Il valore della colonna 'Descrizione' nella tabella 't_ListaArticoli' 
+
+Il valore della colonna 'GiacDep' nella tabella 't_ListaArticoli' 
+
+Il valore della colonna 'GiacPdv' nella tabella 't_ListaArticoli' 
+
+Il valore della colonna 'NumeroRichiesta' nella tabella 't_ListaArticoli' 
+
+Il valore della colonna 'PrPromo' nella tabella 't_ListaArticoli' 
+
+Il valore della colonna 'PrVendita' nella tabella 't_ListaArticoli' 
+
+Il valore della colonna 'Stato' nella tabella 't_ListaArticoli' 
+
+Il valore della colonna 'buyer' nella tabella 't_ListaArticoli' 
+
+Il valore della colonna 'cdEan' nella tabella 't_ListaArticoli' 
+
+Il valore della colonna 'codArticolo' nella tabella 't_ListaArticoli' 
+
+Il valore della colonna 'dOrdA' nella tabella 't_ListaArticoli' 
+
+Il valore della colonna 'data' nella tabella 't_ListaArticoli' 
+
+Il valore della colonna 'elab' nella tabella 't_ListaArticoli' 
+
+Il valore della colonna 'flInvEmail' nella tabella 't_ListaArticoli' 
+
+Il valore della colonna 'flStampato' nella tabella 't_ListaArticoli' 
+
+Il valore della colonna 'qtaO' nella tabella 't_ListaArticoli' 
+
+Il valore della colonna 'qtaR' nella tabella 't_ListaArticoli' 
+
+Il valore della colonna 'qtaXCrt' nella tabella 't_ListaArticoli' 
+
+SELECT id, NumeroRichiesta, codArticolo, Descrizione, Stato, PrVendita, qtaXCrt, qtaR, GiacPdv, GiacDep, dOrdA, qtaO, buyer, flStampato, flInvEmail, cdEan, elab, data, CodPromo, PrPromo, DataInizio, DataFine, CodForn, DescrForn, CodArtFo FROM dbo.t_ListaArticoli
+
+delete [dbo].[t_StampaCursori]  where [NumeroRichiesta] = '
+
+delete from [dbo].[t_ListaArticoli] where [NumeroRichiesta] = '
+
+elab
+
+select *  from v_anagarticoli  where codart = '
+
+select * from Sil_Kit5 where codiceArticolo = '
+
+select * from t_ListaArticoli WHERE NumeroRichiesta='
+
+select CodForn, DescrForn, CodArtFo,  CodArticolo, Descrizione, Stato, cdEan, PrVendita, CodPromo, DataInizio, DataFine, PrPromo, qtaR, GiacPdv, qtaXcrt, GiacDep, dOrdA, qtaO   from t_listaArticoli where NumeroRichiesta = '
+
+select NumeroRichiesta, codArticolo, tipoCursore, numCursori  from t_stampacursori  where NumeroRichiesta='
+
+select [numCursori] from [dbo].[t_StampaCursori] where [NumeroRichiesta] = '
+
+select [qtaR] from [dbo].[t_ListaArticoli] where [NumeroRichiesta] = '
+
+select count(*) as conta from [dbo].[t_ListaArticoli] where [NumeroRichiesta] = '
+
+select count(*) as conta from [dbo].[t_StampaCursori] where [NumeroRichiesta] = '
+
+select count(*) as conta from [dbo].[t_posArticoli] where [codArticolo] = '
+
+select count(*) as conta from [dbo].[t_posArticoli] where [corsia] = '
+
+select count(*) from t_authentication where indIp = '
+
+select count(*) from t_posArticoliGlob p inner join t_masterdata m on p.codArticolo = m.CODART inner join t_Ord901 o on o.CODART = m.CODART inner join t_Cons901 c on c.CODARTICOLO = o.CODART inner join(select Corsia from t_CorsiaAbilita where note is not null) co on p.Corsia = co.Corsia where m.CODART = '
+
+select giacenza_deposito, pzxcart from t_masterdata where codart = '
+
+t_ListaArticoli
+
+t_ListaArticoliDataTable
+
+update [dbo].[t_ListaArticoli] set [qtaR]= '
+
+update [dbo].[t_StampaCursori] set [numCursori]= '
+
+update t_ListaArticoli set flInvEmail = 1, elab = '1', data ='
+
+update t_ListaArticoli set flStampato = '1', elab = '1', data ='
+
+update t_TokenSession  set fl3 = '1' where   token = '
+
+update t_tokensession set fl1='Cursori', fl2 = '1' , fl3 = '1'  where [token] = '
+
+with ord as (select distinct at.aracinr acinr, max(at.aradfin) dtaf from artuc at  where at.aratfou ='1' and at.arasite ='10001' group by at.aracinr )  select artcexr etichetta,pkstrucobj.get_desc(0, artcinr, 'IT') DESCRIZIONE,  ARCIETI Principale, ARCTCOD tipoEan, arccode CDEan, AATCATT stato, aviprix Prezzo, to_char(aviddeb, 'dd/mm/yyyy') DataInizio,  to_char(avidfin, 'dd/mm/yyyy') DAtaFine,  NVL(PKSTOCK.GETSTOCKENQTEVALADATE(1, 10001, PKARTSTOCK.RECUPCINLUVCPARCINRETSEQVL(1, ARACINR, ARASEQVL), TRUNC(sysdate + 1)), 0) GIACENZA_PDV,  trunc(NVL(PKSTOCK.GETSTOCKENQTEVALADATE(1, 901, PKARTSTOCK.RECUPCINLUVCPARCINRETSEQVL(1, ARACINR, ARASEQVL), TRUNC(SYSDATE + 1)), 0) / PKARTSTOCK.RECUPCOEFFUVC(1, ARACINL)) GIACENZA_DEPOSITO,  PKARTUL.GETLIBLTYPEUL(1, ARACINL, 'IT') DESC_UNITA_GESTIONE,PKARTSTOCK.RECUPCOEFFUVC(1, AraCINL) pzXcrt,PKFOUCCOM.GET_NUMCONTRAT(0, ARACCIN) codfo,  PKFOUCCOM.GET_NUMCONTRAT(0, ARACCIN) codFo,arttypp tpArt, TSSRENIV1 sett,TSSRENIV2 Rep, TSSRENIV3 Srep, TSSRENIV4 fam, TSSRELIBN4 DescrFam  from artrac,ord, artcoca, artattri, artuv, aveprix, artuc, tsv_strucrel  where 1 = 1 and artcinr = acinr  and artcinr = arccinr and arcieti = '1'    and trunc(sysdate) between arcddeb and arcdfin  and artcinr = aatcinr  and aatccla = 'SARGC'     and trunc(sysdate) between AATDDEB and AATDFIN   and artcinr = ARVCINR and arvcinv = avicinv     and trunc(sysdate) between AVIDDEB and AVIDFIN     and artcinr = aracinr and aratfou = '1' and arasite = '10001'   and to_date(aradfin) = to_date(dtaf)     and artcinr = TSSRECINR     and arccode LIKE '
+
+with ord as (select distinct at.aracinr acinr, max(at.aradfin) dtaf from artuc at where at.aratfou ='1' and at.arasite ='10001' group by at.aracinr )  select artcexr etichetta,pkstrucobj.get_desc(0, artcinr, 'IT') DESCRIZIONE,  ARCIETI Principale, ARCTCOD tipoEan, arccode CDEan, AATCATT stato, aviprix Prezzo, to_char(aviddeb, 'dd/mm/yyyy') DataInizio,  to_char(avidfin, 'dd/mm/yyyy') DAtaFine,  NVL(PKSTOCK.GETSTOCKENQTEVALADATE(1, 10001, PKARTSTOCK.RECUPCINLUVCPARCINRETSEQVL(1, ARACINR, ARASEQVL), TRUNC(sysdate + 1)), 0) GIACENZA_PDV,  trunc(NVL(PKSTOCK.GETSTOCKENQTEVALADATE(1, 901, PKARTSTOCK.RECUPCINLUVCPARCINRETSEQVL(1, ARACINR, ARASEQVL), TRUNC(SYSDATE + 1)), 0) / PKARTSTOCK.RECUPCOEFFUVC(1, ARACINL)) GIACENZA_DEPOSITO,  PKARTUL.GETLIBLTYPEUL(1, ARACINL, 'IT') DESC_UNITA_GESTIONE,PKARTSTOCK.RECUPCOEFFUVC(1, AraCINL) pzXcrt,PKFOUCCOM.GET_NUMCONTRAT(0, ARACCIN) codfo,  PKFOUCCOM.GET_NUMCONTRAT(0, ARACCIN) codFo,arttypp tpArt, TSSRENIV1 sett,TSSRENIV2 Rep, TSSRENIV3 Srep, TSSRENIV4 fam, TSSRELIBN4 DescrFam  from artrac,ord, artcoca, artattri, artuv, aveprix, artuc, tsv_strucrel  where 1 = 1 and artcinr = acinr  and artcinr = arccinr and arcieti = '1'    and trunc(sysdate) between arcddeb and arcdfin  and artcinr = aatcinr  and aatccla = 'SARGC'     and trunc(sysdate) between AATDDEB and AATDFIN   and artcinr = ARVCINR and arvcinv = avicinv     and trunc(sysdate) between AVIDDEB and AVIDFIN     and artcinr = aracinr and aratfou = '1' and arasite = '10001'   and to_date(aradfin) = to_date(dtaf)     and artcinr = TSSRECINR     and arccode = '
+
+with ord as (select distinct at.aracinr acinr, max(at.aradfin) dtaf from artuc at where at.aratfou ='1' and at.arasite ='10001' group by at.aracinr )  select artcexr etichetta,pkstrucobj.get_desc(0, artcinr, 'IT') DESCRIZIONE,  ARCIETI Principale, ARCTCOD tipoEan, arccode CDEan, AATCATT stato, aviprix Prezzo, to_char(aviddeb, 'dd/mm/yyyy') DataInizio,  to_char(avidfin, 'dd/mm/yyyy') DAtaFine,  NVL(PKSTOCK.GETSTOCKENQTEVALADATE(1, 10001, PKARTSTOCK.RECUPCINLUVCPARCINRETSEQVL(1, ARACINR, ARASEQVL), TRUNC(sysdate + 1)), 0) GIACENZA_PDV,  trunc(NVL(PKSTOCK.GETSTOCKENQTEVALADATE(1, 901, PKARTSTOCK.RECUPCINLUVCPARCINRETSEQVL(1, ARACINR, ARASEQVL), TRUNC(SYSDATE + 1)), 0) / PKARTSTOCK.RECUPCOEFFUVC(1, ARACINL)) GIACENZA_DEPOSITO,  PKARTUL.GETLIBLTYPEUL(1, ARACINL, 'IT') DESC_UNITA_GESTIONE,PKARTSTOCK.RECUPCOEFFUVC(1, AraCINL) pzXcrt,PKFOUCCOM.GET_NUMCONTRAT(0, ARACCIN) codfo,  PKFOUCCOM.GET_NUMCONTRAT(0, ARACCIN) codFo,arttypp tpArt, TSSRENIV1 sett,TSSRENIV2 Rep, TSSRENIV3 Srep, TSSRENIV4 fam, TSSRELIBN4 DescrFam,trunc(NVL(PKSTOCK.GETSTOCKENQTEVALADATE(1, 902, PKARTSTOCK.RECUPCINLUVCPARCINRETSEQVL(1, ARACINR, ARASEQVL), TRUNC(SYSDATE + 1)), 0) / PKARTSTOCK.RECUPCOEFFUVC(1, ARACINL)) GIAc_dep_care  from artrac,ord, artcoca, artattri, artuv, aveprix, artuc, tsv_strucrel  where 1 = 1 and artcinr = acinr  and artcinr = arccinr and arcieti = '1'    and trunc(sysdate) between arcddeb and arcdfin  and artcinr = aatcinr  and aatccla = 'SARGC'     and trunc(sysdate) between AATDDEB and AATDFIN   and artcinr = ARVCINR and arvcinv = avicinv     and trunc(sysdate) between AVIDDEB and AVIDFIN     and artcinr = aracinr and aratfou = '1' and arasite = '10001'   and to_date(aradfin) = to_date(dtaf)     and artcinr = TSSRECINR     and artcexr =  '
+
+========================================================================
+METODO PosArticoli DECOMPILATO (ILSpy) - logica completa azioni 0-4
+minimorio = max - min ; target reale = t_posArticoli (draft), conn "mycon2" = GoldCursori srviis
+========================================================================
+azione 0 (scan):  COUNT corsia+campata+codArticolo+Elab=''+nrich ; se 0 INSERT(...,Elab='') ; se>0 UPDATE Capienza,min,max,corsia,campata,facing,dataupg WHERE codarticolo+nrich
+azione 1 (OK):    UPDATE Capienza,min,max,corsia,campata,facing, minimorio=(max-min), Elab='1' WHERE codarticolo AND capienza='' AND nrich
+azione 2 (togli): COUNT ...Elab='D'... ; se 0 INSERT(...,Elab='D') ; se>0 UPDATE elab='D',dataupg WHERE codarticolo+nrich
+azione 3 (CLR togli): COUNT codArticolo+Elab='D' ; se>0 DELETE WHERE codarticolo AND Elab='D'
+azione 4/default (CLR): DELETE WHERE codarticolo AND nrich AND Elab=''

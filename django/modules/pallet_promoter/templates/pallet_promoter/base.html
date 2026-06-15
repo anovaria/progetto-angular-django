@@ -1,0 +1,53 @@
+{% extends 'portal/base.html' %}
+{# Descrizione del template: Template base del modulo Pallet-Promoter (versione compatta). Estende il base del portale e aggiunge CSS/JS specifici del modulo (stili celle pallet, HTMX). #}
+
+{# Sezione: stili CSS specifici del modulo pallet_promoter #}
+{% block extra_css %}
+<style>
+    :root {
+        --primary-color: #1976d2;
+        --success-color: #4caf50;
+        --warning-color: #ff9800;
+        --danger-color: #f44336;
+    }
+
+    .card { border: none; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-radius: 8px; }
+    .card-header { background: white; border-bottom: 1px solid #eee; font-weight: 600; }
+
+    /* Celle pallet nella griglia: vuota = arancio chiaro, assegnata = verde chiaro */
+    .pallet-cell { border: 1px solid #ddd; padding: 8px; text-align: center; min-width: 120px; cursor: pointer; transition: all 0.2s; }
+    .pallet-cell:hover { background: #e3f2fd; }
+    .pallet-cell.assegnato { background: #e8f5e9; border-color: var(--success-color); }
+    .pallet-cell.vuoto { background: #fff3e0; }
+
+    .pallet-code { font-weight: bold; font-size: 0.9em; color: var(--primary-color); }
+    .fornitore-name { font-size: 0.75em; color: #424242; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 110px; }
+
+    /* Classi HTMX: opacità ridotta durante la richiesta, indicatore di caricamento */
+    .htmx-request { opacity: 0.5; }
+    .htmx-indicator { display: none; }
+    .htmx-request .htmx-indicator { display: inline-block; }
+</style>
+{% endblock %}
+
+{# Sezione: caricamento libreria HTMX per le richieste AJAX dichiarative #}
+{% block extra_js %}
+<script src="https://unpkg.com/htmx.org@1.9.10"></script>
+{% endblock %}
+
+{# Sezione: contenuto principale — gestisce i messaggi di sistema e il blocco content #}
+{% block page_content %}
+<div class="container-fluid py-4 px-4">
+    {# Mostra i messaggi Django (errori, conferme) se presenti #}
+    {% if messages %}
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    {% block content %}{% endblock %}
+</div>
+{% endblock %}

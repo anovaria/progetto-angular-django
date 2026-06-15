@@ -1,0 +1,27 @@
+{% extends "pallet_promoter/base.html" %}
+{# Descrizione del template: Pagina di avviso mostrata quando non esiste nessun periodo promozionale attivo o futuro. Invita l'utente a tornare alla lista periodi. #}
+
+{% block title %}Planning Hostess - Pallet-Promoter{% endblock %}
+
+{% block content %}
+<h4 class="mb-4">
+    <i class="bi bi-people" style="vertical-align: middle;"></i>
+    Planning Hostess
+</h4>
+
+{# Sezione: avviso di assenza periodo — mostrato quando nessun periodo è attivo o futuro #}
+<div class="alert alert-warning">
+    <i class="bi bi-calendar-x" style="vertical-align: middle;"></i>
+    <strong>Nessun periodo attivo oggi.</strong>
+    <p class="mb-0 mt-2">
+        Non c'è nessun periodo promozionale attivo per la data odierna.
+        Il planning hostess sarà disponibile quando inizierà un nuovo periodo.
+    </p>
+</div>
+
+{# Link di ritorno alla lista periodi per poter selezionare un periodo manualmente #}
+<a href="{% url 'pallet_promoter:pallet_list' %}" class="btn btn-primary">
+    <i class="bi bi-calendar-date" style="vertical-align: middle;"></i>
+    Vai ai Periodi
+</a>
+{% endblock %}

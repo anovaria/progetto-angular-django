@@ -1,0 +1,122 @@
+{% extends "welfare/base_minimal.html" %}
+{# Descrizione del template: Interfaccia operativa della cassa per la consegna buoni welfare.
+   Permette di cercare un voucher (solo stato PRONTO), visualizzarne il dettaglio
+   e registrare la consegna fisica con un pulsante di conferma.
+   Gestisce tre stati: voucher trovato e pronto, voucher non trovato/già consegnato,
+   pagina iniziale senza ricerca. #}
+
+{% block title %}Cassa - Consegna{% endblock %}
+
+{% block content %}
+{# Sezione: Intestazione pagina #}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="mb-0">
+        <i class="bi bi-cash-stack align-middle me-2"></i>
+        Cassa - Consegna Buoni
+    </h4>
+</div>
+
+{# Sezione: Form di ricerca voucher - accetta input da scanner barcode o tastiera #}
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-8">
+                <label class="form-label">Numero Voucher</label>
+                {# Campo pre-popolato per mantenere il valore dopo submit; supporta scanner barcode #}
+                <input type="text" name="voucher" class="form-control form-control-lg"
+                       value="{{ num_voucher }}" placeholder="Scansiona o digita il voucher" autofocus>
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+                <button type="submit" class="btn btn-welfare btn-lg w-100">
+                    <i class="bi bi-search align-middle me-1"></i>
+                    Cerca
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{# Sezione: Dettaglio richiesta e pulsante consegna - visibile solo se il voucher è stato trovato in stato PRONTO #}
+{% if richiesta %}
+<div class="card">
+    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Dettaglio Richiesta</h5>
+        {# Badge con colore dinamico basato sullo stato del voucher #}
+        <span class="badge-stato badge-{{ richiesta.stato|lower }}">{{ richiesta.stato }}</span>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            {# Colonna sinistra: dati identificativi e importo del voucher #}
+            <div class="col-md-7">
+                <div class="row mb-3">
+                    <div class="col-4 text-muted">Voucher:</div>
+                    <div class="col-8"><code class="fs-5">{{ richiesta.num_richiesta }}</code></div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-4 text-muted">Nominativo:</div>
+                    <div class="col-8"><strong class="fs-5">{{ richiesta.nominativo }}</strong></div>
+                </div>
+                <hr>
+                <div class="row mb-3">
+                    <div class="col-4 text-muted">Valore Unitario:</div>
+                    <div class="col-8">€ {{ richiesta.valore_buono }}</div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-4 text-muted">Quantità:</div>
+                    <div class="col-8">{{ richiesta.qta_buono }} buoni</div>
+                </div>
+                <div class="row">
+                    <div class="col-4 text-muted">Totale:</div>
+                    <div class="col-8">
+                        <span class="badge bg-success fs-4 px-3 py-2">€ {{ richiesta.totale_buono }}</span>
+                    </div>
+                </div>
+            </div>
+
+            {# Colonna destra: form di conferma consegna con dialogo di conferma JavaScript anti-errore #}
+            <div class="col-md-5 d-flex align-items-center">
+                {# Il confirm JavaScript evita consegne accidentali chiedendo conferma con il nome del beneficiario #}
+                <form method="post" class="w-100" onsubmit="return confirm('Confermi la consegna a {{ richiesta.nominativo }}?')">
+                    {% csrf_token %}
+                    <input type="hidden" name="richiesta_id" value="{{ richiesta.id }}">
+                    <input type="hidden" name="azione" value="consegna">
+
+                    <button type="submit" class="btn btn-success btn-lg w-100 py-4">
+                        <i class="bi bi-check-circle align-middle me-2" style="font-size:32px"></i>
+                        <span class="fs-4">CONSEGNA</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# Sezione: Voucher non trovato o non in stato PRONTO (es. già consegnato o inevaso) #}
+{% elif num_voucher %}
+<div class="card">
+    <div class="card-body text-center py-5">
+        <i class="bi bi-exclamation-triangle text-warning" style="font-size:64px"></i>
+        <h5 class="mt-3">Voucher non trovato o già consegnato</h5>
+        <p class="text-muted">
+            Il voucher <code>{{ num_voucher }}</code> non esiste o non è in stato PRONTO
+        </p>
+        {# Link alla ricerca globale che mostra il voucher in tutti gli stati #}
+        <a href="{% url 'welfare:ricerca_voucher' %}?voucher={{ num_voucher }}" class="btn btn-outline-primary">
+            Cerca in tutti gli stati
+        </a>
+    </div>
+</div>
+
+{# Sezione: Stato iniziale - istruzioni per l'operatore prima di qualsiasi ricerca #}
+{% else %}
+<div class="card">
+    <div class="card-body text-center py-5">
+        <i class="bi bi-upc-scan text-primary" style="font-size:64px"></i>
+        <h5 class="mt-3">Scansiona o digita il voucher</h5>
+        <p class="text-muted">
+            Inserisci il codice per visualizzare i dettagli e registrare la consegna
+        </p>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

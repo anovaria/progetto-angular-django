@@ -1,0 +1,152 @@
+{# Descrizione del template: layout base per tutte le pagine del terminale palmare cursori #}
+{# Definisce la struttura HTML, gli stili CSS inline (no CDN esterni) e la barra superiore #}
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>{% block title %}Cursori{% endblock %}</title>
+    <style>
+        {# Sezione: utility CSS ispirate a Bootstrap (replicate inline per non dipendere da CDN) #}
+        /* utility Bootstrap essenziali — no CDN */
+        .d-flex   { display: flex; }
+        .d-grid   { display: grid; }
+        .flex-fill{ flex: 1 1 auto; }
+        .gap-2    { gap: 0.5rem; }
+        .gap-3    { gap: 1rem; }
+        .w-100    { width: 100%; }
+        .mt-2     { margin-top: 0.5rem; }
+        .mt-3     { margin-top: 1rem; }
+        .mb-1     { margin-bottom: 0.25rem; }
+        .mb-2     { margin-bottom: 0.5rem; }
+        .mb-3     { margin-bottom: 1rem; }
+        .text-center { text-align: center; }
+        .row      { display: flex; flex-wrap: wrap; margin: 0 -0.25rem; }
+        .g-2 > * { padding: 0.25rem; box-sizing: border-box; }
+        .col-6    { flex: 0 0 50%; max-width: 50%; }
+        .btn      { display: inline-block; font-weight: 400; text-align: center;
+                    cursor: pointer; border: 1px solid transparent;
+                    padding: 0.375rem 0.75rem; border-radius: 0.25rem;
+                    text-decoration: none; box-sizing: border-box; }
+        .btn-sm   { padding: 0.25rem 0.5rem; font-size: 0.85rem; }
+
+        {# Sezione: tema scuro adatto a un terminale palmare in ambiente magazzino #}
+        body { background: #1a1a2e; color: #eee; font-size: 1.1rem; }
+
+        .top-bar {
+            background: #16213e;
+            border-bottom: 2px solid #0f3460;
+            padding: 8px 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .top-bar .app-title { font-size: 1rem; font-weight: 700; color: #e94560; }
+        .top-bar .page-title { font-size: 1rem; color: #aaa; }
+        .top-bar a { color: #aaa; font-size: 0.85rem; text-decoration: none; }
+        .top-bar a:hover { color: #fff; }
+
+        .main { padding: 12px; }
+
+        {# Sezione: stili per il campo EAN — font grande e centrato per leggibilità con pistola barcode #}
+        /* Campi input grandi per pistola */
+        .ean-input {
+            font-size: 1.4rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-align: center;
+            background: #0f3460;
+            color: #fff;
+            border: 2px solid #e94560;
+            border-radius: 6px;
+            width: 100%;
+            padding: 10px;
+        }
+        .ean-input:focus { outline: none; border-color: #fff; }
+
+        {# Sezione: bottoni grandi ottimizzati per touch su schermo del palmare #}
+        /* Bottoni grandi per touch */
+        .btn-terminal {
+            font-size: 1.1rem;
+            font-weight: 700;
+            padding: 12px 20px;
+            border-radius: 6px;
+            min-width: 90px;
+        }
+        .btn-ok    { background: #28a745; color: #fff; border: none; }
+        .btn-ok:hover { background: #218838; color: #fff; }
+        .btn-clr   { background: #dc3545; color: #fff; border: none; }
+        .btn-clr:hover { background: #c82333; color: #fff; }
+        .btn-blu   { background: #0f3460; color: #fff; border: 1px solid #e94560; }
+        .btn-blu:hover { background: #16213e; color: #fff; }
+        .btn-home  { background: #6c757d; color: #fff; border: none; }
+        .btn-home:hover { background: #5a6268; color: #fff; }
+
+        {# Sezione: card per visualizzare i dati dell'articolo trovato #}
+        /* Card articolo */
+        .art-card {
+            background: #16213e;
+            border: 1px solid #0f3460;
+            border-radius: 8px;
+            padding: 10px 14px;
+            margin-bottom: 10px;
+        }
+        .art-card .art-descr {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #e0e0e0;
+        }
+        .art-card .art-codart { font-size: 0.9rem; color: #aaa; }
+        .art-card .art-fields { margin-top: 8px; }
+        .art-card .field-row {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .field-badge {
+            background: #0f3460;
+            border-radius: 4px;
+            padding: 3px 8px;
+            font-size: 0.85rem;
+            color: #ccc;
+        }
+        .field-badge span { color: #fff; font-weight: 700; }
+
+        {# Sezione: tabella compatta per le liste di articoli #}
+        /* Tabella lista */
+        .tbl-cursori { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+        .tbl-cursori th { background: #0f3460; color: #eee; padding: 6px 8px; text-align: left; }
+        .tbl-cursori td { border-bottom: 1px solid #0f3460; padding: 6px 8px; color: #ddd; }
+        .tbl-cursori tr:hover td { background: #16213e; }
+
+        {# Sezione: messaggi di feedback operatore (successo / errore) #}
+        /* Alert */
+        .msg-ok  { background: #1a4a1a; border: 1px solid #28a745; color: #90ee90;
+                   border-radius: 6px; padding: 8px 12px; margin-bottom: 10px; }
+        .msg-err { background: #4a1a1a; border: 1px solid #dc3545; color: #ffaaaa;
+                   border-radius: 6px; padding: 8px 12px; margin-bottom: 10px; }
+
+        /* Campo di testo inline */
+        .field-input {
+            background: #0f3460; color: #fff; border: 1px solid #555;
+            border-radius: 4px; padding: 6px 10px; font-size: 1rem; width: 100%;
+        }
+        .field-input:focus { outline: none; border-color: #e94560; }
+        label.field-lbl { font-size: 0.8rem; color: #aaa; margin-bottom: 2px; display: block; }
+    </style>
+</head>
+<body>
+
+{# Sezione: barra superiore fissa con nome app, titolo pagina e link al menu #}
+<div class="top-bar">
+    <span class="app-title">CURSORI</span>
+    <span class="page-title">{% block page_title %}{% endblock %}</span>
+    <a href="{% url 'cursori:home' %}">&#8962; Menu</a>
+</div>
+
+{# Sezione: area contenuto principale — ogni pagina sovrascrive questo blocco #}
+<div class="main">
+    {% block content %}{% endblock %}
+</div>
+</body>
+</html>

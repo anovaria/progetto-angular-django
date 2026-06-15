@@ -1,0 +1,174 @@
+{% extends "welfare/base_minimal.html" %}
+{# Descrizione del template: Interfaccia di gestione utenti del modulo welfare (solo admin).
+   Mostra la tabella degli utenti registrati con ruolo, ultimo accesso e contatore accessi.
+   Permette di creare nuovi utenti e modificare il ruolo di quelli esistenti tramite modali Bootstrap.
+   L'eliminazione è consentita per tutti gli utenti eccetto quello attualmente connesso.
+   Nota: i ruoli vengono sincronizzati con Angular/AD; questa gestione è per override locali. #}
+
+{% block title %}Gestione Utenti{% endblock %}
+
+{% block content %}
+{# Sezione: Intestazione con pulsante apertura modale creazione nuovo utente #}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="mb-0">
+        <i class="bi bi-person-gear align-middle me-2"></i>
+        Gestione Utenti
+    </h4>
+    <button class="btn btn-welfare" data-bs-toggle="modal" data-bs-target="#modalNuovo">
+        <i class="bi bi-person-plus align-middle me-1"></i>
+        Nuovo Utente
+    </button>
+</div>
+
+{# Sezione: Tabella utenti registrati nel sistema welfare #}
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover table-welfare mb-0">
+            <thead>
+                <tr>
+                    <th>Username</th>
+                    <th>Ruolo</th>
+                    <th>Ultimo Accesso</th>
+                    <th class="text-center">Accessi</th>
+                    <th class="text-center">Azioni</th>
+                </tr>
+            </thead>
+            <tbody>
+                {# Itera su tutti gli utenti welfare registrati #}
+                {% for u in utenti %}
+                <tr>
+                    <td>
+                        <strong>{{ u.username }}</strong>
+                        {# Badge "Tu": evidenzia visivamente l'utente attualmente connesso #}
+                        {% if u.username == utente.username %}
+                        <span class="badge bg-info ms-1">Tu</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {# Mostra il ruolo assegnato o "Nessuno" se il ruolo non è configurato #}
+                        <span class="badge bg-secondary">{{ u.ruolo.descrizione|default:"Nessuno" }}</span>
+                    </td>
+                    {# Fallback "-" se l'utente non ha mai effettuato l'accesso #}
+                    <td>{{ u.data_login|date:"d/m/Y H:i"|default:"-" }}</td>
+                    <td class="text-center">{{ u.volte }}</td>
+                    <td class="text-center">
+                        {# Pulsante modifica: apre la modale precompilata con i dati correnti dell'utente #}
+                        <button class="btn btn-sm btn-outline-primary me-1"
+                                onclick="modificaUtente({{ u.id }}, '{{ u.username }}', {{ u.ruolo.id_ruolo|default:1 }})"
+                                title="Modifica">
+                            <i class="bi bi-pencil-square" style="font-size:16px"></i>
+                        </button>
+                        {# Pulsante elimina: nascosto per l'utente connesso (non può eliminarsi da solo) #}
+                        {% if u.username != utente.username %}
+                        <form method="post" class="d-inline"
+                              onsubmit="return confirm('Eliminare l\'utente {{ u.username }}?')">
+                            {% csrf_token %}
+                            <input type="hidden" name="azione" value="elimina">
+                            <input type="hidden" name="user_id" value="{{ u.id }}">
+                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Elimina">
+                                <i class="bi bi-trash" style="font-size:16px"></i>
+                            </button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {# Stato vuoto: nessun utente registrato nel sistema #}
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="text-center text-muted py-4">Nessun utente</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{# Sezione: Modale creazione nuovo utente #}
+<div class="modal fade" id="modalNuovo" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post">
+                {% csrf_token %}
+                {# Campo nascosto che indica alla view l'azione da eseguire #}
+                <input type="hidden" name="azione" value="crea">
+                <div class="modal-header">
+                    <h5 class="modal-title">Nuovo Utente</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Username</label>
+                        {# Username deve essere il nome di dominio senza prefisso DOMINIO\ #}
+                        <input type="text" name="username" class="form-control" required
+                               placeholder="nome.cognome">
+                        <div class="form-text">Inserisci lo username di dominio (senza DOMINIO\)</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Ruolo</label>
+                        {# Menu ruoli: popolato dinamicamente dalla view con i ruoli disponibili #}
+                        <select name="ruolo" class="form-select">
+                            {% for r in ruoli %}
+                            <option value="{{ r.id_ruolo }}">{{ r.descrizione }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                    <button type="submit" class="btn btn-welfare">Crea Utente</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{# Sezione: Modale modifica ruolo utente esistente #}
+<div class="modal fade" id="modalModifica" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="azione" value="modifica">
+                {# Campi nascosti compilati via JavaScript con i dati dell'utente da modificare #}
+                <input type="hidden" name="user_id" id="modifica_user_id">
+                <div class="modal-header">
+                    {# Il nome utente viene inserito dinamicamente da JavaScript nel tag span #}
+                    <h5 class="modal-title">Modifica Utente: <span id="modifica_username"></span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Ruolo</label>
+                        {# La selezione corrente viene impostata via JavaScript prima dell'apertura modale #}
+                        <select name="ruolo" id="modifica_ruolo" class="form-select">
+                            {% for r in ruoli %}
+                            <option value="{{ r.id_ruolo }}">{{ r.descrizione }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                    <button type="submit" class="btn btn-welfare">Salva</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Popola e apre la modale di modifica con i dati dell'utente selezionato dalla tabella
+function modificaUtente(id, username, ruoloId) {
+    // Imposta l'id utente nel campo nascosto del form
+    document.getElementById('modifica_user_id').value = id;
+    // Mostra il nome utente nel titolo della modale
+    document.getElementById('modifica_username').textContent = username;
+    // Pre-seleziona il ruolo corrente nel menu a tendina
+    document.getElementById('modifica_ruolo').value = ruoloId;
+    // Apre la modale Bootstrap
+    new bootstrap.Modal(document.getElementById('modalModifica')).show();
+}
+</script>
+{% endblock %}

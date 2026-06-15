@@ -1,0 +1,516 @@
+{% extends 'portal/base.html' %}
+{# Descrizione del template: Pagina principale dell'assortimento articoli. Permette di filtrare per CCOM, Reparto, Sottoreparto, Famiglia, Linea Prodotto, codici articolo e EAN. Mostra la tabella risultati con barcode SVG e giacenze. #}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+<style>
+    .filter-card { background: white; color: #212529; border-radius: 12px; padding: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 2rem; }
+    .table-container { background: white; color: #212529; border-radius: 12px; padding: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    .table { margin-bottom: 0; font-size: 0.9rem; }
+    .table thead th { background-color: #667eea; color: white; border: none; font-weight: 600; text-transform: uppercase; font-size: 0.75rem; padding: 0.75rem 0.5rem; position: sticky; top: 0; z-index: 10; }
+    .table tbody tr { transition: background-color 0.2s; }
+    .table tbody tr:hover { background-color: #f8f9fa; }
+    .table tbody td { padding: 0.5rem; vertical-align: middle; }
+    .barcode-cell { padding: 0.5rem; text-align: center; }
+    .barcode-cell svg { max-width: 100px; height: auto; }
+    .badge-stato { padding: 0.25rem 0.5rem; font-size: 0.7rem; font-weight: 600; }
+    .stats-badge { background: #e3f2fd; color: #1976d2; padding: 0.5rem 1rem; border-radius: 20px; font-weight: 600; }
+    .form-control, .form-select { border-radius: 8px; border: 1px solid #dee2e6; font-size: 0.9rem; }
+    .form-control:focus, .form-select:focus { border-color: #667eea; box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25); }
+    .form-label { font-size: 0.85rem; font-weight: 600; color: #495057; margin-bottom: 0.3rem; }
+    .linea-select-container { position: relative; }
+    .linea-select { min-height: 80px; max-height: 120px; }
+    .linea-select option { padding: 4px 8px; }
+    .linea-select option:checked { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+    .linea-hint { font-size: 0.75rem; color: #6c757d; margin-top: 2px; }
+    .loading-linee { text-align: center; padding: 10px; color: #667eea; }
+    .loading-linee .spinner-border { width: 1rem; height: 1rem; }
+    /* Overlay di caricamento: visibile durante il submit del form o le operazioni di export #}*/
+    #loadingOverlay { display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.9); z-index: 9999; justify-content: center; align-items: center; }
+</style>
+{% endblock %}
+
+{% block page_content %}
+{# Sezione: Overlay di caricamento (nascosto via JS al DOMContentLoaded) #}
+<div id="loadingOverlay">
+    <div style="text-align: center;">
+        <div class="spinner-border" role="status" style="width: 3rem; height: 3rem; color: #667eea;">
+            <span class="visually-hidden">Caricamento...</span>
+        </div>
+        <p style="margin-top: 1rem; font-weight: 600; color: #495057;">Caricamento in corso...</p>
+    </div>
+</div>
+
+<div class="container-fluid py-4 px-4">
+    {# Sezione: Card filtri con Select2 per CCOM, Reparto, Sottoreparto, Famiglia #}
+    <div class="filter-card">
+        <form method="GET" id="filterForm">
+            <div class="row g-2 align-items-start">
+                {# Filtro CCOM - usa Select2 per autocomplete #}
+                <div class="col-lg col-md-4 col-sm-6">
+                    <label for="ccom" class="form-label"><i class="bi bi-building" style="vertical-align: middle; font-size: 1rem;"></i> CCOM</label>
+                    <select name="ccom" id="ccom" class="form-select form-select-sm">
+                        <option value="">-- Tutti --</option>
+                        {% for ccom in ccom_list %}
+                        {# Mantiene la selezione corrente dopo il submit del form #}
+                        <option value="{{ ccom.ccom }}" {% if request.GET.ccom == ccom.ccom %}selected{% endif %}>
+                            {{ ccom.ccom }}{% if ccom.descrccom %} - {{ ccom.descrccom|truncatechars:25 }}{% endif %}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {# Filtro Reparto #}
+                <div class="col-lg col-md-4 col-sm-6">
+                    <label for="rep" class="form-label"><i class="bi bi-grid" style="vertical-align: middle; font-size: 1rem;"></i> Reparto</label>
+                    <select name="rep" id="rep" class="form-select form-select-sm">
+                        <option value="">-- Tutti --</option>
+                        {% for rep in rep_list %}
+                        <option value="{{ rep.rep }}" {% if selected_rep == rep.rep %}selected{% endif %}>
+                            {{ rep.rep }}{% if rep.descrrep %} - {{ rep.descrrep|truncatechars:20 }}{% endif %}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {# Filtro Sottoreparto #}
+                <div class="col-lg col-md-4 col-sm-6">
+                    <label for="srep" class="form-label"><i class="bi bi-arrow-return-right" style="vertical-align: middle; font-size: 1rem;"></i> Sottorep.</label>
+                    <select name="srep" id="srep" class="form-select form-select-sm">
+                        <option value="">-- Tutti --</option>
+                        {% for srep in srep_list %}
+                        <option value="{{ srep.srep }}" {% if selected_srep == srep.srep %}selected{% endif %}>
+                            {{ srep.srep }}{% if srep.descrsrep %} - {{ srep.descrsrep|truncatechars:15 }}{% endif %}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {# Filtro Famiglia #}
+                <div class="col-lg col-md-4 col-sm-6">
+                    <label for="fam" class="form-label"><i class="bi bi-layers" style="vertical-align: middle; font-size: 1rem;"></i> Famiglia</label>
+                    <select name="fam" id="fam" class="form-select form-select-sm">
+                        <option value="">-- Tutte --</option>
+                        {% for fam in fam_list %}
+                        <option value="{{ fam.fam }}" {% if selected_fam == fam.fam %}selected{% endif %}>
+                            {{ fam.fam }}{% if fam.descrfam %} - {{ fam.descrfam|truncatechars:15 }}{% endif %}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {# Filtro ricerca per lista codici articolo o EAN (tramite modal) #}
+                <div class="col-lg-auto col-md-4 col-sm-6">
+                    <label class="form-label"><i class="bi bi-search" style="vertical-align: middle; font-size: 1rem;"></i> Cerca per codici</label>
+                    <div>
+                        {# Il pulsante è evidenziato (btn-primary) se ci sono filtri codici attivi #}
+                        <button type="button" class="btn btn-sm {% if codart_list_raw or ean_list_raw %}btn-primary{% else %}btn-outline-primary{% endif %}" id="btnApriModalCodici" data-bs-toggle="modal" data-bs-target="#modalRicercaCodici">
+                            <i class="bi bi-list-ul" style="vertical-align: middle;"></i>
+                            Lista Codici/EAN
+                            {# Badge con il numero totale di codici cercati #}
+                            {% if codart_list_count or ean_list_count %}
+                            <span class="badge bg-warning text-dark ms-1">{{ codart_list_count|add:ean_list_count }}</span>
+                            {% endif %}
+                        </button>
+                        {# Pulsante per rimuovere il filtro codici (visibile solo se attivo) #}
+                        {% if codart_list_raw or ean_list_raw %}
+                        <a href="#" id="btnClearCodici" class="btn btn-sm btn-outline-danger ms-1" title="Rimuovi filtro codici">
+                            <i class="bi bi-x"></i>
+                        </a>
+                        {% endif %}
+                    </div>
+                    {# Campi nascosti che trasportano i codici selezionati nel modal #}
+                    <input type="hidden" name="codart_list" id="hiddenCodartList" value="{{ codart_list_raw }}">
+                    <input type="hidden" name="ean_list" id="hiddenEanList" value="{{ ean_list_raw }}">
+                </div>
+                {# Filtro ricerca per descrizione articolo (testo libero) #}
+                <div class="col-lg col-md-4 col-sm-6">
+                    <label for="descr" class="form-label"><i class="bi bi-file-text" style="vertical-align: middle; font-size: 1rem;"></i> Descrizione</label>
+                    <input type="text" name="descr" id="descr" class="form-control form-control-sm" placeholder="Cerca descrizione..." value="{{ selected_descr }}">
+                </div>
+                {# Filtro per stato articolo (A=Annullato, E=In Esaurimento) #}
+                <div class="col-lg-auto col-md-3 col-sm-6">
+                    <label for="stato" class="form-label"><i class="bi bi-toggle-on" style="vertical-align: middle; font-size: 1rem;"></i> Stato</label>
+                    <select name="stato" id="stato" class="form-select form-select-sm">
+                        <option value="" {% if not selected_stato %}selected{% endif %}>Escludi E e V</option>
+                        <option value="con_ea" {% if selected_stato == 'con_ea' %}selected{% endif %}>Includi E e V</option>
+                    </select>
+                </div>
+                {# Checkbox Fornitore Principale: abilita il filtro per linea prodotto #}
+                <div class="col-lg-auto col-md-4 col-sm-6">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="linea1" value="1" id="linea1" {% if linea1_checked %}checked{% endif %}>
+                        <label class="form-check-label" for="linea1" style="font-size: 0.85rem;">Fornitore Principale</label>
+                        <div class="text-muted" style="font-size: 0.7rem; margin-left: 1.5rem;">(abilita selezione Linee)</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-2 mt-3">
+                <div class="col-12">
+                    <div class="d-flex justify-content-between flex-wrap align-items-center">
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-funnel" style="vertical-align: middle;"></i> Applica Filtri
+                            </button>
+                            <a href="{% url 'asso_articoli:index' %}" class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-repeat" style="vertical-align: middle;"></i> Reset Filtri
+                            </a>
+                        </div>
+                        <div class="d-flex gap-2 align-items-center">
+                            {# Badge con il conteggio totale articoli trovati #}
+                            <span class="stats-badge">
+                                <i class="bi bi-list-ul" style="vertical-align: middle; font-size: 1rem;"></i>
+                                {{ total_count }} articoli
+                            </span>
+                            {# Pulsante export Excel completo (con CCOM, prezzi, fornitore) #}
+                            <a href="{% url 'asso_articoli:export_excel' %}?{{ request.GET.urlencode }}" class="btn btn-success" title="Export completo per segreteria">
+                                <i class="bi bi-file-earmark-arrow-down" style="vertical-align: middle;"></i> Excel
+                            </a>
+                            {# Pulsante export Excel ridotto per reparti (senza dati commerciali) #}
+                            <a href="{% url 'asso_articoli:export_excel_reparti' %}?{{ request.GET.urlencode }}" class="btn btn-warning" title="Export ridotto per reparti">
+                                <i class="bi bi-file-earmark-arrow-down" style="vertical-align: middle;"></i> Reparti
+                            </a>
+                            {# Pulsante report BAR (export diretto senza filtri aggiuntivi) #}
+                            <a href="{% url 'asso_articoli:report_bar' %}" class="btn btn-info" title="Report BAR">
+                                <i class="bi bi-cup" style="vertical-align: middle;"></i> BAR
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {# Sezione: Riga selezione linee prodotto (visibile solo se L1 attivo e CCOM selezionato) #}
+            <div class="row g-2 mt-2" id="lineaRow" style="{% if not linea1_checked or not selected_ccom %}display: none;{% endif %}">
+                <div class="col-12">
+                    <div class="card bg-light">
+                        <div class="card-body py-2">
+                            <div class="row align-items-center">
+                                <div class="col-md-2">
+                                    <label class="form-label mb-0">
+                                        <i class="bi bi-bar-chart-steps" style="vertical-align: middle; font-size: 1rem;"></i>
+                                        <strong>Linee Prodotto</strong>
+                                    </label>
+                                    <div class="linea-hint">Ctrl+Click per selezione multipla</div>
+                                </div>
+                                <div class="col-md-8">
+                                    <div class="linea-select-container">
+                                        {# Select multipla per le linee: popolata via AJAX al cambio CCOM #}
+                                        <select name="linea" id="linea" class="form-select linea-select" multiple size="4">
+                                            {% for linea in linea_list %}
+                                            {# Mantiene la selezione precedente delle linee #}
+                                            <option value="{{ linea.linea_prodotto }}" {% if linea.linea_prodotto in selected_linee %}selected{% endif %}>
+                                                {{ linea.linea_prodotto }}{% if linea.descr_linea %} - {{ linea.descr_linea }}{% endif %}
+                                            </option>
+                                            {% endfor %}
+                                        </select>
+                                        {# Spinner di caricamento visibile durante il fetch AJAX delle linee #}
+                                        <div id="loadingLinee" class="loading-linee" style="display: none;">
+                                            <span class="spinner-border spinner-border-sm"></span> Caricamento linee...
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <button type="button" class="btn btn-outline-secondary btn-sm w-100" id="clearLinee">
+                                        <i class="bi bi-x" style="vertical-align: middle; font-size: 1rem;"></i> Pulisci
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    {# Sezione: Tabella risultati articoli #}
+    <div class="table-container">
+        {# Mostra la tabella solo se ci sono articoli (has_filters=True e risultati trovati) #}
+        {% if articoli %}
+        <div class="table-responsive" style="max-height: 70vh; overflow-y: auto;">
+            <table class="table table-hover table-sm">
+                <thead>
+                    <tr>
+                        <th style="min-width: 80px;">Codice</th><th style="min-width: 200px;">Descrizione</th>
+                        <th style="min-width: 60px;">Rep</th><th style="min-width: 60px;">SRep</th>
+                        <th style="min-width: 60px;">Fam</th><th style="min-width: 100px;">Linea</th>
+                        <th style="min-width: 80px;">CCOM</th><th style="min-width: 120px;">Barcode</th>
+                        <th class="text-end" style="min-width: 80px;">Giac.PDV</th>
+                        <th class="text-end" style="min-width: 80px;">Giac.Dep</th>
+                        <th style="min-width: 60px;">Stato</th><th style="min-width: 80px;">CodArtFo</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {# Itera gli articoli preparati dalla view (max 100 per performance) #}
+                    {% for articolo in articoli %}
+                    <tr>
+                        <td class="fw-semibold">{{ articolo.codart }}</td>
+                        <td>{{ articolo.descrart|truncatechars:40 }}</td>
+                        <td><small>{{ articolo.rep }}</small></td>
+                        <td><small>{{ articolo.srep }}</small></td>
+                        <td><small>{{ articolo.fam }}</small></td>
+                        <td>
+                            <small class="text-primary fw-semibold">{{ articolo.linea_prodotto }}</small>
+                            {# Descrizione linea su riga separata se disponibile #}
+                            {% if articolo.descr_linea %}<br><small class="text-muted">{{ articolo.descr_linea|truncatechars:20 }}</small>{% endif %}
+                        </td>
+                        <td><small>{{ articolo.ccom }}</small></td>
+                        <td class="barcode-cell">
+                            {# SVG barcode generato lato server; safe per evitare escape dell'HTML #}
+                            {% if articolo.barcode_svg %}{{ articolo.barcode_svg|safe }}{% else %}<small class="text-muted">N/D</small>{% endif %}
+                        </td>
+                        <td class="text-end"><span class="badge bg-success">{{ articolo.giacenza_pdv|floatformat:0 }}</span></td>
+                        <td class="text-end"><span class="badge bg-info">{{ articolo.giacenza_deposito|floatformat:0 }}</span></td>
+                        <td>
+                            {# Badge colorato per lo stato: A=attivo (verde), F=fuori listino (giallo), altri=grigio #}
+                            {% if articolo.stato == 'A' %}<span class="badge bg-success badge-stato">A</span>
+                            {% elif articolo.stato == 'F' %}<span class="badge bg-warning badge-stato">F</span>
+                            {% else %}<span class="badge bg-secondary badge-stato">{{ articolo.stato }}</span>{% endif %}
+                        </td>
+                        <td><small>{{ articolo.codartfo }}</small></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {# Avviso se la lista è stata troncata al limite di 100 articoli #}
+        {% if total_count >= 100 %}
+        <div class="alert alert-info mt-3 mb-0">
+            <i class="bi bi-info-circle" style="vertical-align: middle;"></i>
+            Visualizzati i primi 100 risultati. Usa i filtri per raffinare la ricerca.
+        </div>
+        {% endif %}
+        {% else %}
+        <div class="text-center py-5">
+            {# Messaggio differenziato: nessun filtro applicato vs. nessun risultato #}
+            {% if not has_filters %}
+            <i class="bi bi-funnel" style="font-size: 4rem; color: #667eea;"></i>
+            <p class="text-muted mt-3">Seleziona almeno un filtro per visualizzare gli articoli.</p>
+            {% else %}
+            <i class="bi bi-x-circle" style="font-size: 4rem; color: #ccc;"></i>
+            <p class="text-muted mt-3">Nessun articolo trovato con i filtri selezionati.</p>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{# Sezione: Modal per la ricerca per lista di codici articolo e/o EAN #}
+<div class="modal fade" id="modalRicercaCodici" tabindex="-1" aria-labelledby="modalRicercaCodiciLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                <h5 class="modal-title" id="modalRicercaCodiciLabel">
+                    <i class="bi bi-list-ul" style="vertical-align: middle;"></i>
+                    Ricerca per Lista Codici / EAN
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Chiudi"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted" style="font-size: 0.85rem;">
+                    <i class="bi bi-info-circle"></i>
+                    Incolla i valori copiati da Excel (una riga per cella). I valori vuoti vengono ignorati.
+                </p>
+                <div class="row g-3">
+                    {# Colonna sinistra: codici articolo #}
+                    <div class="col-md-6">
+                        <label for="modalCodart" class="form-label fw-semibold">
+                            <i class="bi bi-upc" style="vertical-align: middle;"></i>
+                            Codici Articolo
+                            {# Badge con conteggio dinamico aggiornato via JS #}
+                            <span id="countCodart" class="badge bg-secondary ms-1" style="display:none;"></span>
+                        </label>
+                        <textarea id="modalCodart" class="form-control" rows="12" placeholder="Un codice per riga&#10;Es:&#10;ART001&#10;ART002&#10;ART003" style="font-family: monospace; font-size: 0.85rem; resize: vertical;"></textarea>
+                    </div>
+                    {# Colonna destra: codici EAN #}
+                    <div class="col-md-6">
+                        <label for="modalEan" class="form-label fw-semibold">
+                            <i class="bi bi-bar-chart" style="vertical-align: middle;"></i>
+                            Codici EAN
+                            <span id="countEan" class="badge bg-secondary ms-1" style="display:none;"></span>
+                        </label>
+                        <textarea id="modalEan" class="form-control" rows="12" placeholder="Un EAN per riga&#10;Es:&#10;8001234567890&#10;8009876543210" style="font-family: monospace; font-size: 0.85rem; resize: vertical;"></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" id="btnSvuotaModal">
+                    <i class="bi bi-trash" style="vertical-align: middle;"></i> Svuota
+                </button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                <button type="button" class="btn btn-primary" id="btnConfermaRicerca">
+                    <i class="bi bi-search" style="vertical-align: middle;"></i> Applica ricerca
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+// Nasconde l'overlay di caricamento non appena il DOM è pronto
+document.getElementById('loadingOverlay').style.display = 'none';
+
+document.addEventListener('DOMContentLoaded', function() {
+    const ccomSelect = document.getElementById('ccom');
+    const linea1Checkbox = document.getElementById('linea1');
+    const lineaRow = document.getElementById('lineaRow');
+    const lineaSelect = document.getElementById('linea');
+    const loadingLinee = document.getElementById('loadingLinee');
+    const clearLineeBtn = document.getElementById('clearLinee');
+    let isInitialLoad = true;  // Evita il fetch AJAX al primo caricamento della pagina
+
+    // Mostra/nasconde la sezione linee in base a CCOM e checkbox L1
+    function toggleLineaSection() {
+        const ccomSelected = ccomSelect.value !== '';
+        const l1Checked = linea1Checkbox.checked;
+        if (ccomSelected && l1Checked) {
+            lineaRow.style.display = 'block';
+            // Carica le linee via AJAX solo nelle interazioni successive al primo caricamento
+            if (!isInitialLoad) loadLineePerCcom(ccomSelect.value);
+        } else {
+            lineaRow.style.display = 'none';
+            if (!isInitialLoad) lineaSelect.innerHTML = '';
+        }
+    }
+
+    // Fetch AJAX per ottenere le linee del CCOM selezionato
+    function loadLineePerCcom(ccom) {
+        if (!ccom) { lineaSelect.innerHTML = ''; return; }
+        loadingLinee.style.display = 'block';
+        lineaSelect.style.display = 'none';
+        fetch(`{% url 'asso_articoli:api_linee' %}?ccom=${encodeURIComponent(ccom)}`)
+            .then(r => r.json())
+            .then(data => {
+                loadingLinee.style.display = 'none';
+                lineaSelect.style.display = 'block';
+                lineaSelect.innerHTML = '';
+                if (data.results && data.results.length > 0) {
+                    data.results.forEach(linea => {
+                        const option = document.createElement('option');
+                        option.value = linea.linea_prodotto;
+                        option.textContent = linea.linea_prodotto + (linea.descr_linea ? ' - ' + linea.descr_linea : '');
+                        lineaSelect.appendChild(option);
+                    });
+                } else {
+                    const option = document.createElement('option');
+                    option.value = '';
+                    option.textContent = '-- Nessuna linea disponibile --';
+                    option.disabled = true;
+                    lineaSelect.appendChild(option);
+                }
+            })
+            .catch(() => {
+                loadingLinee.style.display = 'none';
+                lineaSelect.style.display = 'block';
+                lineaSelect.innerHTML = '<option value="" disabled>Errore caricamento</option>';
+            });
+    }
+
+    // Al cambio CCOM: resetta le linee e aggiorna la sezione
+    ccomSelect.addEventListener('change', function() { lineaSelect.innerHTML = ''; isInitialLoad = false; toggleLineaSection(); });
+    linea1Checkbox.addEventListener('change', function() { isInitialLoad = false; toggleLineaSection(); });
+    // Pulsante "Pulisci": deseleziona tutte le linee
+    clearLineeBtn.addEventListener('click', function() { for (let o of lineaSelect.options) o.selected = false; });
+
+    // Ripristina i valori dei filtri dall'URL (per il back button del browser)
+    const urlParams = new URLSearchParams(window.location.search);
+    ['ccom','rep','srep','fam'].forEach(id => { if (urlParams.get(id)) document.getElementById(id).value = urlParams.get(id); });
+
+    // Inizializza Select2 per i dropdown principali
+    const s2cfg = { theme: 'bootstrap-5', allowClear: true, width: '100%' };
+    $('#ccom').select2({...s2cfg, placeholder: '-- Cerca CCOM --'});
+    $('#rep').select2({...s2cfg, placeholder: '-- Reparto --'});
+    $('#srep').select2({...s2cfg, placeholder: '-- Sottorep. --'});
+    $('#fam').select2({...s2cfg, placeholder: '-- Famiglia --'});
+
+    // Mostra l'overlay di caricamento durante il submit del form
+    document.getElementById('filterForm').addEventListener('submit', function() {
+        document.getElementById('loadingOverlay').style.display = 'flex';
+    });
+    // Mostra l'overlay anche per i link di export (con timeout per nasconderlo dopo il download)
+    document.querySelectorAll('.filter-card a').forEach(function(link) {
+        link.addEventListener('click', function() {
+            document.getElementById('loadingOverlay').style.display = 'flex';
+            if (link.href.includes('export') || link.href.includes('report')) {
+                // Nasconde l'overlay dopo 3 secondi (il download è iniziato)
+                setTimeout(function() { document.getElementById('loadingOverlay').style.display = 'none'; }, 3000);
+            }
+        });
+    });
+
+    {# Sezione: Logica modal per la ricerca per lista codici/EAN #}
+
+    // Analizza il textarea: splitta per riga/tab e rimuove valori vuoti
+    function parseListaTestarea(text) {
+        return text.split(/[\n\r\t]+/)
+            .map(s => s.trim().replace(/,+$/, ''))
+            .filter(s => s.length > 0);
+    }
+
+    // Aggiorna i badge con il conteggio degli elementi nei textarea del modal
+    function aggiornaContatori() {
+        const codartList = parseListaTestarea(document.getElementById('modalCodart').value);
+        const eanList = parseListaTestarea(document.getElementById('modalEan').value);
+        const countCodart = document.getElementById('countCodart');
+        const countEan = document.getElementById('countEan');
+        if (codartList.length > 0) {
+            countCodart.textContent = codartList.length;
+            countCodart.style.display = 'inline';
+        } else {
+            countCodart.style.display = 'none';
+        }
+        if (eanList.length > 0) {
+            countEan.textContent = eanList.length;
+            countEan.style.display = 'inline';
+        } else {
+            countEan.style.display = 'none';
+        }
+    }
+
+    document.getElementById('modalCodart').addEventListener('input', aggiornaContatori);
+    document.getElementById('modalEan').addEventListener('input', aggiornaContatori);
+
+    // Pre-popola i textarea del modal con i valori dall'URL (se filtro era già attivo)
+    const hiddenCodart = document.getElementById('hiddenCodartList');
+    const hiddenEan = document.getElementById('hiddenEanList');
+    if (hiddenCodart.value) {
+        document.getElementById('modalCodart').value = hiddenCodart.value.split(',').join('\n');
+    }
+    if (hiddenEan.value) {
+        document.getElementById('modalEan').value = hiddenEan.value.split(',').join('\n');
+    }
+    aggiornaContatori();
+
+    // Pulsante "Svuota" nel modal: azzera entrambi i textarea
+    document.getElementById('btnSvuotaModal').addEventListener('click', function() {
+        document.getElementById('modalCodart').value = '';
+        document.getElementById('modalEan').value = '';
+        aggiornaContatori();
+    });
+
+    // Conferma ricerca: trasferisce i codici nei campi nascosti e invia il form
+    document.getElementById('btnConfermaRicerca').addEventListener('click', function() {
+        const codartList = parseListaTestarea(document.getElementById('modalCodart').value);
+        const eanList = parseListaTestarea(document.getElementById('modalEan').value);
+        hiddenCodart.value = codartList.join(',');
+        hiddenEan.value = eanList.join(',');
+        bootstrap.Modal.getInstance(document.getElementById('modalRicercaCodici')).hide();
+        document.getElementById('loadingOverlay').style.display = 'flex';
+        document.getElementById('filterForm').submit();
+    });
+
+    // Pulsante "X" per rimuovere il filtro codici: azzera i campi nascosti e risubmit
+    const btnClear = document.getElementById('btnClearCodici');
+    if (btnClear) {
+        btnClear.addEventListener('click', function(e) {
+            e.preventDefault();
+            hiddenCodart.value = '';
+            hiddenEan.value = '';
+            document.getElementById('loadingOverlay').style.display = 'flex';
+            document.getElementById('filterForm').submit();
+        });
+    }
+});
+</script>
+{% endblock %}

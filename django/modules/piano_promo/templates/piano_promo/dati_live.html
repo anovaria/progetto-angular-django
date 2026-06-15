@@ -1,0 +1,277 @@
+{% extends 'portal/base.html' %}
+{# Descrizione del template: Vista dati live del Piano Promo direttamente dal DB GoldReport. Accessibile solo agli editor. Permette di filtrare e visualizzare i dati prima di creare una sessione. #}
+
+{% block extra_css %}
+<style>
+    .pp-wrap { padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+
+    .page-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+    .page-title  { font-size: 18px; font-weight: 700; color: #1a5276; }
+
+    .card { background: white; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.1); overflow: hidden; }
+    .card-header { padding: 10px 16px; font-size: 12px; font-weight: 600; }
+    .card-header.blue { background: #1a5276; color: white; }
+    .card-body { padding: 14px 16px; display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end; }
+
+    .pp-field { display: flex; flex-direction: column; gap: 4px; }
+    .pp-field label { font-size: 11px; font-weight: 600; color: #566573; text-transform: uppercase; }
+    .pp-field select, .pp-field input {
+        border: 1px solid #d5d8dc; border-radius: 5px; padding: 7px 10px;
+        font-size: 13px; color: #2c3e50;
+    }
+    .pp-field input[type="date"]  { width: 150px; }
+    .pp-field input[type="text"]  { width: 220px; }
+    .pp-field select:focus, .pp-field input:focus { outline: none; border-color: #1a5276; }
+
+    /* Dropdown multi-select Piano Gold */
+    .ms-wrap    { position: relative; }
+    .ms-btn     {
+        display: flex; align-items: center; justify-content: space-between; gap: 8px;
+        min-width: 240px; padding: 7px 10px;
+        border: 1px solid #d5d8dc; border-radius: 5px;
+        background: white; font-size: 13px; color: #2c3e50;
+        cursor: pointer; user-select: none;
+    }
+    .ms-btn:hover   { border-color: #1a5276; }
+    .ms-btn.open    { border-color: #1a5276; box-shadow: 0 0 0 2px rgba(26,82,118,0.15); }
+    .ms-btn .arrow  { font-size: 10px; color: #999; transition: transform 0.15s; }
+    .ms-btn.open .arrow { transform: rotate(180deg); }
+    .ms-badge   { background: #1a5276; color: white; border-radius: 10px; padding: 1px 7px; font-size: 11px; font-weight: 700; }
+
+    .ms-panel   {
+        display: none; position: absolute; top: calc(100% + 4px); left: 0; z-index: 100;
+        min-width: 100%; max-height: 220px; overflow-y: auto;
+        background: white; border: 1px solid #aed6f1; border-radius: 6px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    }
+    .ms-panel.open { display: block; }
+    .ms-panel label {
+        display: flex; align-items: center; gap: 8px;
+        padding: 7px 12px; font-size: 12px; color: #2c3e50;
+        cursor: pointer; transition: background 0.1s;
+        text-transform: none; font-weight: 400;
+    }
+    .ms-panel label:hover { background: #eaf4fb; }
+    .ms-panel label.checked { background: #d6eaf8; font-weight: 600; }
+    .ms-panel input[type=checkbox] { accent-color: #1a5276; width: 14px; height: 14px; flex-shrink: 0; }
+    .ms-divider { border: none; border-top: 1px solid #eaecee; margin: 0; }
+
+    .results-header { background: #117a65; color: white; padding: 10px 16px; font-size: 12px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .badge-count { background: rgba(255,255,255,0.25); padding: 2px 10px; border-radius: 12px; font-size: 11px; white-space: nowrap; }
+
+    #count-live { font-size: 12px; }
+
+    .table-scroll { overflow-x: auto; max-height: calc(100vh - 360px); overflow-y: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    thead th { background: #1a5276; color: white; padding: 9px 10px; text-align: left; white-space: nowrap; font-size: 11px; font-weight: 600; position: sticky; top: 0; z-index: 1; }
+    tbody tr { border-bottom: 1px solid #eaecee; }
+    tbody tr:nth-child(even) { background: #eaf4fb; }
+    tbody tr:hover { background: #d6eaf8; }
+    tbody td { padding: 6px 10px; white-space: nowrap; }
+    .td-num { text-align: right; font-family: Consolas, monospace; }
+    .val-warn { color: #cb4335; font-weight: 700; }
+    code { background: #f2f3f4; padding: 1px 5px; border-radius: 3px; font-size: 11px; }
+
+    .msg-empty { padding: 50px; text-align: center; color: #99a3a4; }
+    .alert-error { background: #fdedec; border: 1px solid #f1948a; border-radius: 6px; padding: 10px 14px; color: #922b21; font-size: 12px; }
+    .info-banner { background: #eaf4fb; border: 1px solid #aed6f1; border-radius: 6px; padding: 10px 14px; font-size: 12px; color: #1a5276; }
+</style>
+{% endblock %}
+
+{% block page_content %}
+<div class="pp-wrap">
+
+    {# Sezione: Intestazione con titolo e link di ritorno allo Staging #}
+    <div class="page-header">
+        <span class="page-title"><i class="bi bi-database me-2"></i>Dati Live — Piano Promo</span>
+        <a href="{% url 'piano_promo:index' %}" class="btn btn-sm btn-secondary fw-semibold">
+            <i class="bi bi-arrow-left me-1"></i>Staging
+        </a>
+    </div>
+
+    {# Sezione: Form filtri server-side per interrogare r_pianopromofuturo #}
+    <div class="card" style="overflow: visible;">
+        <div class="card-header blue" style="border-radius: 8px 8px 0 0;"><i class="bi bi-funnel me-2"></i>Filtri</div>
+        <form method="get" class="card-body" id="live-form">
+
+            {# Filtro: Piano Gold multi-select dropdown (componente custom JS) #}
+            <div class="pp-field">
+                <label>Piano Gold</label>
+                <div class="ms-wrap" id="ms-piano-wrap">
+                    <div class="ms-btn" id="ms-piano-btn" tabindex="0">
+                        <span id="ms-piano-label">— tutti i piani —</span>
+                        <span class="arrow">&#9660;</span>
+                    </div>
+                    <div class="ms-panel" id="ms-piano-panel">
+                        {# Itera i piani con pre-selezione dai filtri attivi #}
+                        {% for p in piani %}
+                        <label class="{% if p.cod in filters.piani %}checked{% endif %}">
+                            <input type="checkbox" name="piano" value="{{ p.cod }}"
+                                   {% if p.cod in filters.piani %}checked{% endif %}>
+                            {{ p.cod }}{% if p.inizio %} — {{ p.inizio }}{% endif %}
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            {# Filtro: Intervallo date SellOut #}
+            <div class="pp-field">
+                <label>SellOut dal</label>
+                <input type="date" name="data_da" value="{{ filters.data_da }}">
+            </div>
+
+            <div class="pp-field">
+                <label>SellOut al</label>
+                <input type="date" name="data_a" value="{{ filters.data_a }}">
+            </div>
+
+            {# Filtro: Settore merceologico #}
+            <div class="pp-field">
+                <label>Settore</label>
+                <select name="sett">
+                    <option value="">— tutti —</option>
+                    {# Il filtro stringformat:"s" gestisce il confronto tra tipi diversi #}
+                    {% for s in setti %}
+                    <option value="{{ s }}" {% if filters.sett == s|stringformat:"s" %}selected{% endif %}>{{ s }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            {# Filtro: Ricerca testo libero su codice, descrizione e fornitore #}
+            <div class="pp-field">
+                <label>Cerca</label>
+                <input type="text" name="search" value="{{ filters.search }}" placeholder="Cod. art., descrizione, fornitore..." autocomplete="off">
+            </div>
+
+            <div style="display:flex;gap:8px;align-items:flex-end;">
+                <button type="submit" class="btn btn-sm btn-primary fw-semibold">
+                    <i class="bi bi-search me-1"></i>Carica
+                </button>
+                <a href="{% url 'piano_promo:dati_live' %}" class="btn btn-sm btn-secondary">
+                    <i class="bi bi-x-lg me-1"></i>Reset
+                </a>
+            </div>
+        </form>
+    </div>
+
+    {# Mostra errore DB se la query ha fallito #}
+    {% if error %}
+    <div class="alert-error"><i class="bi bi-exclamation-triangle me-1"></i>{{ error }}</div>
+    {% endif %}
+
+    {# Sezione: Tabella risultati (visibile solo se rows non è vuota) #}
+    {% if rows %}
+    <div class="card">
+        <div class="results-header">
+            <span><i class="bi bi-table me-2"></i>Risultati</span>
+            <span class="badge-count" id="count-live">{{ totale }} righe</span>
+        </div>
+
+        <div class="table-scroll">
+            <table id="live-table">
+                <thead>
+                    <tr>
+                        <th>Cod. Piano Gold</th>
+                        <th>Inizio SellOut</th>
+                        <th>Fine SellOut</th>
+                        <th>Settore</th>
+                        <th>Cod. Forn.</th>
+                        <th>Fornitore</th>
+                        <th>Cod. Art.</th>
+                        <th>Descrizione Articolo</th>
+                        <th class="td-num">Giac. PDV</th>
+                        <th class="td-num">Giac. Dep.</th>
+                        <th>Cod. Art. Expo</th>
+                        <th>Descrizione Expo</th>
+                        <th class="td-num">Prezzo Promo</th>
+                        <th>Ordine in Corso</th>
+                        <th>Data di Consegna</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {# Itera le righe restituite dalla query live #}
+                    {% for r in rows %}
+                    <tr>
+                        <td><strong>{{ r.cod_piano_gold|default:"—" }}</strong></td>
+                        <td>{{ r.inizio_sellout|default:"—" }}</td>
+                        <td>{{ r.fine_sellout|default:"—" }}</td>
+                        <td>{{ r.sett|default:"—" }}</td>
+                        <td>{{ r.cod_forn|default:"—" }}</td>
+                        <td>{{ r.desc_forn|default:"—" }}</td>
+                        <td><code>{{ r.cod_art|default:"—" }}</code></td>
+                        <td>{{ r.desc_art|default:"—" }}</td>
+                        {# Giacenza zero evidenziata in rosso (val-warn) come avvertimento #}
+                        <td class="td-num {% if r.giac_pdv == 0 %}val-warn{% endif %}">{{ r.giac_pdv|default:"0" }}</td>
+                        <td class="td-num {% if r.giac_dep == 0 %}val-warn{% endif %}">{{ r.giac_dep|default:"0" }}</td>
+                        <td>{{ r.cod_art_expo|default:"—" }}</td>
+                        <td>{{ r.desc_expo|default:"—" }}</td>
+                        <td class="td-num">{% if r.prezzo_promo %}€ {{ r.prezzo_promo }}{% else %}—{% endif %}</td>
+                        <td>{{ r.ordine_in_corso|default:"—" }}</td>
+                        <td>{{ r.data_consegna|default:"—" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {# Stato vuoto: nessun risultato ma almeno un filtro era attivo #}
+    {% elif rows is not None %}
+    <div class="card">
+        <div class="msg-empty">Nessun dato. Applica almeno un filtro.</div>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+{# Sezione: Logica JavaScript per il dropdown multi-selezione Piano Gold nella pagina live #}
+(function () {
+    const btn   = document.getElementById('ms-piano-btn');
+    const panel = document.getElementById('ms-piano-panel');
+    const lbl   = document.getElementById('ms-piano-label');
+    const wrap  = document.getElementById('ms-piano-wrap');
+
+    // Aggiorna l'etichetta del pulsante in base alle checkbox selezionate
+    function updateLabel() {
+        const checked = panel.querySelectorAll('input[type=checkbox]:checked');
+        if (checked.length === 0) {
+            lbl.innerHTML = '— tutti i piani —';
+        } else if (checked.length === 1) {
+            lbl.innerHTML = checked[0].value;
+        } else {
+            lbl.innerHTML = checked.length + ' piani selezionati &nbsp;<span class="ms-badge">' + checked.length + '</span>';
+        }
+    }
+
+    function openPanel()  { panel.classList.add('open'); btn.classList.add('open'); }
+    function closePanel() { panel.classList.remove('open'); btn.classList.remove('open'); }
+
+    btn.addEventListener('click', () => panel.classList.contains('open') ? closePanel() : openPanel());
+
+    panel.querySelectorAll('label').forEach(row => {
+        const cb = row.querySelector('input[type=checkbox]');
+        cb.addEventListener('change', () => {
+            row.classList.toggle('checked', cb.checked);
+            updateLabel();
+        });
+    });
+
+    // Chiude il pannello cliccando fuori dal wrapper
+    document.addEventListener('click', e => {
+        if (!wrap.contains(e.target)) closePanel();
+    });
+
+    btn.addEventListener('keydown', e => {
+        if (e.key === 'Escape') closePanel();
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); panel.classList.contains('open') ? closePanel() : openPanel(); }
+    });
+
+    // Inizializza l'etichetta al caricamento della pagina (per i filtri già applicati)
+    updateLabel();
+})();
+</script>
+{% endblock %}

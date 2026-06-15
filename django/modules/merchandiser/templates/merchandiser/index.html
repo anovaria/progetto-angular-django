@@ -1,0 +1,289 @@
+{% extends "merchandiser/base_minimal.html" %}
+{# Descrizione del template: Dashboard principale del modulo Merchandiser. Mostra tre stat-card con i contatori del giorno (merchandiser attivi, slot attivi, timbrature) e una tabella filtrabile degli slot attivi oggi con stato timbratura. #}
+{% load merch_tags %}
+
+{% block title %}Dashboard - Merchandiser{% endblock %}
+
+{% block extra_css %}
+<style>
+    .slot-table {
+        width: 100%;
+        font-size: 0.9em;
+    }
+
+    .slot-table th {
+        background: #f5f5f5;
+        padding: 10px 12px;
+        font-weight: 600;
+        border-bottom: 2px solid #ddd;
+    }
+
+    .slot-table td {
+        padding: 8px 12px;
+        border-bottom: 1px solid #eee;
+        vertical-align: middle;
+    }
+
+    .slot-table tbody tr:hover {
+        background: #fafafa;
+    }
+
+    /* Riga verde per gli slot con timbratura registrata oggi */
+    .slot-table tbody tr.has-timbratura {
+        background: #e8f5e9;
+    }
+
+    .slot-table tbody tr.has-timbratura:hover {
+        background: #c8e6c9;
+    }
+
+    .badge-timbrato {
+        background: #4caf50;
+        color: white;
+        padding: 3px 8px;
+        border-radius: 12px;
+        font-size: 0.75em;
+        font-weight: 500;
+    }
+
+    .badge-non-timbrato {
+        background: #ffeb3b;
+        color: #333;
+        padding: 3px 8px;
+        border-radius: 12px;
+        font-size: 0.75em;
+        font-weight: 500;
+    }
+
+    .orario-cell {
+        font-family: monospace;
+        font-size: 0.85em;
+    }
+
+    .table-scroll {
+        max-height: 500px;
+        overflow-y: auto;
+    }
+
+    .filter-bar {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        padding: 10px 15px;
+        background: #f9f9f9;
+        border-bottom: 1px solid #eee;
+    }
+
+    .filter-bar input {
+        padding: 6px 12px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        width: 250px;
+    }
+
+    .filter-bar input:focus {
+        border-color: #ff5722;
+        outline: none;
+    }
+
+    .filter-toggle {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.9em;
+    }
+
+    .filter-toggle input {
+        width: 16px;
+        height: 16px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+{# Sezione: Intestazione pagina #}
+<h4 class="mb-4">
+    <i class="bi bi-speedometer2" style="vertical-align: middle;"></i>
+    Dashboard
+</h4>
+
+{# Sezione: Tre card con i contatori principali del giorno #}
+<div class="row g-4 mb-4">
+    <div class="col-md-4">
+        <div class="stat-card">
+            <div class="d-flex align-items-center gap-3">
+                <div class="stat-icon" style="background: linear-gradient(135deg, #ff5722, #e64a19);">
+                    <i class="bi bi-person-badge"></i>
+                </div>
+                <div>
+                    <div class="stat-value">{{ merchandiser_attivi }}</div>
+                    <div class="stat-label">Merchandiser Attivi</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="stat-card">
+            <div class="d-flex align-items-center gap-3">
+                <div class="stat-icon" style="background: linear-gradient(135deg, #4caf50, #388e3c);">
+                    <i class="bi bi-calendar-event"></i>
+                </div>
+                <div>
+                    <div class="stat-value">{{ slot_attivi }}</div>
+                    <div class="stat-label">Slot Attivi Oggi</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="stat-card">
+            <div class="d-flex align-items-center gap-3">
+                <div class="stat-icon" style="background: linear-gradient(135deg, #2196f3, #1976d2);">
+                    <i class="bi bi-clock"></i>
+                </div>
+                <div>
+                    <div class="stat-value">{{ timbrature_oggi }}</div>
+                    <div class="stat-label">Timbrature Oggi</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# Sezione: Tabella slot attivi oggi con filtri JavaScript lato client #}
+<div class="card">
+    <div class="card-header">
+        <i class="bi bi-calendar-event" style="vertical-align: middle;"></i>
+        Slot Attivi Oggi ({{ oggi|date:"d/m/Y" }})
+    </div>
+
+    {# Barra filtri: ricerca per nome e toggle per mostrare solo timbrati / non timbrati #}
+    <div class="filter-bar">
+        <input type="text" id="search-merchandiser" placeholder="Cerca merchandiser...">
+        <label class="filter-toggle">
+            <input type="checkbox" id="filter-timbrati">
+            Solo timbrati
+        </label>
+        <label class="filter-toggle">
+            <input type="checkbox" id="filter-non-timbrati">
+            Solo NON timbrati
+        </label>
+    </div>
+
+    <div class="table-scroll">
+        <table class="slot-table" id="slot-table">
+            <thead>
+                <tr>
+                    <th>Merchandiser</th>
+                    <th>Periodo</th>
+                    <th>Giorni</th>
+                    <th>Stato</th>
+                    <th>Ingresso</th>
+                    <th>Uscita</th>
+                </tr>
+            </thead>
+            <tbody>
+                {# Itera su tutti gli slot attivi oggi, passando per il dict timbrature per sapere chi ha timbrato #}
+                {% for slot in slot_oggi %}
+                {# get_item è un tag custom che recupera dal dict timbrature_dict la timbratura per slot.id #}
+                {% with timb=timbrature_dict|get_item:slot.id %}
+                {# La riga viene evidenziata in verde se esiste già una timbratura per oggi #}
+                <tr class="{% if timb %}has-timbratura{% endif %}"
+                    data-nominativo="{{ slot.merchandiser.nominativo|lower }}"
+                    data-timbrato="{% if timb %}1{% else %}0{% endif %}">
+                    <td><strong>{{ slot.merchandiser.nominativo }}</strong></td>
+                    <td>{{ slot.data_inizio|date:"d/m/Y" }} - {{ slot.data_fine|date:"d/m/Y" }}</td>
+                    <td>{{ slot.giorni_attivi }}</td>
+                    <td>
+                        {# Badge verde se ha già timbrato, giallo se ancora in attesa #}
+                        {% if timb %}
+                        <span class="badge-timbrato">Timbrato</span>
+                        {% else %}
+                        <span class="badge-non-timbrato">In attesa</span>
+                        {% endif %}
+                    </td>
+                    <td class="orario-cell">
+                        {# Mostra l'orario di ingresso solo se la timbratura esiste e ha ingresso_1 valorizzato #}
+                        {% if timb and timb.ingresso_1 %}
+                            {{ timb.ingresso_1|time:"H:i" }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                    <td class="orario-cell">
+                        {# Mostra l'orario di uscita solo se la timbratura esiste e ha uscita_1 valorizzato #}
+                        {% if timb and timb.uscita_1 %}
+                            {{ timb.uscita_1|time:"H:i" }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endwith %}
+                {# Messaggio mostrato se non ci sono slot attivi per oggi #}
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center text-muted py-4">
+                        Nessuno slot attivo oggi
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Riferimenti agli elementi di filtro
+const searchInput = document.getElementById('search-merchandiser');
+const filterTimbrati = document.getElementById('filter-timbrati');
+const filterNonTimbrati = document.getElementById('filter-non-timbrati');
+
+// Applica i filtri combinati: testo, solo timbrati, solo non timbrati
+function applicaFiltri() {
+    const searchText = searchInput.value.toLowerCase().trim();
+    const soloTimbrati = filterTimbrati.checked;
+    const soloNonTimbrati = filterNonTimbrati.checked;
+
+    document.querySelectorAll('#slot-table tbody tr').forEach(row => {
+        const nominativo = row.dataset.nominativo || '';
+        const timbrato = row.dataset.timbrato === '1';
+
+        let visible = true;
+
+        // Filtro testo: nasconde le righe che non contengono la stringa cercata
+        if (searchText && !nominativo.includes(searchText)) {
+            visible = false;
+        }
+
+        // Filtro timbrati: mostra solo chi ha già timbrato
+        if (soloTimbrati && !timbrato) {
+            visible = false;
+        }
+
+        // Filtro non timbrati: mostra solo chi non ha ancora timbrato
+        if (soloNonTimbrati && timbrato) {
+            visible = false;
+        }
+
+        row.style.display = visible ? '' : 'none';
+    });
+}
+
+searchInput.addEventListener('input', applicaFiltri);
+
+// I due filtri sono mutuamente esclusivi: attivarne uno disattiva l'altro
+filterTimbrati.addEventListener('change', function() {
+    if (this.checked) filterNonTimbrati.checked = false;
+    applicaFiltri();
+});
+filterNonTimbrati.addEventListener('change', function() {
+    if (this.checked) filterTimbrati.checked = false;
+    applicaFiltri();
+});
+</script>
+{% endblock %}

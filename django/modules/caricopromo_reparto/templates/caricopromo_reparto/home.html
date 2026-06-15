@@ -1,0 +1,1608 @@
+{% extends 'portal/base.html' %}
+{# Descrizione del template: Pagina principale del modulo Carico Promo Reparto (Freschi). Permette di selezionare un CCOM, caricare/importare articoli (anche tramite barcode o duplicazione da promo storica Gold), selezionarli e accodarli a una promozione con i parametri sell-out/sell-in, sconti e meccanica. #}
+{% block extra_css %}
+<style>
+    .container { max-width: 1500px; margin: 15px auto; padding: 0 15px; }
+
+    .section {
+        background: white; border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        margin-bottom: 15px; padding: 15px 20px;
+    }
+    .section-title {
+        font-size: 1em; font-weight: 600; margin-bottom: 12px;
+        color: #1a5276; border-bottom: 2px solid #2e86c1; padding-bottom: 6px;
+    }
+
+    .ccom-bar { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+    .form-group { display: flex; flex-direction: column; gap: 4px; }
+    .form-group label { font-size: 0.8em; font-weight: 600; color: #555; }
+    .form-group select, .form-group input {
+        padding: 7px 10px; border: 1px solid #ccc; border-radius: 4px;
+        font-size: 0.9em; min-width: 120px;
+    }
+    .form-group select:focus, .form-group input:focus { border-color: #2e86c1; outline: none; }
+
+    .btn {
+        padding: 8px 16px; border: none; border-radius: 5px;
+        font-size: 0.85em; font-weight: 500; cursor: pointer;
+        transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px;
+    }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-primary { background: #2e86c1; color: white; }
+    .btn-primary:hover:not(:disabled) { background: #1a5276; }
+    .btn-success { background: #27ae60; color: white; }
+    .btn-success:hover:not(:disabled) { background: #1e8449; }
+    .btn-warning { background: #f39c12; color: white; }
+    .btn-warning:hover:not(:disabled) { background: #d68910; }
+    .btn-danger { background: #e74c3c; color: white; }
+    .btn-danger:hover:not(:disabled) { background: #c0392b; }
+    .btn-sm { padding: 5px 10px; font-size: 0.8em; }
+    .btn-outline { background: white; color: #2e86c1; border: 1px solid #2e86c1; }
+    .btn-outline:hover { background: #eaf2f8; }
+
+    .sel-toolbar {
+        display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+        padding: 8px 0; border-bottom: 1px solid #eee; margin-bottom: 10px;
+    }
+    .sel-count {
+        font-size: 0.85em; font-weight: 600;
+        background: #eaf2f8; padding: 4px 12px; border-radius: 12px; color: #1a5276;
+    }
+
+    #tbl-visualizza { font-size: 0.7em; }
+    #tbl-visualizza .th-vis {
+        background: #1a5276; color: white; padding: 4px 4px;
+        position: sticky; top: 0; z-index: 1;
+        white-space: normal; text-align: left; line-height: 1.2;
+    }
+    #tbl-visualizza .th-vis.sortable { cursor: pointer; }
+    #tbl-visualizza td {
+        padding: 3px 4px;
+        overflow: hidden; text-overflow: ellipsis;
+        max-width: 160px; white-space: nowrap;
+    }
+
+    .table-wrap { overflow-x: auto; max-height: 450px; overflow-y: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.8em; }
+    th {
+        background: #1a5276; color: white; padding: 7px 8px;
+        text-align: left; position: sticky; top: 0; z-index: 1; white-space: nowrap;
+    }
+    td { padding: 5px 8px; border-bottom: 1px solid #eee; }
+    tr:hover td { background: #eaf2f8; }
+    tr:nth-child(even) td { background: #fafbfc; }
+    tr:nth-child(even):hover td { background: #eaf2f8; }
+    tr.selected td { background: #d5f5e3 !important; }
+    tr.selected:hover td { background: #abebc6 !important; }
+    td input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; }
+
+    .promo-form {
+        display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: 10px; padding-top: 10px;
+    }
+    .promo-form .form-group select,
+    .promo-form .form-group input { width: 100%; }
+
+    .promo-actions {
+        display: flex; gap: 10px; margin-top: 15px; padding-top: 12px;
+        border-top: 1px solid #eee; align-items: center;
+    }
+
+    .stats-bar {
+        display: flex; gap: 20px; padding: 8px 12px;
+        background: #fef9e7; border-radius: 5px; border-left: 3px solid #f39c12;
+        font-size: 0.85em;
+    }
+    .stats-bar .stat-val { font-weight: 700; color: #d35400; }
+
+    .toast {
+        position: fixed; top: 80px; right: 20px; padding: 12px 22px;
+        border-radius: 8px; color: white; font-weight: 500; font-size: 0.9em;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2); z-index: 1000;
+        transform: translateX(120%); transition: transform 0.3s;
+    }
+    .toast.show { transform: translateX(0); }
+    .toast.success { background: #27ae60; }
+    .toast.error { background: #e74c3c; }
+    .toast.warning { background: #f39c12; }
+
+    .spinner { width: 14px; height: 14px; border: 2px solid #fff; border-top-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite; display: inline-block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading { display: none; }
+    .loading.active { display: inline-block; }
+
+    .modal-overlay {
+        display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.5); z-index: 2000;
+        justify-content: center; align-items: center;
+    }
+    .modal-overlay.show { display: flex; }
+    .modal {
+        display: block; background: white; border-radius: 10px; padding: 25px;
+        max-width: 500px; width: 90%; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    }
+    .modal h3 { margin-bottom: 12px; color: #e74c3c; }
+    .modal p { margin-bottom: 15px; font-size: 0.9em; color: #555; }
+    .modal .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+
+    .search-box { position: relative; }
+    .search-box input { padding-right: 30px; }
+    .search-results {
+        position: absolute; top: 100%; left: 0; right: 0;
+        background: white; border: 1px solid #ccc; border-radius: 4px;
+        max-height: 200px; overflow-y: auto; z-index: 10;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1); display: none;
+    }
+    .search-results.show { display: block; }
+    .search-results .sr-item {
+        padding: 6px 10px; cursor: pointer; font-size: 0.85em;
+        border-bottom: 1px solid #f0f0f0;
+    }
+    .search-results .sr-item:hover { background: #eaf2f8; }
+    .search-results .sr-item strong { color: #1a5276; }
+
+    .sconto-group {
+        display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;
+    }
+    .sconto-group .form-group { min-width: auto; }
+    .field-disabled { background: #eee !important; color: #999 !important; pointer-events: none; }
+
+    #ccom-dropdown {
+        display: none; position: absolute; top: 100%; left: 0;
+        min-width: 370px; max-height: 260px; overflow-y: auto;
+        background: white; border: 1px solid #c5d3ee; border-radius: 4px;
+        z-index: 1500; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    #ccom-dropdown.show { display: block; }
+    .ccom-opt {
+        padding: 7px 12px; cursor: pointer; font-size: 0.88em;
+        border-bottom: 1px solid #f0f4fb;
+    }
+    .ccom-opt:hover { background: #eaf2f8; }
+    .ccom-opt mark { background: #fff3cd; border-radius: 2px; padding: 0 1px; }
+
+    #dup-promo-dropdown {
+        display: none; position: absolute; top: 100%; left: 0;
+        width: 100%; max-height: 260px; overflow-y: auto;
+        background: white; border: 1px solid #c5d3ee; border-radius: 4px;
+        z-index: 3000; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    #dup-promo-dropdown.show { display: block; }
+    .dup-promo-opt {
+        padding: 7px 12px; cursor: pointer; font-size: 0.85em;
+        border-bottom: 1px solid #f0f4fb;
+    }
+    .dup-promo-opt:hover { background: #eaf2f8; }
+    .dup-promo-opt mark { background: #fff3cd; border-radius: 2px; padding: 0 1px; }
+</style>
+{% endblock %}
+
+{% block page_content %}
+<div class="container">
+
+    {# Sezione 1: selezione del contratto commerciale (CCOM) e azioni rapide #}
+    <!-- 1. Selezione CCOM -->
+    <div class="section">
+        <div class="section-title">1. Seleziona Contratto Commerciale</div>
+        <div class="ccom-bar">
+            <div class="form-group" style="position:relative;">
+                <label>CCOM</label>
+                {# Campo hidden che memorizza il codice CCOM; il campo visibile è solo per la ricerca testuale #}
+                <input type="hidden" id="sel-ccom" value="{{ ccom_selezionato }}">
+                <input type="text" id="ccom-search" autocomplete="off" placeholder="Cerca CCOM o descrizione..."
+                    style="min-width:370px;"
+                    oninput="filtraCcom(this.value)" onfocus="filtraCcom(this.value)">
+                <div id="ccom-dropdown"></div>
+            </div>
+            <button class="btn btn-primary" onclick="caricaArticoli()">
+                <span class="loading" id="load-carica"><span class="spinner"></span></span>
+                Carica Articoli
+            </button>
+            <button class="btn btn-danger" onclick="svuotaFase1()">Pulisci Schermo</button>
+            {# Il bottone "Articoli Inseriti" è nascosto via JS quando il contatore è a zero #}
+            <button class="btn btn-outline btn-sm" id="btn-visualizza-exp" onclick="visualizzaInseriti()" {% if not export_counts.tutti %}style="display:none;"{% endif %}>&#128203; Articoli Inseriti (<span id="exp-count-top2">{{ export_counts.tutti }}</span>)</button>
+            <div class="form-group search-box">
+                <label>Cerca Articolo</label>
+                <input type="text" id="cerca-art" placeholder="Cerca nella lista..." oninput="cercaArticolo(this.value)">
+                <div class="search-results" id="search-results"></div>
+            </div>
+            {# Bottone per duplicare articoli da una promozione storica Gold #}
+            <button class="btn btn-sm btn-info" onclick="apriDuplicaPromo()" title="Copia articoli da promo Gold storica" style="margin-left:auto;">
+                &#128260; Duplica da Promo
+            </button>
+            {# Bottone per aggiungere articoli singoli tramite lettore barcode #}
+            <button class="btn btn-sm btn-warning" onclick="apriBarcode()" title="Aggiungi articoli singoli con lettore barcode">
+                <i class="bi bi-upc-scan"></i> Caricamento Manuale
+            </button>
+        </div>
+    </div>
+
+    {# Sezione 2: griglia articoli con toolbar di selezione e filtri #}
+    <!-- 2. Griglia Articoli -->
+    <div class="section" id="section-articoli">
+        <div class="section-title">
+            2. Articoli
+            <span id="art-count" style="font-weight:400; font-size:0.85em; color:#666;"></span>
+        </div>
+
+        {# Toolbar di selezione (visibile solo dopo il caricamento degli articoli) #}
+        <div class="sel-toolbar" id="sel-toolbar" style="display:none;">
+            <button class="btn btn-sm btn-outline" onclick="selBatch('tutti')">Seleziona tutti</button>
+            <button class="btn btn-sm btn-outline" onclick="selBatch('nessuno')">Deseleziona</button>
+            {# Filtri per selezione rapida per linea prodotto, tipo riordino e fascia prezzo #}
+            <select id="filtro-linea" onchange="selByFilter('linea', this.value)" style="padding:4px 8px; font-size:0.8em; border:1px solid #ccc; border-radius:4px;">
+                <option value="">Per linea prodotto...</option>
+            </select>
+            <select id="filtro-tipo" onchange="selByFilter('tipo_riordino', this.value)" style="padding:4px 8px; font-size:0.8em; border:1px solid #ccc; border-radius:4px;">
+                <option value="">Per tipo riordino...</option>
+            </select>
+            <select id="filtro-fascia" onchange="selByFilter('fascia', this.value)" style="padding:4px 8px; font-size:0.8em; border:1px solid #ccc; border-radius:4px;">
+                <option value="">Per fascia prezzo...</option>
+            </select>
+            <span class="sel-count">Selezionati: <span id="sel-count-val">0</span></span>
+        </div>
+
+        <div class="table-wrap">
+            <table id="tbl-articoli">
+                <thead>
+                    <tr>
+                        <th style="width:40px;">✓</th>
+                        <th>Cod. Articolo</th>
+                        <th>Cod. Art. Forn.</th>
+                        <th>Descrizione</th>
+                        <th>Fornitore</th>
+                        <th>CCOM</th>
+                        <th>Prz. Vendita</th>
+                        <th>Prz. Offerta</th>
+                        <th>VL</th>
+                        <th>Stato</th>
+                    </tr>
+                </thead>
+                <tbody id="tbody-articoli">
+                    <tr><td colspan="10" style="text-align:center; padding:40px; color:#999;">
+                        Seleziona un CCOM e clicca "Carica Articoli"
+                    </td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {# Sezione 3: parametri della promozione (visibile solo dopo caricamento articoli) #}
+    <!-- 3. Parametri Promozione -->
+    <div class="section" id="section-promo" style="display:none;">
+        <div class="section-title">3. Parametri Promozione</div>
+
+        <div class="promo-form">
+            {# Filtro per lettera iniziale del codice piano (es. A, B, C...) #}
+            <div class="form-group">
+                <label>Filtro Piano</label>
+                <select id="prm-filtro-piano" onchange="filtraPiani(this.value)">
+                    <option value="">Tutti</option>
+                </select>
+            </div>
+            <div class="form-group" style="grid-column: span 2;">
+                <label>Piano Promo</label>
+                <select id="prm-selezione">
+                    <option value="">-- Nessuno --</option>
+                    {# Ogni option porta i data-* con le date del piano per l'auto-compilazione #}
+                    {% for p in piani %}
+                    <option value="{{ p.piano }}" data-inizio="{{ p.inizio }}" data-fine="{{ p.fine }}" data-lettera="{{ p.piano|first }}" data-inizio-sellin="{{ p.inizio_sellin }}" data-fine-sellin="{{ p.fine_sellin }}" data-descrizione="{{ p.descrizione }}">
+                        {{ p.piano }} - {{ p.descrizione }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Sell-out Inizio</label>
+                <input type="date" id="prm-data-inizio">
+            </div>
+            <div class="form-group">
+                <label>Sell-out Fine</label>
+                <input type="date" id="prm-data-fine">
+            </div>
+            <div class="form-group">
+                <label>Sell-in Inizio</label>
+                <input type="date" id="prm-sellin-inizio">
+            </div>
+            <div class="form-group">
+                <label>Sell-in Fine</label>
+                <input type="date" id="prm-sellin-fine">
+            </div>
+            <div class="form-group">
+                <label>Meccanica <small style="color:#e67e22;font-weight:normal;">(sell-out / cassa)</small></label>
+                <select id="prm-meccanica" onchange="aggiornaCampoValore()">
+                    <option value="">-- Nessuna --</option>
+                    {% for m in meccaniche %}
+                    <option value="{{ m.codice }}">{{ m.descrizione }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Tipo Sconto <small style="color:#27ae60;font-weight:normal;">(sell-in)</small></label>
+                <select id="prm-tipo-sconto">
+                    <option value="">-- Nessuno --</option>
+                    {% for t in tipi_sconto %}
+                    <option value="{{ t.codice }}">{{ t.codice }} - {{ t.descrizione }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <!-- Riga sconti -->
+        <div style="font-size:0.72em; font-weight:600; letter-spacing:0.3px; margin-top:12px; padding-top:8px; border-top:1px solid #eee; display:flex; gap:24px; flex-wrap:wrap;">
+            <span style="color:#27ae60;">● SELL-IN (condizioni fornitore): Tipo Sconto · Sconto Extra · Sconto 1 · Sconto 2</span>
+            <span style="color:#e67e22;">● SELL-OUT (cassa): Meccanica · Valore</span>
+        </div>
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap:10px; margin-top:8px;">
+            <div class="form-group">
+                <label id="lbl-sconto">Sconto Extra <small style="color:#27ae60;font-weight:normal;">(sell-in)</small></label>
+                <input type="text" id="prm-sconto" placeholder="" class="field-disabled" disabled oninput="calcolaSconto()">
+            </div>
+            <div class="form-group">
+                <label>Sconto 1</label>
+                <input type="text" id="prm-sconto1" placeholder="" class="field-disabled" disabled oninput="calcolaSconto()">
+            </div>
+            <div class="form-group">
+                <label>Sconto 2</label>
+                <input type="text" id="prm-sconto2" placeholder="" class="field-disabled" disabled oninput="calcolaSconto()">
+            </div>
+            <div class="form-group">
+                <label>Tot. Sconto</label>
+                <div id="prm-tot-sconto" style="padding:7px 10px; border:1px solid #ddd; border-radius:4px; background:#f9f9f9; font-size:0.9em; font-weight:600; color:#1a5276;">-</div>
+            </div>
+            <div class="form-group">
+                <label>Valore <small style="color:#e67e22;font-weight:normal;">(sell-out/cassa)</small></label>
+                <input type="text" id="prm-valore" placeholder="" class="field-disabled" disabled>
+                <label style="margin-top:4px; display:flex; align-items:center; gap:5px; font-size:0.78em; font-weight:normal; color:#27ae60; cursor:pointer; text-transform:none;">
+                    <input type="checkbox" id="chk-usa-offerta" onchange="toggleUsaOfferta()">
+                    Usa Prz. Offerta
+                </label>
+            </div>
+            <div class="form-group">
+                <label>Qta Omaggio</label>
+                <input type="text" id="prm-qta-omaggio" placeholder="0" disabled class="field-disabled">
+            </div>
+        </div>
+
+        {# Pannello articoli senza Prezzo Offerta (visibile solo dopo accodamento con "Usa Prz. Offerta") #}
+        <div id="panel-senza-prezzo" style="display:none; margin-top:10px; background:#fff3cd; border:1px solid #ffc107; border-radius:6px; padding:10px 14px;">
+            <div style="font-size:0.85em; font-weight:600; color:#856404; margin-bottom:6px;">
+                ⚠ Articoli esclusi dalla coda (privi di Prezzo Offerta):
+            </div>
+            <ul id="list-senza-prezzo" style="margin:0; padding-left:18px; font-size:0.82em; color:#856404;"></ul>
+        </div>
+
+        <div class="promo-actions">
+            <button class="btn btn-success" id="btn-accoda" onclick="accodaPromo()">
+                <span class="loading" id="load-accoda"><span class="spinner"></span></span>
+                Inserisci la Promo
+            </button>
+            <button class="btn btn-outline btn-sm" onclick="visualizzaInseriti()">Visualizza Articoli Inseriti</button>
+            <div style="flex:1"></div>
+            <div class="stats-bar" style="margin:0;">
+                <span>In export: <span class="stat-val" id="exp-count">{{ export_counts.tutti }}</span></span>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+{# Sezione: modal di caricamento manuale articoli tramite barcode/EAN #}
+<!-- Modal Caricamento Manuale Barcode -->
+<div class="modal-overlay" id="modal-barcode" onclick="if(event.target===this)chiudiBarcode()">
+    <div class="modal" style="max-width:700px; width:96%;">
+        <h3 style="color:#d35400;"><i class="bi bi-upc-scan"></i> Caricamento Manuale Articoli</h3>
+        <p style="color:#666; margin-bottom:12px;">Scansiona o digita codice articolo / EAN. Gli articoli verranno aggiunti alla lista già selezionati.</p>
+
+        <div style="display:flex; gap:8px; margin-bottom:14px;">
+            {# Il campo barcode si attiva con Invio per supportare i lettori barcode hardware #}
+            <input type="text" id="barcode-input" placeholder="Scansiona barcode o digita codice..."
+                style="flex:1; padding:10px 14px; font-size:1em; border:2px solid #f39c12; border-radius:6px;"
+                autocomplete="off" autocorrect="off" spellcheck="false"
+                onkeydown="if(event.key==='Enter') scanBarcode()">
+            <button class="btn btn-warning" onclick="scanBarcode()">
+                <i class="bi bi-search"></i> Cerca
+            </button>
+        </div>
+
+        <div id="barcode-msg" style="min-height:22px; font-size:0.85em; margin-bottom:8px;"></div>
+
+        <div style="overflow-x:auto; max-height:380px; overflow-y:auto; margin-bottom:14px;">
+            <table style="width:100%; border-collapse:collapse; font-size:0.82em;">
+                <thead>
+                    <tr>
+                        <th style="background:#d35400;color:white;padding:6px 8px;position:sticky;top:0;text-align:left;">Cod. Articolo</th>
+                        <th style="background:#d35400;color:white;padding:6px 8px;position:sticky;top:0;text-align:left;">Descrizione</th>
+                        <th style="background:#d35400;color:white;padding:6px 8px;position:sticky;top:0;text-align:left;">CCOM</th>
+                        <th style="background:#d35400;color:white;padding:6px 8px;position:sticky;top:0;text-align:center;">Prz. Vendita</th>
+                        <th style="background:#d35400;color:white;padding:6px 8px;position:sticky;top:0;text-align:center;">Prz. Offerta</th>
+                        <th style="background:#d35400;color:white;padding:6px 8px;position:sticky;top:0;width:40px;"></th>
+                    </tr>
+                </thead>
+                <tbody id="tbody-barcode">
+                    <tr><td colspan="6" style="text-align:center;padding:30px;color:#aaa;">Nessun articolo scansionato</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div style="display:flex; align-items:center; gap:10px;">
+            <span id="barcode-count" style="font-size:0.85em; color:#666;">0 articoli</span>
+            <div style="flex:1"></div>
+            <button class="btn btn-danger btn-sm" onclick="svuotaBarcode()">Svuota lista</button>
+            <button class="btn btn-secondary" onclick="chiudiBarcode()">Annulla</button>
+            {# Il bottone Conferma è disabilitato finché non ci sono articoli nella lista #}
+            <button class="btn btn-success" id="btn-conferma-barcode" onclick="confermaBarcode()" disabled>
+                <i class="bi bi-check-lg"></i> Conferma e Aggiungi
+            </button>
+        </div>
+    </div>
+</div>
+
+{# Sezione: modal di avviso per date Sell-out mancanti #}
+<!-- Modal Avviso Sell-out mancante -->
+<div class="modal-overlay" id="modal-sellout" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="modal" style="max-width:420px;">
+        <h3 style="color:#e67e22;">⚠ Date Sell-out non valorizzate</h3>
+        <p style="margin:12px 0 20px;">Le date di <strong>Sell-out</strong> non sono state inserite.<br>Vuoi procedere comunque con le sole date Sell-in?</p>
+        <div class="modal-actions">
+            <button class="btn btn-warning" onclick="document.getElementById('modal-sellout').classList.remove('show'); accodaPromo(false, true);">
+                Procedi senza Sell-out
+            </button>
+            <button class="btn btn-outline" onclick="document.getElementById('modal-sellout').classList.remove('show')">Annulla</button>
+        </div>
+    </div>
+</div>
+
+{# Sezione: modal per duplicare articoli da una promozione storica Gold #}
+<!-- Modal Duplica Promo -->
+<div class="modal-overlay" id="modal-duplica-promo" onclick="if(event.target===this)chiudiDuplicaPromo()">
+    <div class="modal" style="max-width:700px; width:96%;">
+        <h3 style="color:#1a5276;">&#128260; Duplica da Promo Gold</h3>
+        <p style="color:#666; margin-bottom:16px;">Seleziona una promozione storica e un fornitore per copiare gli articoli nella sessione corrente.</p>
+
+        <div class="form-group" style="margin-bottom:12px; position:relative;">
+            <label>Promozione</label>
+            <input type="hidden" id="dup-codgold">
+            {# Campo ricerca testuale — filtra le promo caricate, il valore reale è nel campo hidden #}
+            <input type="text" id="dup-codgold-search" autocomplete="off"
+                   placeholder="— caricamento... —" style="width:100%;" disabled
+                   oninput="filtraDupPromo(this.value)" onfocus="showDupPromoList()">
+            <div id="dup-promo-dropdown"></div>
+        </div>
+        <div class="form-group" style="margin-bottom:12px;">
+            <label>Fornitore (CCOM)</label>
+            {# Il select fornitore è disabilitato finché non si seleziona una promo #}
+            <select id="dup-ccom" onchange="onDupCcomChange()" style="width:100%;" disabled>
+                <option value="">— prima seleziona una promo —</option>
+            </select>
+        </div>
+        {# Anteprima articoli trovati per la coppia promo+fornitore selezionata #}
+        <div id="dup-anteprima" style="display:none; margin-bottom:12px;">
+            <label>Articoli trovati: <strong id="dup-count">0</strong></label>
+            <div style="max-height:200px; overflow-y:auto; border:1px solid #ddd; border-radius:4px;">
+                <table style="width:100%; border-collapse:collapse; font-size:0.8em;" id="dup-tbl">
+                    <thead>
+                        <tr style="background:#1a5276; color:white;">
+                            <th style="padding:4px 8px;">Codice</th>
+                            <th style="padding:4px 8px;">Descrizione</th>
+                            <th style="padding:4px 8px; text-align:right;">Prezzo V</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dup-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+        <div id="dup-msg" style="color:#e74c3c; margin-bottom:8px; display:none;"></div>
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="chiudiDuplicaPromo()">Annulla</button>
+            <button class="btn btn-success" id="btn-dup-inserisci" onclick="duplicaInserisci()" disabled>
+                &#10003; Carica Articoli
+            </button>
+        </div>
+    </div>
+</div>
+
+{# Sezione: modal di conferma per articoli duplicati rilevati nell'export #}
+<!-- Modal Duplicati -->
+<div class="modal-overlay" id="modal-duplicati" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="modal">
+        <h3>⚠ Articoli duplicati</h3>
+        <p id="modal-msg"></p>
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="chiudiModal()">Annulla</button>
+            <button class="btn btn-warning" onclick="forzaAccodamento()">Accoda comunque</button>
+        </div>
+    </div>
+</div>
+
+{# Sezione: modal di visualizzazione tabellare degli articoli inseriti nell'export, con ordinamento per colonna #}
+<!-- Modal Visualizza Articoli Inseriti -->
+<div class="modal-overlay" id="modal-visualizza" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="modal" style="max-width:1400px; width:96%;">
+        <h3 style="color:#1a5276;">Visualizzazione Articoli Inseriti</h3>
+        <div style="overflow-x:auto; max-height:500px; overflow-y:auto; margin:15px 0;">
+            {# Le intestazioni hanno classe 'sortable' e data-col per l'ordinamento lato client #}
+            <table id="tbl-visualizza" style="width:100%; border-collapse:collapse;">
+                <thead>
+                    <tr>
+                        <th class="th-vis sortable" data-col="0">Cod. Prodotto <span class="sort-icon">↕</span></th>
+                        <th class="th-vis sortable" data-col="1">Descrizione <span class="sort-icon">↕</span></th>
+                        <th class="th-vis sortable" data-col="2">Fornitore <span class="sort-icon">↕</span></th>
+                        <th class="th-vis sortable" data-col="3">Selezione Promo <span class="sort-icon">↕</span></th>
+                        <th class="th-vis sortable" data-col="4">Sell-out Inizio <span class="sort-icon">↕</span></th>
+                        <th class="th-vis sortable" data-col="5">Sell-out Fine <span class="sort-icon">↕</span></th>
+                        <th class="th-vis sortable" data-col="6">Sell-in Inizio <span class="sort-icon">↕</span></th>
+                        <th class="th-vis sortable" data-col="7">Sell-in Fine <span class="sort-icon">↕</span></th>
+                        <th class="th-vis sortable" data-col="8">Tipo Sconto <span class="sort-icon">↕</span></th>
+                        <th class="th-vis sortable" data-col="9">Sconto Extra <span class="sort-icon">↕</span></th>
+                        <th class="th-vis sortable" data-col="10">Sconto 1 <span class="sort-icon">↕</span></th>
+                        <th class="th-vis sortable" data-col="11">Sconto 2 <span class="sort-icon">↕</span></th>
+                        <th class="th-vis" data-col="12">Sconto Tot.</th>
+                        <th class="th-vis sortable" data-col="13">Meccanica <span class="sort-icon">↕</span></th>
+                        <th class="th-vis sortable" data-col="14">VL <span class="sort-icon">↕</span></th>
+                        <th class="th-vis sortable" data-col="15" style="text-align:center;">Valore Offerta <span class="sort-icon">↕</span></th>
+                        <th class="th-vis sortable" data-col="16" style="text-align:center;">Valore Promo <span class="sort-icon">↕</span></th>
+                        <th class="th-vis sortable" data-col="17">Inserito da <span class="sort-icon">↕</span></th>
+                        <th class="th-vis sortable" data-col="18">Inserito il <span class="sort-icon">↕</span></th>
+                        <th class="th-vis" style="width:30px;"></th>
+                    </tr>
+                </thead>
+                <tbody id="tbody-visualizza"></tbody>
+            </table>
+        </div>
+        <div class="modal-actions">
+            <span id="visualizza-count" style="font-size:0.85em; color:#666;"></span>
+            <div style="flex:1"></div>
+            <button class="btn btn-outline btn-sm" onclick="stampaInseriti()">
+                <i class="bi bi-printer"></i> Stampa
+            </button>
+            <button class="btn btn-danger btn-sm" onclick="svuotaInseriti()">Svuota miei</button>
+            <button class="btn btn-primary" onclick="document.getElementById('modal-visualizza').classList.remove('show')">Chiudi</button>
+        </div>
+    </div>
+</div>
+
+{# Toast per notifiche temporanee #}
+<div class="toast" id="toast"></div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+{# Lista CCOM serializzata come array JS per la ricerca client-side #}
+const CCOM_LIST = [{% for c in ccom_list %}{"v":"{{ c.ccom }}","l":"{{ c.ccom }} - {{ c.descrccom|escapejs }}"},{% endfor %}];
+
+// ---- CCOM searchable dropdown ----
+function filtraCcom(q) {
+    const dd = document.getElementById('ccom-dropdown');
+    const ql = q.toLowerCase();
+    const items = ql ? CCOM_LIST.filter(c => c.l.toLowerCase().includes(ql)) : CCOM_LIST;
+    if (!items.length) {
+        dd.innerHTML = '<div class="ccom-opt" style="color:#999;">Nessun risultato</div>';
+    } else {
+        const re = q ? new RegExp('(' + q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi') : null;
+        dd.innerHTML = items.map(c => {
+            const label = re ? c.l.replace(re, '<mark>$1</mark>') : c.l;
+            return `<div class="ccom-opt" onclick="selezionaCcom('${c.v}',\`${c.l.replace(/`/g,'&#96;')}\`)">${label}</div>`;
+        }).join('');
+    }
+    dd.classList.add('show');
+}
+
+function selezionaCcom(val, label) {
+    document.getElementById('sel-ccom').value = val;
+    document.getElementById('ccom-search').value = label;
+    document.getElementById('ccom-dropdown').classList.remove('show');
+}
+
+// Chiude i dropdown se si clicca fuori
+document.addEventListener('click', e => {
+    if (!e.target.closest('#ccom-search') && !e.target.closest('#ccom-dropdown'))
+        document.getElementById('ccom-dropdown').classList.remove('show');
+    if (!e.target.closest('#dup-codgold-search') && !e.target.closest('#dup-promo-dropdown'))
+        document.getElementById('dup-promo-dropdown').classList.remove('show');
+});
+
+// Preselect se ccom_selezionato è passato come parametro GET
+(function() {
+    const pre = "{{ ccom_selezionato|escapejs }}";
+    if (pre) {
+        const found = CCOM_LIST.find(c => c.v === pre);
+        if (found) document.getElementById('ccom-search').value = found.l;
+    }
+})();
+// ---- fine CCOM ----
+
+// ── AUTO-RESTORE staging al caricamento pagina ───────────────
+{# Se ci sono articoli già inseriti, avvisa l'utente al caricamento della pagina #}
+{% if export_counts.tutti %}
+document.addEventListener('DOMContentLoaded', function() {
+    showToast('⚠ Hai {{ export_counts.tutti }} articoli già inseriti — verifica il modal "Articoli Inseriti"', 'warning');
+});
+{% endif %}
+
+const OPERATORE = "{{ username|escapejs }}";
+{# URL delle API Django per le chiamate AJAX, incluse quelle specifiche del reparto #}
+const URLS = {
+    carica: "{% url 'caricopromo_reparto:api_carica_articoli' %}",
+    toggle: "{% url 'caricopromo_reparto:api_toggle_selezione' %}",
+    batch: "{% url 'caricopromo_reparto:api_seleziona_batch' %}",
+    accoda: "{% url 'caricopromo_reparto:api_accoda_promo' %}",
+    svuota: "{% url 'caricopromo_reparto:api_svuota_fase1' %}",
+    visualizza: "{% url 'caricopromo_reparto:api_visualizza_inseriti' %}",
+    svuotaInseriti: "{% url 'caricopromo_reparto:api_svuota_inseriti' %}",
+    rimuoviInserito: "{% url 'caricopromo_reparto:api_rimuovi_inserito' %}",
+    cercaBarcode: "{% url 'caricopromo_reparto:api_cerca_barcode' %}",
+    aggiungiManuali: "{% url 'caricopromo_reparto:api_aggiungi_manuali' %}",
+    duplicaPromos: "{% url 'caricopromo_reparto:api_duplica_get_promos' %}",
+    duplicaCcom: "{% url 'caricopromo_reparto:api_duplica_get_ccom' %}",
+    duplicaArticoli: "{% url 'caricopromo_reparto:api_duplica_get_articoli' %}",
+    duplicaInserisci: "{% url 'caricopromo_reparto:api_duplica_inserisci' %}",
+};
+
+let _dupPromos = [];
+
+// Dizionario dati piani promo (date sell-out e sell-in) per auto-compilazione
+const pianoData = {};
+document.querySelectorAll('#prm-selezione option[data-inizio]').forEach(opt => {
+    pianoData[opt.value] = {
+        inizio: opt.dataset.inizio, fine: opt.dataset.fine, lettera: opt.dataset.lettera,
+        inizioSellin: opt.dataset.inizioSellin || '', fineSellin: opt.dataset.fineSellin || ''
+    };
+});
+
+function showToast(msg, type) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast ' + type + ' show';
+    setTimeout(() => t.classList.remove('show'), 4000);
+}
+
+function getCsrfToken() {
+    return document.cookie.split(';').map(c => c.trim()).find(c => c.startsWith('csrftoken='))?.split('=')[1] || '';
+}
+
+function postJSON(url, data) {
+    return fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+        body: JSON.stringify(data),
+    }).then(r => r.json());
+}
+
+// Converte una data ISO (YYYY-MM-DD) in formato italiano (DD/MM/YYYY)
+function formatDate(dateStr) {
+    if (!dateStr) return '';
+    const [y, m, d] = dateStr.split('-');
+    return d + '/' + m + '/' + y;
+}
+
+// Converte una data italiana (DD/MM/YYYY) nel formato input[type=date] (YYYY-MM-DD)
+function dateToInput(d) {
+    if (!d) return '';
+    const parts = d.split('/');
+    if (parts.length === 3) return parts[2] + '-' + parts[1] + '-' + parts[0];
+    return '';
+}
+
+// Popola il filtro per lettera iniziale del piano promo
+(function() {
+    const lettere = new Set();
+    document.querySelectorAll('#prm-selezione option[data-lettera]').forEach(opt => {
+        if (opt.dataset.lettera) lettere.add(opt.dataset.lettera);
+    });
+    const sel = document.getElementById('prm-filtro-piano');
+    [...lettere].sort().forEach(l => {
+        sel.innerHTML += `<option value="${l}">${l}</option>`;
+    });
+})();
+
+function filtraPiani(lettera) {
+    const sel = document.getElementById('prm-selezione');
+    const opts = sel.querySelectorAll('option[data-lettera]');
+    opts.forEach(opt => {
+        opt.style.display = (!lettera || opt.dataset.lettera === lettera) ? '' : 'none';
+    });
+    sel.value = '';
+}
+
+// Al cambio piano promo, auto-compila le date sell-out e sell-in
+document.getElementById('prm-selezione').addEventListener('change', function() {
+    const p = pianoData[this.value];
+    if (p) {
+        document.getElementById('prm-data-inizio').value = dateToInput(p.inizio);
+        document.getElementById('prm-data-fine').value = dateToInput(p.fine);
+        document.getElementById('prm-sellin-inizio').value = dateToInput(p.inizioSellin);
+        document.getElementById('prm-sellin-fine').value = dateToInput(p.fineSellin);
+    }
+});
+
+// Ricerca articolo nella griglia con debounce 300ms
+let searchTimer = null;
+function cercaArticolo(val) {
+    clearTimeout(searchTimer);
+    const box = document.getElementById('search-results');
+    if (val.length < 2) { box.classList.remove('show'); return; }
+
+    searchTimer = setTimeout(() => {
+        const rows = document.querySelectorAll('#tbody-articoli tr[id]');
+        let results = [];
+        rows.forEach(row => {
+            const cexr = row.children[1]?.textContent || '';
+            const artfo = row.children[2]?.textContent || '';
+            const desc = row.children[3]?.textContent || '';
+            if (cexr.toLowerCase().includes(val.toLowerCase()) || artfo.toLowerCase().includes(val.toLowerCase()) || desc.toLowerCase().includes(val.toLowerCase())) {
+                results.push({ id: row.id.replace('row-',''), cexr, desc });
+            }
+        });
+
+        if (results.length === 0) {
+            box.innerHTML = '<div class="sr-item" style="color:#999;">Nessun risultato</div>';
+        } else {
+            box.innerHTML = results.slice(0, 15).map(r =>
+                `<div class="sr-item" onclick="scrollToArt(${r.id})"><strong>${r.cexr}</strong> ${r.desc}</div>`
+            ).join('');
+        }
+        box.classList.add('show');
+    }, 300);
+}
+
+// Scorre la pagina fino alla riga dell'articolo e la evidenzia temporaneamente
+function scrollToArt(id) {
+    document.getElementById('search-results').classList.remove('show');
+    document.getElementById('cerca-art').value = '';
+    const row = document.getElementById('row-' + id);
+    if (row) {
+        row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        row.style.outline = '2px solid #2e86c1';
+        setTimeout(() => row.style.outline = '', 2000);
+    }
+}
+
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('.search-box')) {
+        document.getElementById('search-results').classList.remove('show');
+    }
+});
+
+function caricaArticoli() {
+    const ccom = document.getElementById('sel-ccom').value;
+    if (!ccom) { showToast('Seleziona un CCOM', 'warning'); return; }
+
+    const load = document.getElementById('load-carica');
+    load.classList.add('active');
+
+    postJSON(URLS.carica, { ccom })
+        .then(data => {
+            load.classList.remove('active');
+            if (data.success) {
+                renderArticoli(data.articoli);
+                renderFiltri(data.linee, data.tipi_riordino, data.fasce_prezzo);
+                document.getElementById('sel-toolbar').style.display = 'flex';
+                document.getElementById('section-promo').style.display = 'block';
+                document.getElementById('art-count').textContent = '(' + data.count + ')';
+                aggiornaSelCount();
+                showToast(data.message, 'success');
+            } else {
+                showToast(data.message, 'error');
+            }
+        })
+        .catch(() => {
+            load.classList.remove('active');
+            showToast('Errore connessione', 'error');
+        });
+}
+
+function renderArticoli(articoli) {
+    const tbody = document.getElementById('tbody-articoli');
+    if (!articoli.length) {
+        tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:30px;color:#999;">Nessun articolo trovato</td></tr>';
+        return;
+    }
+    tbody.innerHTML = articoli.map(a => `
+        <tr id="row-${a.id}" class="${a.scelta ? 'selected' : ''}" onclick="toggleRow(${a.id})" style="cursor:pointer;">
+            <td><input type="checkbox" ${a.scelta ? 'checked' : ''} onclick="event.stopPropagation(); toggleRow(${a.id})"></td>
+            <td><strong>${a.CEXR}</strong></td>
+            <td>${a.ARTFO || ''}</td>
+            <td>${a.DESC_CEXR}</td>
+            <td>${a.CNUM}</td>
+            <td>${a.CNUF} ${a.DESC_CNUF}</td>
+            <td style="text-align:center">${a.PrezzoV}</td>
+            <td style="text-align:center">${a.PrezzoVOff}</td>
+            <td style="text-align:center">${a.VL}</td>
+            <td style="text-align:center">${a.STATO}</td>
+        </tr>
+    `).join('');
+}
+
+function renderFiltri(linee, tipi, fasce) {
+    const selLinea = document.getElementById('filtro-linea');
+    selLinea.innerHTML = '<option value="">Per linea prodotto...</option>';
+    (linee || []).forEach(l => {
+        const cod = l.LINEA_PRODOTTO || l;
+        const desc = l.Desc_Linea || '';
+        selLinea.innerHTML += `<option value="${cod}">${cod} ${desc}</option>`;
+    });
+
+    const selTipo = document.getElementById('filtro-tipo');
+    selTipo.innerHTML = '<option value="">Per tipo riordino...</option>';
+    (tipi || []).forEach(t => { selTipo.innerHTML += `<option value="${t}">${t}</option>`; });
+
+    const selFascia = document.getElementById('filtro-fascia');
+    selFascia.innerHTML = '<option value="">Per fascia prezzo...</option>';
+    (fasce || []).forEach(f => { selFascia.innerHTML += `<option value="${f}">${f}</option>`; });
+}
+
+function toggleRow(id) {
+    postJSON(URLS.toggle, { id })
+        .then(data => {
+            if (data.success) {
+                const row = document.getElementById('row-' + id);
+                const cb = row.querySelector('input[type="checkbox"]');
+                if (data.scelta) { row.classList.add('selected'); cb.checked = true; }
+                else { row.classList.remove('selected'); cb.checked = false; }
+                aggiornaSelCount(data.conteggi);
+            }
+        });
+}
+
+function selBatch(azione) {
+    postJSON(URLS.batch, { azione })
+        .then(data => {
+            if (data.success) {
+                (data.articoli_stato || []).forEach(a => {
+                    const row = document.getElementById('row-' + a.id);
+                    if (!row) return;
+                    const cb = row.querySelector('input[type="checkbox"]');
+                    if (a.scelta) { row.classList.add('selected'); cb.checked = true; }
+                    else { row.classList.remove('selected'); cb.checked = false; }
+                });
+                aggiornaSelCount(data.conteggi);
+            }
+        });
+}
+
+// Selezione per filtro; azzera i select dei filtri dopo l'applicazione
+function selByFilter(tipo, val) {
+    if (!val) return;
+    postJSON(URLS.batch, { azione: tipo, filtro: val })
+        .then(data => {
+            if (data.success) {
+                (data.articoli_stato || []).forEach(a => {
+                    const row = document.getElementById('row-' + a.id);
+                    if (!row) return;
+                    const cb = row.querySelector('input[type="checkbox"]');
+                    if (a.scelta) { row.classList.add('selected'); cb.checked = true; }
+                    else { row.classList.remove('selected'); cb.checked = false; }
+                });
+                aggiornaSelCount(data.conteggi);
+            }
+        });
+    document.getElementById('filtro-linea').value = '';
+    document.getElementById('filtro-tipo').value = '';
+    document.getElementById('filtro-fascia').value = '';
+}
+
+function aggiornaSelCount(conteggi) {
+    if (conteggi) {
+        document.getElementById('sel-count-val').textContent = conteggi.selezionati;
+    }
+}
+
+// Accoda la promozione; mostra il modal sell-out se mancano le date
+function accodaPromo(forza, selloutConfermato) {
+    // Avviso se le date sell-out non sono valorizzate
+    if (!selloutConfermato) {
+        const iniSO = document.getElementById('prm-data-inizio').value;
+        const fineSO = document.getElementById('prm-data-fine').value;
+        if (!iniSO || !fineSO) {
+            document.getElementById('modal-sellout').classList.add('show');
+            return;
+        }
+    }
+
+    const btn = document.getElementById('btn-accoda');
+    const load = document.getElementById('load-accoda');
+    btn.disabled = true;
+    load.classList.add('active');
+
+    const selOpt = document.getElementById('prm-selezione').selectedOptions[0];
+    let selezione_promo = selOpt ? selOpt.value : '';
+    if (selOpt && selOpt.value) {
+        const desc = selOpt.dataset.descrizione || '';
+        const iniSellout = formatDate(document.getElementById('prm-data-inizio').value);
+        const fineSellout = formatDate(document.getElementById('prm-data-fine').value);
+        const iniSellin = formatDate(document.getElementById('prm-sellin-inizio').value);
+        const fineSellin = formatDate(document.getElementById('prm-sellin-fine').value);
+        // Formato: PIANO-DESCRIZIONE \ Sell.out:gg/mm/aaaa-gg/mm/aaaa \ Sell.In:gg/mm/aaaa-gg/mm/aaaa
+        selezione_promo = selOpt.value + '-' + desc;
+        if (iniSellout && fineSellout) selezione_promo += ' \\ Sell.out:' + iniSellout + '-' + fineSellout;
+        if (iniSellin && fineSellin) selezione_promo += ' \\ Sell.In:' + iniSellin + '-' + fineSellin;
+    }
+
+    const params = {
+        selezione_promo: selezione_promo,
+        data_inizio: formatDate(document.getElementById('prm-data-inizio').value),
+        data_fine: formatDate(document.getElementById('prm-data-fine').value),
+        sellin_inizio: formatDate(document.getElementById('prm-sellin-inizio').value),
+        sellin_fine: formatDate(document.getElementById('prm-sellin-fine').value),
+        sconto_extra: document.getElementById('prm-sconto').value,
+        sconto1: document.getElementById('prm-sconto1').value,
+        sconto2: document.getElementById('prm-sconto2').value,
+        tipo_sconto: document.getElementById('prm-tipo-sconto').value,
+        meccanica: document.getElementById('prm-meccanica').value,
+        meccanicav: (() => { const s = document.getElementById('prm-meccanica'); return s.value && s.selectedOptions[0] ? s.selectedOptions[0].text.trim() : ''; })(),
+        valore: document.getElementById('prm-valore').value,
+        valore_da_offerta: document.getElementById('chk-usa-offerta').checked,
+        qta_omaggio: document.getElementById('prm-qta-omaggio').value,
+        forza: forza || false,
+        operatore: OPERATORE,
+    };
+
+    postJSON(URLS.accoda, params)
+        .then(data => {
+            load.classList.remove('active');
+            btn.disabled = false;
+
+            // Se ci sono duplicati, mostra il modal di conferma
+            if (data.richiedi_conferma) {
+                document.getElementById('modal-msg').textContent = data.message;
+                document.getElementById('modal-duplicati').classList.add('show');
+                return;
+            }
+
+            // Mostra pannello articoli senza prezzo offerta (se presenti)
+            const senzaPrezzo = data.senza_prezzo || [];
+            const panel = document.getElementById('panel-senza-prezzo');
+            const lista = document.getElementById('list-senza-prezzo');
+            if (senzaPrezzo.length) {
+                lista.innerHTML = senzaPrezzo.map(a => `<li><strong>${a.codart}</strong> — ${a.desc}</li>`).join('');
+                panel.style.display = 'block';
+            } else {
+                panel.style.display = 'none';
+            }
+
+            if (data.success) {
+                showToast(data.message, 'success');
+                aggiornaExpCount(data.export_counts.tutti);
+                // Deseleziona tutte le righe mantenendo la lista visibile
+                document.querySelectorAll('#tbody-articoli tr').forEach(tr => {
+                    tr.classList.remove('selected');
+                    const cb = tr.querySelector('input[type=checkbox]');
+                    if (cb) cb.checked = false;
+                });
+                document.getElementById('sel-count-val').textContent = '0';
+                document.getElementById('art-count').textContent = '';
+            } else {
+                showToast(data.message, 'error');
+            }
+        })
+        .catch(() => {
+            load.classList.remove('active');
+            btn.disabled = false;
+            showToast('Errore connessione', 'error');
+        });
+}
+
+// Aggiorna entrambi i contatori export: barra "In export" e bottone "Articoli Inseriti (N)".
+// Il bottone viene mostrato/nascosto in base al conteggio.
+function aggiornaExpCount(n) {
+    document.getElementById('exp-count').textContent = n;
+    document.getElementById('exp-count-top2').textContent = n;
+    document.getElementById('btn-visualizza-exp').style.display = n > 0 ? '' : 'none';
+}
+
+// Apre una finestra di stampa con la tabella export (rimuove le icone sort per la stampa)
+function stampaInseriti() {
+    const tbl = document.getElementById('tbl-visualizza');
+    if (!tbl) return;
+    // Clona la tabella rimuovendo le icone di ordinamento
+    const html = tbl.outerHTML.replace(/<span class="sort-icon">.*?<\/span>/g, '');
+    const w = window.open('', '_blank', 'width=1100,height=750');
+    w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8">
+<title>Articoli Inseriti</title>
+<style>
+  body { font-family: Arial, sans-serif; font-size: 11px; margin: 15px; }
+  h2 { color: #1a5276; margin-bottom: 8px; font-size: 14px; }
+  table { width: 100%; border-collapse: collapse; }
+  th { background: #1a5276; color: white; padding: 5px 6px; text-align: left; font-size: 10px; }
+  td { padding: 4px 6px; border-bottom: 1px solid #ddd; }
+  tr:nth-child(even) td { background: #f5f8fc; }
+  th:last-child, td:last-child { display: none; }
+  @media print {
+    @page {
+      margin: 10mm 8mm 14mm 8mm;
+      size: landscape;
+      @top-left { content: ""; }
+      @top-center { content: ""; }
+      @top-right { content: ""; }
+      @bottom-left { content: ""; }
+      @bottom-center {
+        content: counter(page) " di " counter(pages);
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 9pt;
+        color: #212529;
+      }
+      @bottom-right { content: ""; }
+    }
+    thead { display: table-header-group; }
+  }
+</style></head><body>
+<h2>Articoli Inseriti — Promozioni Freschi</h2>
+<p style="color:#666;font-size:10px;margin-bottom:8px;">Stampato il ${new Date().toLocaleDateString('it-IT')} alle ${new Date().toLocaleTimeString('it-IT')}</p>
+${html}
+<script>window.onload=function(){window.print();}<\/script>
+</body></html>`);
+    w.document.close();
+}
+
+function rimuoviInserito(id) {
+    postJSON(URLS.rimuoviInserito, { id: id })
+        .then(data => {
+            if (data.success) {
+                visualizzaData = visualizzaData.filter(a => a.id !== id);
+                renderVisualizza();
+                aggiornaExpCount(visualizzaData.length);
+            } else {
+                showToast(data.message || 'Errore rimozione', 'error');
+            }
+        })
+        .catch(() => showToast('Errore connessione', 'error'));
+}
+
+function svuotaInseriti() {
+    if (!confirm('Rimuovere tutti i tuoi articoli dall\'export?')) return;
+    postJSON(URLS.svuotaInseriti, {})
+        .then(data => {
+            if (data.success) {
+                showToast(data.message, 'success');
+                visualizzaInseriti();
+            } else {
+                showToast(data.message || 'Errore', 'error');
+            }
+        })
+        .catch(() => showToast('Errore connessione', 'error'));
+}
+
+function forzaAccodamento() { chiudiModal(); accodaPromo(true); }
+function chiudiModal() { document.getElementById('modal-duplicati').classList.remove('show'); }
+
+function svuotaFase1() {
+    if (!confirm('Svuotare gli articoli caricati?')) return;
+    postJSON(URLS.svuota, {})
+        .then(data => {
+            if (data.success) {
+                showToast(data.message, 'success');
+                document.getElementById('tbody-articoli').innerHTML =
+                    '<tr><td colspan="9" style="text-align:center;padding:40px;color:#999;">Seleziona un CCOM e clicca "Carica Articoli"</td></tr>';
+                document.getElementById('sel-toolbar').style.display = 'none';
+                document.getElementById('section-promo').style.display = 'none';
+                document.getElementById('art-count').textContent = '';
+                document.getElementById('sel-ccom').value = '';
+                document.getElementById('ccom-search').value = '';
+            }
+        });
+}
+
+// Dati per la tabella visualizza (usati anche per l'ordinamento lato client)
+let visualizzaData = [];
+let sortColIdx = -1;
+let sortAsc = true;
+
+// Restituisce il valore della cella all'indice specificato per un articolo
+function getVisualizzaCellValue(a, idx) {
+    const s1 = parseFloat((a.ScontoExtra || '').toString().replace(',', '.')) || 0;
+    const s2 = parseFloat((a.TipoSconto1 || '').toString().replace(',', '.')) || 0;
+    const s3 = parseFloat((a.Valore1 || '').toString().replace(',', '.')) || 0;
+    const tot = s1 > 0 ? (100 - (1 - s1/100) * (1 - s2/100) * (1 - s3/100) * 100).toFixed(2) + '%' : '';
+    const fields = [
+        a.CodiceProdotto, a.DescrizioneProdotto, a.FornitoreAmministrativo,
+        a.SelezionePromozione, a.DataInizio, a.DataFine,
+        a.DataInizioSellin, a.DataFineSellin, a.TipoSconto, a.ScontoExtra,
+        a.TipoSconto1, a.Valore1, tot, a.Meccanica, a.vl, a.PrezzoVOff, a.Valore
+    ];
+    return (fields[idx] || '').toString();
+}
+
+// Converte una data in formato DD/MM/YYYY in timestamp per l'ordinamento
+function parseDateDMY(s) {
+    if (!s) return 0;
+    const p = s.split('/');
+    return p.length === 3 ? new Date(p[2], p[1]-1, p[0]).getTime() : 0;
+}
+
+// Indici delle colonne data (usano parseDateDMY invece di localeCompare)
+const DATE_COLS = [4, 5, 6, 7];
+
+// Renderizza la tabella visualizza con eventuale ordinamento per colonna
+function renderVisualizza() {
+    const tbody = document.getElementById('tbody-visualizza');
+    document.getElementById('visualizza-count').textContent = visualizzaData.length + ' articoli';
+    if (!visualizzaData.length) {
+        tbody.innerHTML = '<tr><td colspan="20" style="text-align:center;padding:30px;color:#999;">Nessun articolo inserito</td></tr>';
+        return;
+    }
+    const sorted = [...visualizzaData];
+    if (sortColIdx >= 0) {
+        sorted.sort((a, b) => {
+            let va = getVisualizzaCellValue(a, sortColIdx);
+            let vb = getVisualizzaCellValue(b, sortColIdx);
+            // Per le colonne data usa confronto numerico, per le altre localeCompare
+            if (DATE_COLS.includes(sortColIdx)) {
+                va = parseDateDMY(va); vb = parseDateDMY(vb);
+                return sortAsc ? va - vb : vb - va;
+            }
+            return sortAsc ? va.localeCompare(vb) : vb.localeCompare(va);
+        });
+    }
+    tbody.innerHTML = sorted.map(a => {
+        const _s1 = parseFloat((a.ScontoExtra || '').toString().replace(',', '.')) || 0;
+        const _s2 = parseFloat((a.TipoSconto1 || '').toString().replace(',', '.')) || 0;
+        const _s3 = parseFloat((a.Valore1 || '').toString().replace(',', '.')) || 0;
+        const tot = _s1 > 0 ? (100 - (1 - _s1/100) * (1 - _s2/100) * (1 - _s3/100) * 100).toFixed(2) + '%' : '';
+        const trStyle = a.mine ? '' : 'opacity:0.55; background:#f5f5f5;';
+        const removeBtn = a.mine
+            ? `<button onclick="rimuoviInserito(${a.id})" title="Rimuovi"
+                style="background:none;border:none;cursor:pointer;color:#e74c3c;font-size:1.1em;">✕</button>`
+            : `<span title="Inserito da ${a.pianoB}" style="color:#aaa;font-size:0.8em;">🔒</span>`;
+        return `
+        <tr style="${trStyle}">
+            <td><strong>${a.CodiceProdotto || ''}</strong></td>
+            <td title="${a.DescrizioneProdotto || ''}">${a.DescrizioneProdotto || ''}</td>
+            <td>${a.FornitoreAmministrativo || ''}</td>
+            <td>${a.SelezionePromozione || ''}</td>
+            <td>${a.DataInizio || ''}</td>
+            <td>${a.DataFine || ''}</td>
+            <td>${a.DataInizioSellin || ''}</td>
+            <td>${a.DataFineSellin || ''}</td>
+            <td>${a.TipoSconto || ''}</td>
+            <td>${a.ScontoExtra || ''}</td>
+            <td>${a.TipoSconto1 || ''}</td>
+            <td>${a.Valore1 || ''}</td>
+            <td style="font-weight:600;color:#1a5276;">${tot}</td>
+            <td>${a.Meccanica || ''}</td>
+            <td>${a.vl || ''}</td>
+            <td style="text-align:center">${a.PrezzoVOff || ''}</td>
+            <td style="text-align:center">${a.Valore || ''}</td>
+            <td style="color:#888">${a.pianoB || ''}</td>
+            <td style="color:#888;white-space:nowrap">${a.DATAEXPORT || ''}</td>
+            <td style="text-align:center">${removeBtn}</td>
+        </tr>
+    `;
+    }).join('');
+}
+
+// Resetta le icone di ordinamento a ↕ (stato neutro)
+function resetSortIcons() {
+    document.querySelectorAll('#tbl-visualizza .sort-icon').forEach(s => s.textContent = '↕');
+}
+
+// Aggiunge il gestore di click per l'ordinamento su ogni intestazione sortable
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('#tbl-visualizza th.sortable').forEach(th => {
+        th.addEventListener('click', function() {
+            const col = parseInt(this.dataset.col);
+            // Inverte l'ordinamento se si clicca sulla stessa colonna
+            if (sortColIdx === col) { sortAsc = !sortAsc; }
+            else { sortColIdx = col; sortAsc = true; }
+            resetSortIcons();
+            this.querySelector('.sort-icon').textContent = sortAsc ? '↑' : '↓';
+            renderVisualizza();
+        });
+    });
+});
+
+// ── CARICAMENTO MANUALE BARCODE ──────────────────────────────
+let barcodeList = [];
+
+// Apre il modal barcode e porta il focus sul campo di input
+function apriBarcode() {
+    document.getElementById('modal-barcode').classList.add('show');
+    setTimeout(() => document.getElementById('barcode-input').focus(), 100);
+}
+
+// Chiude il modal barcode e resetta la lista
+function chiudiBarcode() {
+    document.getElementById('modal-barcode').classList.remove('show');
+    barcodeList = [];
+    renderBarcodeList();
+    document.getElementById('barcode-input').value = '';
+    document.getElementById('barcode-msg').textContent = '';
+}
+
+// Cerca l'articolo tramite barcode/EAN chiamando l'API
+function scanBarcode() {
+    const input = document.getElementById('barcode-input');
+    const barcode = input.value.trim();
+    if (!barcode) return;
+
+    const msg = document.getElementById('barcode-msg');
+    msg.style.color = '#666';
+    msg.textContent = 'Ricerca in corso...';
+
+    fetch(URLS.cercaBarcode + '?barcode=' + encodeURIComponent(barcode))
+        .then(r => r.json())
+        .then(data => {
+            input.value = '';
+            input.focus();
+            if (!data.found) {
+                msg.style.color = '#e74c3c';
+                msg.textContent = '✗ ' + data.message;
+                return;
+            }
+            const a = data.articolo;
+            // Evita duplicati nella lista locale prima di aggiungere
+            if (barcodeList.find(x => x.CEXR === a.CEXR)) {
+                msg.style.color = '#f39c12';
+                msg.textContent = '⚠ Articolo già nella lista: ' + a.CEXR;
+                return;
+            }
+            barcodeList.push(a);
+            renderBarcodeList();
+            msg.style.color = '#27ae60';
+            msg.textContent = '✓ Aggiunto: ' + a.CEXR + ' - ' + a.DESC_CEXR;
+        })
+        .catch(() => {
+            msg.style.color = '#e74c3c';
+            msg.textContent = 'Errore di connessione';
+            input.focus();
+        });
+}
+
+// Aggiorna la tabella del modal barcode e lo stato del bottone Conferma
+function renderBarcodeList() {
+    const tbody = document.getElementById('tbody-barcode');
+    const count = document.getElementById('barcode-count');
+    const btn = document.getElementById('btn-conferma-barcode');
+    count.textContent = barcodeList.length + ' articoli';
+    btn.disabled = barcodeList.length === 0;
+
+    if (!barcodeList.length) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:#aaa;">Nessun articolo scansionato</td></tr>';
+        return;
+    }
+    tbody.innerHTML = barcodeList.map((a, i) => {
+        const senzaPrezzo = !(a.PrezzoVOff || '').toString().trim();
+        const stileInput = senzaPrezzo
+            ? 'background:#fff3cd;border:1px solid #ffc107;'
+            : 'background:#fff;border:1px solid #ccc;';
+        return `
+        <tr>
+            <td><strong>${a.CEXR}</strong></td>
+            <td>${a.DESC_CEXR}</td>
+            <td>${a.CNUF} ${a.DESC_CNUF}</td>
+            <td style="text-align:right">${a.PrezzoV}</td>
+            <td style="text-align:center">
+                <input type="text" inputmode="decimal" value="${a.PrezzoVOff || ''}"
+                    placeholder="manuale"
+                    onchange="aggiornaPrezzoOffManuale(${i}, this.value)"
+                    style="width:80px; text-align:right; padding:3px 6px; border-radius:4px; ${stileInput}">
+            </td>
+            <td style="text-align:center">
+                <button onclick="rimuoviBarcode(${i})" style="background:none;border:none;cursor:pointer;color:#e74c3c;font-size:1.1em;" title="Rimuovi">✕</button>
+            </td>
+        </tr>
+        `;
+    }).join('');
+}
+
+function aggiornaPrezzoOffManuale(idx, valore) {
+    barcodeList[idx].PrezzoVOff = (valore || '').toString().trim().replace(',', '.');
+    renderBarcodeList();
+}
+
+// Rimuove un articolo dalla lista barcode per indice
+function rimuoviBarcode(idx) {
+    barcodeList.splice(idx, 1);
+    renderBarcodeList();
+}
+
+function svuotaBarcode() {
+    barcodeList = [];
+    renderBarcodeList();
+    document.getElementById('barcode-msg').textContent = '';
+}
+
+// Invia la lista barcode all'API e aggiorna la griglia articoli
+function confermaBarcode() {
+    if (!barcodeList.length) return;
+
+    const senzaPrezzo = barcodeList.filter(a => !(a.PrezzoVOff || '').toString().trim());
+    if (senzaPrezzo.length) {
+        const elenco = senzaPrezzo.slice(0, 10).map(a => '• ' + a.CEXR).join('\n');
+        const extra = senzaPrezzo.length > 10 ? `\n…e altri ${senzaPrezzo.length - 10}` : '';
+        const ok = confirm(
+            `${senzaPrezzo.length} articolo/i senza Prezzo Offerta:\n${elenco}${extra}\n\n` +
+            `Procedere comunque? Senza prezzo potrebbero essere esclusi in fase di accodamento.`
+        );
+        if (!ok) return;
+    }
+
+    const btn = document.getElementById('btn-conferma-barcode');
+    btn.disabled = true;
+    btn.textContent = 'Aggiunta in corso...';
+
+    postJSON(URLS.aggiungiManuali, { articoli: barcodeList })
+        .then(data => {
+            if (data.success) {
+                chiudiBarcode();
+                renderArticoli(data.articoli);
+                aggiornaSelCount(data.conteggi);
+                document.getElementById('sel-toolbar').style.display = 'flex';
+                document.getElementById('section-promo').style.display = 'block';
+                document.getElementById('art-count').textContent = '(' + data.articoli.length + ')';
+                showToast(data.message, 'success');
+            } else {
+                showToast(data.message, 'error');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-check-lg"></i> Conferma e Aggiungi';
+            }
+        })
+        .catch(() => {
+            showToast('Errore connessione', 'error');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-check-lg"></i> Conferma e Aggiungi';
+        });
+}
+
+// ── DUPLICA PROMO ────────────────────────────────────────────
+// Apre il modal e carica la lista delle promozioni storiche disponibili
+function apriDuplicaPromo() {
+    const modal = document.getElementById('modal-duplica-promo');
+    modal.classList.add('show');
+    const searchEl = document.getElementById('dup-codgold-search');
+    const dd = document.getElementById('dup-promo-dropdown');
+    searchEl.value = '';
+    searchEl.placeholder = '— caricamento... —';
+    searchEl.disabled = true;
+    document.getElementById('dup-codgold').value = '';
+    dd.innerHTML = '';
+    dd.classList.remove('show');
+    _dupPromos = [];
+    document.getElementById('dup-ccom').innerHTML = '<option value="">— prima seleziona una promo —</option>';
+    document.getElementById('dup-ccom').disabled = true;
+    document.getElementById('dup-anteprima').style.display = 'none';
+    document.getElementById('dup-msg').style.display = 'none';
+    document.getElementById('btn-dup-inserisci').disabled = true;
+
+    fetch(URLS.duplicaPromos)
+        .then(r => r.json())
+        .then(data => {
+            if (data.success && data.promos.length) {
+                _dupPromos = data.promos;
+                searchEl.placeholder = '— cerca o seleziona promo —';
+                searchEl.disabled = false;
+                searchEl.focus();
+            } else {
+                searchEl.placeholder = 'Nessuna promo disponibile';
+            }
+        })
+        .catch(() => { searchEl.placeholder = 'Errore caricamento'; });
+}
+
+// Filtra le promo mostrate nel dropdown in base al testo digitato
+function filtraDupPromo(q) {
+    const dd = document.getElementById('dup-promo-dropdown');
+    const ql = q.toLowerCase();
+    const items = ql ? _dupPromos.filter(p => {
+        const lbl = `${p.OPLCEXOPR} ${p.DESCPIANO} ${p.DTAINI||''} ${p.DTAFINE||''}`.toLowerCase();
+        return lbl.includes(ql);
+    }) : _dupPromos;
+    const re = q ? new RegExp('(' + q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi') : null;
+    if (!items.length) {
+        dd.innerHTML = '<div class="dup-promo-opt" style="color:#999;cursor:default;">Nessun risultato</div>';
+    } else {
+        dd.innerHTML = items.map(p => {
+            const raw = `${p.OPLCEXOPR} | ${p.DESCPIANO} | ${p.DTAINI ? p.DTAINI.substring(0,10) : ''} → ${p.DTAFINE ? p.DTAFINE.substring(0,10) : ''}`;
+            const lbl = re ? raw.replace(re, '<mark>$1</mark>') : raw;
+            return `<div class="dup-promo-opt" onclick="selezionaDupPromo('${p.CODGOLD}',\`${raw.replace(/`/g,'&#96;')}\`)">${lbl}</div>`;
+        }).join('');
+    }
+    dd.classList.add('show');
+}
+
+// Apre il dropdown mostrando tutte le promo (o filtrate dal testo già presente)
+function showDupPromoList() {
+    if (!_dupPromos.length) return;
+    filtraDupPromo(document.getElementById('dup-codgold-search').value);
+}
+
+// Conferma la selezione di una promo dal dropdown
+function selezionaDupPromo(codgold, label) {
+    document.getElementById('dup-codgold').value = codgold;
+    document.getElementById('dup-codgold-search').value = label;
+    document.getElementById('dup-promo-dropdown').classList.remove('show');
+    onDupCodGoldChange();
+}
+
+// Al cambio promozione storica, carica i fornitori (CCOM) associati
+function onDupCodGoldChange() {
+    const codgold = document.getElementById('dup-codgold').value;
+    const selCcom = document.getElementById('dup-ccom');
+    document.getElementById('dup-anteprima').style.display = 'none';
+    document.getElementById('btn-dup-inserisci').disabled = true;
+    if (!codgold) {
+        selCcom.innerHTML = '<option value="">— prima seleziona una promo —</option>';
+        selCcom.disabled = true;
+        return;
+    }
+    selCcom.innerHTML = '<option value="">— caricamento... —</option>';
+    selCcom.disabled = true;
+    fetch(URLS.duplicaCcom + '?codgold=' + encodeURIComponent(codgold))
+        .then(r => r.json())
+        .then(data => {
+            if (data.success && data.ccoms.length) {
+                selCcom.innerHTML =
+                    '<option value="">— seleziona fornitore —</option>' +
+                    // Aggiunge l'opzione "Tutti i fornitori" per caricare tutti gli articoli
+                    '<option value="__TUTTI__">★ Tutti i fornitori</option>' +
+                    data.ccoms.map(c => `<option value="${c.CCOM}">${c.CCOM} – ${c.DESCRCCOM || ''}</option>`).join('');
+                selCcom.disabled = false;
+            } else {
+                selCcom.innerHTML = '<option value="">Nessun fornitore trovato</option>';
+            }
+        })
+        .catch(() => { selCcom.innerHTML = '<option value="">Errore</option>'; });
+}
+
+// Al cambio fornitore, carica l'anteprima degli articoli della promo storica
+function onDupCcomChange() {
+    const codgold = document.getElementById('dup-codgold').value;
+    const ccom = document.getElementById('dup-ccom').value;
+    const anteprima = document.getElementById('dup-anteprima');
+    document.getElementById('btn-dup-inserisci').disabled = true;
+    anteprima.style.display = 'none';
+    if (!codgold || !ccom) return;
+
+    fetch(URLS.duplicaArticoli + '?codgold=' + encodeURIComponent(codgold) + '&ccom=' + encodeURIComponent(ccom))
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                // Se CCOM = '__TUTTI__' mostra colonna CCOM nella tabella anteprima
+                const tutti = ccom === '__TUTTI__';
+                document.getElementById('dup-count').textContent = data.articoli.length;
+                const thead = document.querySelector('#dup-tbl thead tr');
+                if (tutti) {
+                    thead.innerHTML = '<th style="padding:4px 8px;">CCOM</th><th style="padding:4px 8px;">Codice</th><th style="padding:4px 8px;">Descrizione</th><th style="padding:4px 8px; text-align:right;">Prezzo V</th>';
+                    thead.querySelectorAll('th').forEach(th => th.style.cssText = 'background:#1a5276;color:white;padding:4px 8px;');
+                } else {
+                    thead.innerHTML = '<th style="background:#1a5276;color:white;padding:4px 8px;">Codice</th><th style="background:#1a5276;color:white;padding:4px 8px;">Descrizione</th><th style="background:#1a5276;color:white;padding:4px 8px; text-align:right;">Prezzo V</th>';
+                }
+                document.getElementById('dup-tbody').innerHTML = data.articoli.map(a =>
+                    tutti
+                        ? `<tr><td style="padding:3px 8px;">${a.CCOM || ''}</td><td style="padding:3px 8px;">${a.CODART || ''}</td><td style="padding:3px 8px;">${a.DESCRARTICOLO || ''}</td><td style="padding:3px 8px; text-align:right;">${a.PRZ_VEND || ''}</td></tr>`
+                        : `<tr><td style="padding:3px 8px;">${a.CODART || ''}</td><td style="padding:3px 8px;">${a.DESCRARTICOLO || ''}</td><td style="padding:3px 8px; text-align:right;">${a.PRZ_VEND || ''}</td></tr>`
+                ).join('');
+                anteprima.style.display = 'block';
+                // Il bottone inserisci è abilitato solo se ci sono articoli
+                document.getElementById('btn-dup-inserisci').disabled = data.articoli.length === 0;
+            }
+        })
+        .catch(() => {});
+}
+
+// Carica nella staging area gli articoli dalla promo storica selezionata
+function duplicaInserisci() {
+    const codgold = document.getElementById('dup-codgold').value;
+    const ccom = document.getElementById('dup-ccom').value;
+    if (!codgold || !ccom) return;
+    const btn = document.getElementById('btn-dup-inserisci');
+    btn.disabled = true;
+    btn.textContent = 'Caricamento...';
+
+    postJSON(URLS.duplicaInserisci, { codgold, ccom })
+        .then(data => {
+            if (data.success) {
+                chiudiDuplicaPromo();
+                renderArticoli(data.articoli);
+                aggiornaSelCount(data.conteggi);
+                document.getElementById('sel-toolbar').style.display = 'flex';
+                document.getElementById('section-promo').style.display = 'block';
+                document.getElementById('art-count').textContent = '(' + data.articoli.length + ')';
+                showToast(data.message, 'success');
+            } else {
+                document.getElementById('dup-msg').textContent = data.message || 'Errore';
+                document.getElementById('dup-msg').style.display = 'block';
+                btn.disabled = false;
+                btn.textContent = '✓ Carica Articoli';
+            }
+        })
+        .catch(() => {
+            showToast('Errore connessione', 'error');
+            btn.disabled = false;
+            btn.textContent = '✓ Carica Articoli';
+        });
+}
+
+function chiudiDuplicaPromo() {
+    document.getElementById('modal-duplica-promo').classList.remove('show');
+    document.getElementById('dup-promo-dropdown').classList.remove('show');
+}
+
+function aggiornaCampoValore() {
+    const valore = document.getElementById('prm-valore');
+    const usaOfferta = document.getElementById('chk-usa-offerta').checked;
+    if (!document.getElementById('prm-meccanica').value || usaOfferta) {
+        valore.value = ''; valore.disabled = true; valore.classList.add('field-disabled');
+    } else {
+        valore.disabled = false; valore.classList.remove('field-disabled');
+    }
+}
+
+function toggleUsaOfferta() {
+    aggiornaCampoValore();
+}
+
+document.getElementById('prm-tipo-sconto').addEventListener('change', function() {
+    const tipo = this.value;
+    const sconto = document.getElementById('prm-sconto');
+    const sconto1 = document.getElementById('prm-sconto1');
+    const sconto2 = document.getElementById('prm-sconto2');
+    const qom = document.getElementById('prm-qta-omaggio');
+    const lbl = document.getElementById('lbl-sconto');
+    const totDiv = document.getElementById('prm-tot-sconto');
+    sconto.value = ''; sconto1.value = ''; sconto2.value = '';
+    qom.value = ''; totDiv.textContent = '-';
+    const tag = '<small style="color:#27ae60;font-weight:normal;">(sell-in)</small>';
+    if (tipo === 'PE') {
+        lbl.innerHTML = 'Sconto EXTRA ' + tag;
+        sconto.disabled = false; sconto.classList.remove('field-disabled');
+        sconto1.disabled = false; sconto1.classList.remove('field-disabled');
+        sconto2.disabled = false; sconto2.classList.remove('field-disabled');
+        qom.disabled = true; qom.classList.add('field-disabled');
+    } else if (tipo === 'E') {
+        lbl.innerHTML = 'Sconto € ' + tag;
+        sconto.disabled = false; sconto.classList.remove('field-disabled');
+        sconto1.disabled = true; sconto1.classList.add('field-disabled');
+        sconto2.disabled = true; sconto2.classList.add('field-disabled');
+        qom.disabled = true; qom.classList.add('field-disabled');
+    } else if (tipo === 'OM') {
+        lbl.innerHTML = 'Qta Acq ' + tag;
+        sconto.disabled = true; sconto.classList.add('field-disabled');
+        sconto1.disabled = true; sconto1.classList.add('field-disabled');
+        sconto2.disabled = true; sconto2.classList.add('field-disabled');
+        qom.disabled = false; qom.classList.remove('field-disabled');
+    } else {
+        lbl.innerHTML = 'Sconto Extra ' + tag;
+        sconto.disabled = true; sconto.classList.add('field-disabled');
+        sconto1.disabled = true; sconto1.classList.add('field-disabled');
+        sconto2.disabled = true; sconto2.classList.add('field-disabled');
+        qom.disabled = true; qom.classList.add('field-disabled');
+    }
+});
+
+function calcolaSconto() {
+    const s1 = parseFloat(document.getElementById('prm-sconto').value) || 0;
+    const s2 = parseFloat(document.getElementById('prm-sconto1').value) || 0;
+    const s3 = parseFloat(document.getElementById('prm-sconto2').value) || 0;
+    const totDiv = document.getElementById('prm-tot-sconto');
+    if (s1 === 0) { totDiv.textContent = '-'; return; }
+    let resto = 100 - ((100 * s1) / 100);
+    if (s2 > 0) resto = resto - ((resto * s2) / 100);
+    if (s3 > 0) resto = resto - ((resto * s3) / 100);
+    totDiv.textContent = (100 - resto).toFixed(2) + '%';
+}
+
+// Carica gli articoli inseriti nell'export e apre il modal di visualizzazione
+function visualizzaInseriti() {
+    const tbody = document.getElementById('tbody-visualizza');
+    tbody.innerHTML = '<tr><td colspan="15" style="text-align:center;padding:20px;color:#999;">Caricamento...</td></tr>';
+    document.getElementById('modal-visualizza').classList.add('show');
+
+    fetch(URLS.visualizza)
+        .then(r => r.json())
+        .then(data => {
+            visualizzaData = data.articoli || [];
+            // Resetta l'ordinamento ad ogni apertura del modal
+            sortColIdx = -1; sortAsc = true;
+            resetSortIcons();
+            renderVisualizza();
+            aggiornaExpCount(visualizzaData.length);
+        })
+        .catch(() => {
+            tbody.innerHTML = '<tr><td colspan="15" style="text-align:center;padding:30px;color:#e74c3c;">Errore nel caricamento</td></tr>';
+        });
+}
+
+</script>
+{% endblock %}

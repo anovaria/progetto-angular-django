@@ -1,0 +1,76 @@
+{% extends 'portal/base.html' %}
+{# Descrizione del template: Report "Non posso mettere in A". Replica R_NonpossomettereA dell'applicazione Access. Elenca gli articoli che non possono essere inseriti in A perché hanno giacenza e richiedono gestione manuale. #}
+
+{% block title %}{{ titolo }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    h1 { font-size: 1.4em; color: #c0392b; margin-bottom: 5px; }
+    .subtitle { color: #666; margin-bottom: 20px; }
+    table { width: 100%; border-collapse: collapse; }
+    th { background: #1a5276; color: white; padding: 10px 12px; text-align: left; }
+    td { padding: 8px 12px; border-bottom: 1px solid #ddd; }
+    tr:nth-child(even) td { background: #f9f9f9; }
+    /* Classe per evidenziare le giacenze non nulle in rosso */
+    .negative { color: #c0392b; font-weight: 600; }
+    .btn-print { padding: 8px 16px; background: #2e86c1; color: white; border: none; border-radius: 4px; cursor: pointer; margin-bottom: 15px; }
+    @media print {
+        /* Nasconde elementi di navigazione per la stampa */
+        .btn-print { display: none; }
+        .app-header-bar,
+        .sidebar,
+        .sidebar-overlay,
+        .portal-footer { display: none !important; }
+        .layout { margin-top: 0 !important; }
+        .main-content-bg { margin-left: 0 !important; }
+        .main-content { min-height: unset !important; }
+    }
+</style>
+{% endblock %}
+
+{% block page_content %}
+<div class="container-fluid py-3 px-4">
+
+    {# Sezione: Intestazione con titolo e sottotitolo del report #}
+    <h1>⚠️ {{ titolo }}</h1>
+    <p class="subtitle">{{ sottotitolo }}</p>
+
+    {# Pulsante stampa: nascosto in modalità stampa tramite @media print #}
+    <button class="btn-print" onclick="window.print()">🖨️ Stampa</button>
+
+    {# Sezione: Tabella degli articoli non processabili con giacenze #}
+    <table>
+        <thead>
+            <tr>
+                <th>Ccom</th>
+                <th>Codice Articolo</th>
+                <th>Stato</th>
+                <th>Giacenza PDV</th>
+                <th>Giacenza Deposito</th>
+            </tr>
+        </thead>
+        <tbody>
+            {# Itera gli articoli in NonPossoMettereInA arricchiti con giacenze da GoldReport #}
+            {% for art in report_data %}
+            <tr>
+                <td>{{ art.ccom }}</td>
+                <td><strong>{{ art.codart }}</strong></td>
+                <td>{{ art.stato }}</td>
+                {# Evidenzia in rosso le giacenze non nulle (da gestire manualmente) #}
+                <td class="{% if art.giac_pdv != 0 %}negative{% endif %}">{{ art.giac_pdv }}</td>
+                <td class="{% if art.giac_dep != 0 %}negative{% endif %}">{{ art.giac_dep }}</td>
+            </tr>
+            {% empty %}
+            {# Stato vuoto: nessun articolo da gestire manualmente #}
+            <tr><td colspan="5" style="text-align:center; padding:20px;">Nessun articolo con giacenza</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {# Totale articoli che richiedono intervento manuale #}
+    <p style="margin-top:15px; color:#888; font-size:0.85em;">
+        Totale: {{ report_data|length }} articoli da gestire manualmente
+    </p>
+
+</div>
+{% endblock %}

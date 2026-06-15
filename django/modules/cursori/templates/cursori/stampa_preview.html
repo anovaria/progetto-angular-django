@@ -1,0 +1,103 @@
+{# Descrizione del template: anteprima di stampa della coda frontalini — layout su carta bianca #}
+{# Pagina standalone (non estende base_cursori) per una stampa pulita senza la UI del terminale #}
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<title>Lista Articoli Cursori</title>
+<style>
+  {# Sezione: stili ottimizzati per la stampa su carta — font piccolo, sfondo bianco #}
+  body { font-family: Arial, sans-serif; font-size: 11px; margin: 15px; background: #fff; color: #222; }
+
+  .header { margin-bottom: 10px; }
+  .header h2 { color: #0f3460; margin: 0 0 4px 0; font-size: 15px; }
+  .header p  { color: #666; font-size: 10px; margin: 0; }
+
+  table { width: 100%; border-collapse: collapse; }
+  thead th {
+    background: #0f3460;
+    color: #fff;
+    padding: 5px 7px;
+    text-align: left;
+    font-size: 10px;
+    white-space: nowrap;
+  }
+  tbody td { padding: 4px 7px; border-bottom: 1px solid #ddd; vertical-align: top; }
+  tbody tr:nth-child(even) td { background: #f0f4f8; }
+  tbody tr:hover td { background: #dce8f5; }
+
+  .col-right { text-align: right; }
+  .forn-row  { color: #555; font-size: 10px; }
+
+  .actions { margin-top: 14px; display: flex; gap: 10px; }
+  .btn {
+    padding: 8px 18px; border: none; border-radius: 4px;
+    cursor: pointer; font-size: 12px; font-weight: 700;
+  }
+  .btn-print   { background: #0f3460; color: #fff; }
+  .btn-confirm { background: #28a745; color: #fff; }
+  .btn-back    { background: #6c757d; color: #fff; }
+
+  {# Sezione: regole media print — landscape per più colonne, nasconde i pulsanti di azione #}
+  @media print {
+    @page { size: landscape; margin: 10mm; }
+    .actions { display: none; }
+    body { margin: 0; }
+  }
+</style>
+</head>
+<body>
+
+{# Sezione: intestazione con titolo, data di stampa e conteggio articoli #}
+<div class="header">
+  <h2>Lista Articoli Cursori</h2>
+  <p>Stampato il {% now "d/m/Y H:i" %} &mdash; {{ items|length }} articoli</p>
+</div>
+
+{# Sezione: tabella articoli — visibile solo se la coda non è vuota #}
+{% if items %}
+<table>
+  <thead>
+    <tr>
+      <th>Cod. Art.</th>
+      <th>Descrizione</th>
+      <th>Tipo</th>
+      <th class="col-right">Prezzo</th>
+      <th class="col-right">G.PDV</th>
+      <th class="col-right">G.Dep</th>
+      <th>CCom</th>
+      <th>Fornitore</th>
+    </tr>
+  </thead>
+  <tbody>
+    {# items è una lista di tuple (articolo, tipo_label) proveniente dalla view #}
+    {% for item, tipo_label in items %}
+    <tr>
+      <td>{{ item.cod_articolo }}</td>
+      <td>{{ item.descrizione }}</td>
+      <td>{{ tipo_label }}</td>
+      <td class="col-right">{{ item.prezzo_vend }}</td>
+      <td class="col-right">{{ item.giac_pdv }}</td>
+      <td class="col-right">{{ item.giac_dep }}</td>
+      <td>{{ item.ccom }}</td>
+      <td>{{ item.descforn }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p style="color:#999;">Nessun articolo in lista.</p>
+{% endif %}
+
+{# Sezione: pulsanti di azione (nascosti in stampa) — stampa, conferma e chiudi lista, indietro #}
+<div class="actions">
+  <button class="btn btn-print" onclick="window.print()">&#128438; Stampa</button>
+  <form method="post" action="{% url 'cursori:stampa_invia' %}" style="margin:0;">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-confirm">&#10003; Conferma e chiudi lista</button>
+  </form>
+  <button class="btn btn-back" onclick="history.back()">&#8592; Indietro</button>
+</div>
+
+</body>
+</html>

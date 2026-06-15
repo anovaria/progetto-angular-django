@@ -1,0 +1,281 @@
+{% extends 'portal/base.html' %}
+{# Descrizione del template: Pagina di ricerca e anteprima delle offerte promozionali future. Permette di filtrare per piano promo, date, codice articolo ed EAN; mostra un'anteprima JSON-driven dei risultati (max 100 righe) e offre il download Excel con tutti i record. #}
+
+{% block extra_css %}
+<style>
+    .filtri-card { background: white; color: #212529; margin: 16px; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.1); overflow: hidden; }
+    .filtri-title { background: #2e86c1; color: white; padding: 10px 16px; font-size: 12px; font-weight: 600; }
+    .filtri-body { padding: 16px; display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end; }
+
+    .field { display: flex; flex-direction: column; gap: 4px; }
+    .field label { font-size: 11px; font-weight: 600; color: #566573; text-transform: uppercase; letter-spacing: 0.4px; }
+    .field input, .field select {
+        border: 1px solid #d5d8dc; border-radius: 5px; padding: 7px 10px;
+        font-size: 13px; color: #2c3e50; background: #fdfefe;
+        transition: border-color 0.2s;
+    }
+    .field input:focus, .field select:focus { outline: none; border-color: #2e86c1; box-shadow: 0 0 0 2px rgba(46,134,193,0.15); }
+    .field select { width: 260px; cursor: pointer; }
+    .field input[type="date"] { width: 150px; }
+    .field input[type="text"]  { width: 160px; }
+    #codpromo { width: 260px; }
+
+    .btn-group { display: flex; gap: 8px; align-items: flex-end; }
+    .btn-app {
+        padding: 8px 18px; border: none; border-radius: 5px; cursor: pointer;
+        font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px; transition: all 0.2s;
+    }
+    .btn-app.btn-primary   { background: #2e86c1; color: white; }
+    .btn-app.btn-primary:hover   { background: #1a5276; }
+    .btn-app.btn-success   { background: #1e8449; color: white; }
+    .btn-app.btn-success:hover   { background: #145a32; }
+    .btn-app.btn-secondary { background: #717d7e; color: white; }
+    .btn-app.btn-secondary:hover { background: #4d5656; }
+    .btn-app:disabled  { opacity: 0.55; cursor: not-allowed; }
+
+    .results-card { background: white; color: #212529; margin: 0 16px 16px; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.1); overflow: hidden; }
+    .results-title { background: #1a5276; color: white; padding: 10px 16px; font-size: 12px; font-weight: 600; display: flex; align-items: center; justify-content: space-between; }
+    .badge-count { background: rgba(255,255,255,0.25); padding: 2px 10px; border-radius: 12px; font-size: 11px; }
+
+    .spinner-wrap { padding: 40px; text-align: center; color: #717d7e; display: none; }
+    .spinner { width: 32px; height: 32px; border: 3px solid #d5d8dc; border-top-color: #2e86c1; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 10px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .msg-empty { padding: 40px; text-align: center; color: #717d7e; }
+    .msg-empty .icon { font-size: 36px; margin-bottom: 8px; }
+
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    thead th { background: #1a5276; color: white; padding: 9px 10px; text-align: left; white-space: nowrap; font-weight: 600; font-size: 11px; position: sticky; top: 0; }
+    tbody tr { border-bottom: 1px solid #eaecee; }
+    tbody tr:nth-child(even) { background: #eaf4fb; }
+    tbody tr:hover { background: #d6eaf8; }
+    tbody td { padding: 7px 10px; white-space: nowrap; }
+    .td-num { text-align: right; }
+    .td-center { text-align: center; }
+    .stato-i { color: #e67e22; font-weight: 700; }
+    .stato-a { color: #1e8449; font-weight: 700; }
+
+    .nota-preview { padding: 8px 16px; background: #fef9e7; border-top: 1px solid #f9e79f; font-size: 11px; color: #7d6608; }
+    .alert-error { margin: 16px; padding: 12px 16px; background: #fdedec; border: 1px solid #f1948a; border-radius: 6px; color: #922b21; font-size: 12px; display: none; }
+</style>
+{% endblock %}
+
+{% block page_content %}
+{# Sezione: form di ricerca offerte future #}
+<div class="filtri-card">
+    <div class="filtri-title">🔍 Filtri di ricerca</div>
+    <div class="filtri-body">
+
+        {# Campo piano promo: input con datalist per suggerimenti (non un select classico) #}
+        <div class="field">
+            <label>Piano Promo</label>
+            <input type="text" id="codpromo" list="codpromo-list" placeholder="Cerca piano promo..." autocomplete="off">
+            {# La datalist è popolata dai piani disponibili nel database #}
+            <datalist id="codpromo-list">
+                {% for p in piani %}
+                <option value="{{ p.codice }}">{{ p.codice }} | {{ p.dtaini }} → {{ p.dtafine }}</option>
+                {% endfor %}
+            </datalist>
+        </div>
+
+        <div class="field">
+            <label>Data Inizio da</label>
+            <input type="date" id="dtaini">
+        </div>
+        <div class="field">
+            <label>Data Fine a</label>
+            <input type="date" id="dtafine">
+        </div>
+        <div class="field">
+            <label>Codice Articolo</label>
+            <input type="text" id="codart" placeholder="es. 101103">
+        </div>
+        <div class="field">
+            <label>Codice EAN</label>
+            <input type="text" id="ean" placeholder="es. 8076810500544">
+        </div>
+
+        <div class="btn-group">
+            <button class="btn-app btn-primary" onclick="cerca()">🔍 Cerca</button>
+            {# Il bottone Excel è disabilitato finché non si esegue una ricerca con risultati #}
+            <button class="btn-app btn-success" id="btnExcel" onclick="exportExcel()" disabled>📥 Scarica Excel</button>
+            <button class="btn-app btn-secondary" onclick="resetFiltri()">✖ Reset</button>
+        </div>
+    </div>
+</div>
+
+{# Messaggio di errore (visibile solo in caso di errore API) #}
+<div class="alert-error" id="alertError"></div>
+
+{# Sezione: area risultati con spinner, messaggio vuoto e tabella #}
+<div class="results-card">
+    <div class="results-title">
+        <span>📊 Risultati</span>
+        {# Badge con il conteggio totale righe trovate #}
+        <span class="badge-count" id="badgeCount">—</span>
+    </div>
+
+    {# Spinner di caricamento (visibile durante la chiamata API) #}
+    <div class="spinner-wrap" id="spinner">
+        <div class="spinner"></div>
+        <div>Caricamento in corso...</div>
+    </div>
+
+    {# Messaggio iniziale (prima di qualsiasi ricerca) #}
+    <div class="msg-empty" id="msgEmpty">
+        <div class="icon">📂</div>
+        <div>Imposta i filtri e clicca <strong>Cerca</strong> per visualizzare le offerte future.</div>
+    </div>
+
+    {# Tabella risultati (visibile solo dopo una ricerca con risultati) #}
+    <div class="table-wrap" id="tableWrap" style="display:none;">
+        {# Nota sull'anteprima: avvisa se i risultati sono troncati a 100 righe #}
+        <div class="nota-preview" id="notaPreview"></div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Rep.</th><th>Desc. Reparto</th><th>S.Rep.</th><th>Desc. Sottoreparto</th>
+                    <th>CCOM</th><th>Desc. CCOM</th><th>Piano</th>
+                    <th>Data Inizio</th><th>Data Fine</th>
+                    <th>Cod. Art.</th><th>Descrizione</th><th>Stato</th>
+                    <th>PV OFF</th><th>PV STD</th>
+                    <th>Giac. PDV</th><th>Giac. Dep.</th><th>Qta Ord.</th><th>Ult. Ordine</th>
+                    <th>EAN</th><th>Buyer</th><th>Cod. Art. Fo.</th>
+                </tr>
+            </thead>
+            {# Il corpo tabella è popolato dinamicamente da JavaScript #}
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    {# Raccoglie i parametri di filtro dai campi del form #}
+    function getParams() {
+        return new URLSearchParams({
+            codpromo: document.getElementById('codpromo').value,
+            dtaini:   document.getElementById('dtaini').value,
+            dtafine:  document.getElementById('dtafine').value,
+            codart:   document.getElementById('codart').value.trim(),
+            ean:      document.getElementById('ean').value.trim(),
+        });
+    }
+
+    {# Converte una data ISO (YYYY-MM-DD o YYYY-MM-DDTHH:MM:SS) in formato italiano DD/MM/YYYY #}
+    function fmtDate(val) {
+        if (!val) return '';
+        return val.substring(0, 10).split('-').reverse().join('/');
+    }
+
+    {# Formatta un numero con il numero di decimali specificato (virgola come separatore) #}
+    function fmtNum(val, dec) {
+        if (val === null || val === undefined || val === '') return '';
+        return parseFloat(val).toFixed(dec).replace('.', ',');
+    }
+
+    {# Esegue la ricerca tramite l'API anteprima e aggiorna la tabella #}
+    function cerca() {
+        document.getElementById('alertError').style.display = 'none';
+        document.getElementById('msgEmpty').style.display = 'none';
+        document.getElementById('tableWrap').style.display = 'none';
+        document.getElementById('spinner').style.display = 'block';
+        document.getElementById('btnExcel').disabled = true;
+        document.getElementById('badgeCount').textContent = '...';
+
+        fetch('anteprima/?' + getParams())
+            .then(r => r.json())
+            .then(data => {
+                document.getElementById('spinner').style.display = 'none';
+                if (data.error) { showError(data.error); return; }
+
+                document.getElementById('badgeCount').textContent = data.count + ' righe';
+
+                {# Se nessun risultato, mostra messaggio e nasconde la tabella #}
+                if (data.count === 0) {
+                    document.getElementById('msgEmpty').style.display = 'block';
+                    document.getElementById('msgEmpty').querySelector('div:last-child').textContent =
+                        'Nessun risultato trovato con i filtri selezionati.';
+                    return;
+                }
+
+                renderTable(data.rows);
+                document.getElementById('tableWrap').style.display = 'block';
+                document.getElementById('btnExcel').disabled = false;
+                {# Avvisa se l'anteprima è limitata ai primi 100 risultati #}
+                document.getElementById('notaPreview').textContent = data.count > 100
+                    ? `⚠️ Anteprima limitata ai primi 100 di ${data.count} risultati. L'Excel conterrà tutti i ${data.count} record.`
+                    : `✅ ${data.count} risultati trovati.`;
+            })
+            .catch(err => {
+                document.getElementById('spinner').style.display = 'none';
+                showError('Errore di connessione: ' + err);
+            });
+    }
+
+    {# Popola il corpo della tabella con le righe ricevute dall'API #}
+    function renderTable(rows) {
+        const tbody = document.getElementById('tableBody');
+        tbody.innerHTML = '';
+        rows.forEach(r => {
+            // Applica classe CSS per evidenziare lo stato (I=arancio, A=verde)
+            const stato = r.STATO ? r.STATO.trim() : '';
+            const statoClass = stato === 'I' ? 'stato-i' : stato === 'A' ? 'stato-a' : '';
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td class="td-center">${r.REPARTO ?? ''}</td>
+                <td>${r.DESCREP ?? ''}</td>
+                <td class="td-center">${r.SOTTOREPARTO ?? ''}</td>
+                <td>${r.DESCSREP ?? ''}</td>
+                <td>${r.CCOM ?? ''}</td>
+                <td>${r.DESCRCCOM ?? ''}</td>
+                <td>${r.PIANOB ?? ''}</td>
+                <td class="td-center">${fmtDate(r.DataInizio)}</td>
+                <td class="td-center">${fmtDate(r.DataFine)}</td>
+                <td><strong>${r.CodArt ?? ''}</strong></td>
+                <td>${r.Descrizione ?? ''}</td>
+                <td class="td-center ${statoClass}">${stato}</td>
+                <td class="td-num">${fmtNum(r.PV_OFF, 2)}</td>
+                <td class="td-num">${fmtNum(r.PV_STD, 2)}</td>
+                <td class="td-num">${fmtNum(r.GIACENZA_PDV, 0)}</td>
+                <td class="td-num">${fmtNum(r.GIACENZA_DEPOSITO, 0)}</td>
+                <td class="td-num">${fmtNum(r.QTA_IN_ORDINE, 0)}</td>
+                <td class="td-center">${fmtDate(r.ULTIMO_ORDINE)}</td>
+                <td>${r.EAN ?? ''}</td>
+                <td>${r.BUYER ?? ''}</td>
+                <td>${r.CODARTFO ?? ''}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    {# Avvia il download Excel con gli stessi parametri della ricerca corrente #}
+    function exportExcel() { window.location.href = 'export/?' + getParams(); }
+
+    {# Resetta tutti i filtri e riporta l'interfaccia allo stato iniziale #}
+    function resetFiltri() {
+        document.getElementById('codpromo').value = '';
+        ['dtaini','dtafine','codart','ean'].forEach(id => document.getElementById(id).value = '');
+        document.getElementById('tableWrap').style.display = 'none';
+        document.getElementById('msgEmpty').style.display = 'block';
+        document.getElementById('msgEmpty').querySelector('div:last-child').textContent =
+            'Imposta i filtri e clicca Cerca per visualizzare le offerte future.';
+        document.getElementById('btnExcel').disabled = true;
+        document.getElementById('badgeCount').textContent = '—';
+        document.getElementById('alertError').style.display = 'none';
+    }
+
+    function showError(msg) {
+        const el = document.getElementById('alertError');
+        el.textContent = '⚠️ ' + msg;
+        el.style.display = 'block';
+    }
+
+    {# Permette di avviare la ricerca premendo Invio su qualsiasi campo del form #}
+    document.querySelectorAll('input').forEach(inp => {
+        inp.addEventListener('keydown', e => { if (e.key === 'Enter') cerca(); });
+    });
+</script>
+{% endblock %}

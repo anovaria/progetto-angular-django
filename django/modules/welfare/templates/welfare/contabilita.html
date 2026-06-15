@@ -1,0 +1,143 @@
+{% extends "welfare/base_minimal.html" %}
+{# Descrizione del template: Interfaccia contabilità per il riepilogo dei buoni welfare consegnati.
+   Permette di filtrare per anno, mese e giorno specifico. Mostra i totali aggregati
+   (numero richieste e valore economico) e la tabella dettagliata delle consegne.
+   Include il pulsante per scaricare il report ZIP (Excel + PDF) con i filtri attivi. #}
+
+{% block title %}Contabilità{% endblock %}
+
+{% block content %}
+{# Sezione: Intestazione pagina #}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="mb-0">
+        <i class="bi bi-bar-chart-line align-middle me-2"></i>
+        Contabilità
+    </h4>
+</div>
+
+{# Sezione: Form filtri periodo - anno obbligatorio, mese obbligatorio, giorno opzionale #}
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3 align-items-end">
+            {# Selezione anno: popolato con gli anni per cui esistono consegne nel database #}
+            <div class="col-md-2">
+                <label class="form-label">Anno</label>
+                <select name="anno" class="form-select">
+                    {% for a in anni_disponibili %}
+                    {# L'opzione dell'anno corrente viene pre-selezionata #}
+                    <option value="{{ a }}" {% if a == anno %}selected{% endif %}>{{ a }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            {# Selezione mese: range 1-12 con formato due cifre (es. 01, 02...) #}
+            <div class="col-md-2">
+                <label class="form-label">Mese</label>
+                <select name="mese" class="form-select">
+                    {% for m in mesi %}
+                    <option value="{{ m }}" {% if m == mese %}selected{% endif %}>
+                        {{ m|stringformat:"02d" }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            {# Selezione giorno: opzionale - "Tutti" filtra sull'intero mese #}
+            <div class="col-md-2">
+                <label class="form-label">Giorno</label>
+                <select name="giorno" class="form-select">
+                    <option value="">Tutti</option>
+                    {% for g in giorni %}
+                    <option value="{{ g }}" {% if g == giorno %}selected{% endif %}>
+                        {{ g|stringformat:"02d" }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-6 d-flex gap-2 align-items-end">
+                <button type="submit" class="btn btn-welfare">
+                    <i class="bi bi-funnel align-middle"></i>
+                    Applica
+                </button>
+                {# Pulsante report: passa i filtri attivi alla view report_contabilita per generare il ZIP #}
+                <a href="{% url 'welfare:report_contabilita' %}?anno={{ anno }}&mese={{ mese }}{% if giorno %}&giorno={{ giorno }}{% endif %}"
+                   class="btn btn-success" title="Scarica Excel + PDF">
+                    <i class="bi bi-download align-middle"></i>
+                    Report
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+{# Sezione: Card riepilogo aggregati del periodo selezionato #}
+<div class="row g-4 mb-4">
+    {# Card contatore richieste: mostra il numero totale di consegne nel periodo #}
+    <div class="col-md-6">
+        <div class="card bg-light">
+            <div class="card-body d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="text-muted">Numero Richieste</div>
+                    <div class="h3 mb-0">{{ totali.num_richieste|default:0 }}</div>
+                </div>
+                <i class="bi bi-receipt text-primary" style="font-size:48px"></i>
+            </div>
+        </div>
+    </div>
+    {# Card valore totale: importo già formattato in stile europeo (es. 1.234,56) dalla view #}
+    <div class="col-md-6">
+        <div class="card bg-success text-white">
+            <div class="card-body d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="opacity-75">Valore Totale</div>
+                    <div class="h3 mb-0">€ {{ valore_fmt }}</div>
+                </div>
+                <i class="bi bi-currency-euro" style="font-size:48px"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# Sezione: Tabella dettaglio consegne del periodo filtrato #}
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover table-welfare mb-0">
+            <thead>
+                <tr>
+                    <th>Voucher</th>
+                    <th>Nominativo</th>
+                    <th>Mittente</th>
+                    <th>Stato</th>
+                    <th>Data Consegna</th>
+                    <th>Operatore</th>
+                    <th class="text-end">Totale</th>
+                </tr>
+            </thead>
+            <tbody>
+                {# Itera su tutte le richieste del periodo filtrato, ordinate per data consegna discendente #}
+                {% for r in richieste %}
+                <tr>
+                    <td><code>{{ r.num_richiesta }}</code></td>
+                    <td>{{ r.nominativo }}</td>
+                    <td>{{ r.nome_mittente|default:"-" }}</td>
+                    <td>
+                        {# Badge stato con classe CSS costruita dinamicamente (es. badge-consegnato) #}
+                        <span class="badge-stato badge-{{ r.stato|lower }}">{{ r.stato }}</span>
+                    </td>
+                    {# Fallback "-" se data_consegna non è compilata (caso anomalo) #}
+                    <td>{{ r.data_consegna|date:"d/m/Y H:i"|default:"-" }}</td>
+                    <td>punto.info</td>
+                    <td class="text-end"><strong>€ {{ r.totale_buono }}</strong></td>
+                </tr>
+                {# Stato vuoto: nessuna consegna trovata per il periodo e i filtri selezionati #}
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="text-center text-muted py-5">
+                        <i class="bi bi-x-circle d-block mb-2" style="font-size:48px"></i>
+                        Nessuna richiesta trovata per il periodo selezionato
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

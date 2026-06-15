@@ -1,0 +1,651 @@
+{% extends 'portal/base.html' %}
+{# Descrizione del template: Dettaglio di una sessione Piano Promo. Mostra la tabella articoli con controlli stato (incluso/escluso/neutro) e note. Gli editor hanno controlli completi; gli utenti reparto possono solo segnare come Ordinato. #}
+
+{% block extra_css %}
+<style>
+    .pp-wrap { display: flex; flex-direction: column; gap: 14px; padding: 16px; }
+
+    .hdr-card { background: white; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.1); overflow: hidden; }
+    .hdr-top  { background: #1a5276; color: white; padding: 12px 18px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+    .hdr-piano { font-size: 20px; font-weight: 700; }
+    .hdr-titolo { font-size: 12px; opacity: 0.8; margin-top: 2px; }
+    .hdr-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    .btn-app {
+        padding: 7px 14px; border: none; border-radius: 5px; cursor: pointer;
+        font-size: 12px; font-weight: 600; display: inline-flex; align-items: center;
+        gap: 5px; text-decoration: none; transition: background 0.15s;
+    }
+    .btn-add  { background: #117a65; color: white; }
+    .btn-add:hover  { background: #0e6251; color: white; }
+    .btn-del  { background: #cb4335; color: white; }
+    .btn-del:hover  { background: #922b21; }
+    .btn-xls  { background: #1e8449; color: white; }
+    .btn-xls:hover  { background: #145a32; }
+    .btn-back { background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.4); }
+    .btn-back:hover { background: rgba(255,255,255,0.3); color: white; }
+
+    .hdr-body { padding: 12px 18px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+    .stat-chip { padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+    .stat-inc  { background: #d5f5e3; color: #1e8449; }
+    .stat-exc  { background: #fdedec; color: #cb4335; }
+    .stat-neu  { background: #f2f3f4; color: #717d7e; }
+    .hdr-meta  { font-size: 11px; color: #99a3a4; margin-left: auto; }
+
+    .note-box { background: #fef9e7; border: 1px solid #f9e79f; border-radius: 5px; padding: 8px 14px; font-size: 12px; color: #7d6608; }
+
+    .toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .toggle-btn { padding: 6px 12px; border: 1px solid #aab7b8; border-radius: 5px; background: white; color: #555; font-size: 12px; cursor: pointer; }
+    .toggle-btn.active { background: #fdedec; border-color: #f1948a; color: #cb4335; }
+
+    .table-card { background: white; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.1); overflow: hidden; flex: 1; }
+    .table-scroll { overflow-x: auto; max-height: calc(100vh - 320px); overflow-y: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    thead th {
+        background: #1a5276; color: white; padding: 9px 10px;
+        text-align: left; white-space: nowrap; font-size: 11px; font-weight: 600;
+        position: sticky; top: 0; z-index: 1;
+    }
+    tbody tr { border-bottom: 1px solid #eaecee; }
+    tbody tr.incluso { background: #a9dfbf; }
+    tbody tr.escluso { background: #f1948a; }
+    tbody tr.incluso:hover { background: #82e0aa; }
+    tbody tr.escluso:hover { background: #ec7063; }
+    tbody tr.neutro:hover  { background: #eaf4fb; }
+    tbody tr.hidden-exc { display: none; }
+    tbody tr.hidden-filter { display: none; }
+
+    .col-filter {
+        display: block; margin-top: 4px; width: 100%; box-sizing: border-box;
+        border: 1px solid #aed6f1; border-radius: 3px; padding: 2px 6px;
+        font-size: 11px; color: #2c3e50; font-weight: 400;
+    }
+    .col-filter:focus { outline: none; border-color: #fff; box-shadow: 0 0 0 2px rgba(255,255,255,0.4); }
+    tbody tr.neutro.has-nota { background: #fef9c3; }
+    tbody tr.neutro.has-nota:hover { background: #fde68a; }
+    tbody td { padding: 6px 10px; vertical-align: middle; white-space: nowrap; }
+    .td-num  { text-align: right; font-family: Consolas, monospace; }
+    .val-warn { color: #cb4335; font-weight: 700; }
+    code { background: #f2f3f4; padding: 1px 5px; border-radius: 3px; font-size: 11px; }
+
+    .stato-group { display: flex; gap: 4px; }
+    .stato-btn {
+        padding: 3px 9px; border-radius: 10px; border: 1px solid #d5d8dc;
+        font-size: 11px; font-weight: 600; cursor: pointer; background: #f2f3f4; color: #7f8c8d;
+        transition: all 0.12s;
+    }
+    .stato-btn.active-neutro  { background: #f2f3f4; border-color: #aab7b8; color: #5d6d7e; }
+    .stato-btn.active-incluso { background: #d5f5e3; border-color: #a9dfbf; color: #1e8449; }
+    .stato-btn.active-escluso { background: #fdedec; border-color: #f1948a; color: #cb4335; }
+    .stato-btn:hover { opacity: 0.8; }
+
+    .nota-wrap { display: flex; gap: 4px; align-items: center; min-width: 160px; }
+    .nota-input {
+        flex: 1; border: 1px solid #d5d8dc; border-radius: 4px; padding: 4px 7px;
+        font-size: 11px; color: #2c3e50; min-width: 0;
+    }
+    .nota-input:focus { outline: none; border-color: #1a5276; }
+    .nota-save { background: none; border: none; cursor: pointer; color: #1a5276; font-size: 14px; padding: 2px 4px; }
+    .nota-save:hover { color: #154360; }
+
+    .stato-chip { padding: 3px 9px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+    .chip-incluso { background: #d5f5e3; color: #1e8449; }
+    .chip-escluso { background: #fdedec; color: #cb4335; }
+    .chip-neutro  { background: #f2f3f4; color: #7f8c8d; }
+
+    .add-card { background: white; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.1); overflow: hidden; }
+    .add-header { background: #117a65; color: white; padding: 10px 16px; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: space-between; }
+    .add-body { padding: 14px 16px; display: none; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+    .add-body.open { display: flex; }
+    .field-sm label { display: block; font-size: 11px; color: #566573; font-weight: 600; margin-bottom: 3px; text-transform: uppercase; }
+    .field-sm input { border: 1px solid #d5d8dc; border-radius: 4px; padding: 6px 9px; font-size: 12px; width: 180px; }
+
+    .toast { position: fixed; bottom: 24px; right: 24px; background: #1e8449; color: white; padding: 10px 18px; border-radius: 6px; font-size: 13px; font-weight: 600; opacity: 0; transition: opacity 0.3s; z-index: 9999; pointer-events: none; }
+    .toast.show { opacity: 1; }
+    .toast.err  { background: #cb4335; }
+
+    .alert-msg { border-radius: 6px; padding: 10px 14px; font-size: 12px; }
+    .alert-ok  { background: #d5f5e3; border: 1px solid #a9dfbf; color: #1e8449; }
+    .alert-err { background: #fdedec; border: 1px solid #f1948a; color: #922b21; }
+
+    /* Dropdown multi-select per modal Aggiungi articoli */
+    .ms-wrap  { position: relative; }
+    .ms-btn   {
+        display: flex; align-items: center; justify-content: space-between; gap: 8px;
+        width: 100%; padding: 8px 10px; box-sizing: border-box;
+        border: 1px solid #d5d8dc; border-radius: 5px;
+        background: white; font-size: 13px; color: #2c3e50;
+        cursor: pointer; user-select: none;
+    }
+    .ms-btn:hover  { border-color: #1a5276; }
+    .ms-btn.open   { border-color: #1a5276; box-shadow: 0 0 0 2px rgba(26,82,118,0.15); }
+    .ms-btn .arrow { font-size: 10px; color: #999; transition: transform 0.15s; }
+    .ms-btn.open .arrow { transform: rotate(180deg); }
+    .ms-badge { background: #1a5276; color: white; border-radius: 10px; padding: 1px 7px; font-size: 11px; font-weight: 700; }
+    .ms-panel {
+        display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 1060;
+        max-height: 200px; overflow-y: auto;
+        background: white; border: 1px solid #aed6f1; border-radius: 6px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    .ms-panel.open { display: block; }
+    .ms-panel label {
+        display: flex !important; align-items: center; gap: 8px;
+        padding: 7px 12px; font-size: 12px; color: #2c3e50;
+        cursor: pointer; text-transform: none !important; font-weight: 400 !important;
+        margin-bottom: 0; transition: background 0.1s;
+    }
+    .ms-panel label:hover   { background: #eaf4fb; }
+    .ms-panel label.checked { background: #d6eaf8; font-weight: 600 !important; }
+    .ms-panel input[type=checkbox] { accent-color: #1a5276; width: 14px; height: 14px; flex-shrink: 0; }
+
+    .modal-pp label { display: block; font-size: 11px; font-weight: 600; color: #566573; text-transform: uppercase; margin-bottom: 4px; }
+    .modal-pp select, .modal-pp input {
+        width: 100%; border: 1px solid #d5d8dc; border-radius: 5px; padding: 8px 10px;
+        font-size: 13px; color: #2c3e50; box-sizing: border-box;
+    }
+    .modal-pp select:focus, .modal-pp input:focus { outline: none; border-color: #1a5276; }
+    #modalAggiungi .modal-header { background: #117a65; color: white; }
+    #modalAggiungi .modal-title  { font-size: 15px; font-weight: 700; }
+    #modalAggiungi .btn-close    { filter: invert(1); }
+</style>
+{% endblock %}
+
+{% block page_content %}
+<div class="pp-wrap">
+
+    {# Sezione: Messaggi di feedback (successo/errore) #}
+    {% if messages %}
+    {% for msg in messages %}
+    <div class="alert-msg {% if msg.tags == 'success' %}alert-ok{% else %}alert-err{% endif %}">
+        <i class="bi bi-{% if msg.tags == 'success' %}check-circle{% else %}exclamation-triangle{% endif %} me-1"></i>
+        {{ msg }}
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    {# Sezione: Header card con nome sessione, statistiche e pulsanti azione #}
+    <div class="hdr-card">
+        <div class="hdr-top">
+            <div>
+                <div class="hdr-piano">{{ sessione.piano_gold }}</div>
+                {# Titolo opzionale della sessione #}
+                {% if sessione.titolo %}<div class="hdr-titolo">{{ sessione.titolo }}</div>{% endif %}
+                {# Data di inizio sell-out #}
+                {% if sessione.inizio_sellout %}<div class="hdr-titolo">SellOut dal {{ sessione.inizio_sellout }}</div>{% endif %}
+            </div>
+            <div class="hdr-actions">
+                <a href="{% url 'piano_promo:index' %}" class="btn-app btn-back"><i class="bi bi-arrow-left"></i> Elenco</a>
+                <a href="{% url 'piano_promo:export' sessione.pk %}" class="btn-app btn-xls"><i class="bi bi-file-earmark-excel"></i> Excel</a>
+                {# Pulsanti di gestione visibili solo agli editor #}
+                {% if editor %}
+                <button class="btn-app btn-add" data-bs-toggle="modal" data-bs-target="#modalAggiungi">
+                    <i class="bi bi-plus-circle"></i> Aggiungi articoli
+                </button>
+                {# Form per aggiornare la lista: riesegue la query salvata e aggiorna le giacenze #}
+                <form method="post" action="{% url 'piano_promo:aggiorna_lista' sessione.pk %}" style="display:inline;"
+                      onsubmit="return confirm('Aggiornare la lista con i dati attuali del Piano Gold?\nLe giacenze verranno aggiornate, gli stati e le note resteranno invariati.');">
+                    {% csrf_token %}
+                    <button class="btn-app" style="background:#1a5276;color:white;">
+                        <i class="bi bi-arrow-clockwise"></i> Aggiorna lista
+                    </button>
+                </form>
+                {# Form per eliminare l'intera sessione (con conferma) #}
+                <form method="post" action="{% url 'piano_promo:elimina' sessione.pk %}" style="display:inline;"
+                      onsubmit="return confirm('Eliminare la sessione? L\'operazione è irreversibile.');">
+                    {% csrf_token %}
+                    <button class="btn-app btn-del"><i class="bi bi-trash"></i> Elimina</button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+        {# Chip statistiche: Ordinati / Da Ordinare / Neutri #}
+        <div class="hdr-body">
+            <span class="stat-chip stat-inc"><i class="bi bi-check-circle me-1"></i>{{ n_inclusi }} ordinati</span>
+            <span class="stat-chip stat-exc"><i class="bi bi-x-circle me-1"></i>{{ n_esclusi }} da ordinare</span>
+            <span class="stat-chip stat-neu">{{ n_neutri }} neutri</span>
+            <span class="stat-chip" style="background:#eaf0fb;color:#1a5276;"><i class="bi bi-list-ul me-1"></i>{{ sessione.n_totale }} tot.</span>
+            <span class="hdr-meta">Creato da {{ sessione.creato_da }} il {{ sessione.creato_il|date:"d/m/Y H:i" }}</span>
+        </div>
+        {# Note della sessione (sfondo giallo) #}
+        {% if sessione.note %}
+        <div style="padding: 0 18px 12px;">
+            <div class="note-box"><i class="bi bi-chat-left-text me-1"></i>{{ sessione.note }}</div>
+        </div>
+        {% endif %}
+    </div>
+
+    {# Sezione: Toolbar con azioni rapide e toggle visibilità righe Ordinato #}
+    <div class="toolbar">
+        {# Istruzioni differenziate per editor e reparto #}
+        {% if editor %}
+        <span style="font-size:12px;color:#7f8c8d;">Clicca su Ordinato/Da Ordinare per marcare. La nota si salva col 💾.</span>
+        {% else %}
+        {# Pulsante reparto: segna tutti gli articoli "Da Ordinare" come Ordinato in blocco #}
+        <button class="btn-app" style="background:#1e8449;color:white;font-size:12px;padding:6px 14px;" onclick="segnaTuttiOrdinato()">
+            <i class="bi bi-check2-all me-1"></i>Segna tutti "Da Ordinare" come Ordinato
+        </button>
+        {% endif %}
+        {# Toggle per nascondere/mostrare le righe già segnate come Ordinato #}
+        <button class="toggle-btn" id="btn-toggle-inc" onclick="toggleOrdinati()">
+            <i class="bi bi-eye-slash me-1"></i>Nascondi Ordinato
+        </button>
+    </div>
+
+    {# Sezione: Tabella articoli della sessione #}
+    <div class="table-card">
+        <div class="table-scroll">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Cod. Piano Gold</th>
+                        <th>Cod. Art.</th>
+                        <th>Descrizione Articolo</th>
+                        <th>Cod. Forn.</th>
+                        <th>Fornitore
+                            <input type="text" class="col-filter" placeholder="filtra fornitore..."
+                                   oninput="filtraFornitore(this.value)" onclick="event.stopPropagation()">
+                        </th>
+                        <th class="td-num">Giac. PDV</th>
+                        <th class="td-num">Giac. Dep.</th>
+                        <th>Cod. Art. Expo</th>
+                        <th>Desc. Expo</th>
+                        <th class="td-num">Prezzo Promo</th>
+                        <th>Ordine in Corso</th>
+                        <th>Data Consegna</th>
+                        <th>Stato</th>
+                        <th>Nota</th>
+                        {# Colonna azioni eliminazione solo per editor #}
+                        {% if editor %}<th></th>{% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {# Itera le righe della sessione; la classe CSS indica lo stato (colore riga) #}
+                    {% for riga in righe %}
+                    {# La classe has-nota aggiunge sfondo giallo per righe con nota #}
+                    <tr class="{{ riga.stato }}{% if riga.nota %} has-nota{% endif %}" id="row-{{ riga.pk }}" data-stato="{{ riga.stato }}" data-forn="{{ riga.desc_forn|lower }}">
+                        <td><strong>{{ riga.cod_piano_gold|default:"—" }}</strong></td>
+                        <td><code>{{ riga.cod_art|default:"—" }}</code></td>
+                        <td>{{ riga.desc_art|default:"—" }}</td>
+                        <td>{{ riga.cod_forn|default:"—" }}</td>
+                        <td>{{ riga.desc_forn|default:"—" }}</td>
+                        {# Giacenza zero = avvertimento rosso (val-warn) #}
+                        <td class="td-num {% if riga.giac_pdv == 0 %}val-warn{% endif %}">{{ riga.giac_pdv|default:"0" }}</td>
+                        <td class="td-num {% if riga.giac_dep == 0 %}val-warn{% endif %}">{{ riga.giac_dep|default:"0" }}</td>
+                        <td>{{ riga.cod_art_expo|default:"—" }}</td>
+                        <td>{{ riga.desc_expo|default:"—" }}</td>
+                        <td class="td-num">{% if riga.prezzo_promo %}€ {{ riga.prezzo_promo }}{% else %}—{% endif %}</td>
+                        <td>{{ riga.ordine_in_corso|default:"—" }}</td>
+                        <td>{{ riga.data_consegna|default:"—" }}</td>
+                        <td class="stato-cell">
+                            {# Editor: tre pulsanti per cambiare stato via AJAX #}
+                            {% if editor %}
+                            <div class="stato-group" data-id="{{ riga.pk }}">
+                                <button class="stato-btn {% if riga.stato == 'neutro' %}active-neutro{% endif %}" onclick="setStato({{ riga.pk }}, 'neutro')">—</button>
+                                <button class="stato-btn {% if riga.stato == 'incluso' %}active-incluso{% endif %}" onclick="setStato({{ riga.pk }}, 'incluso')">✓ Ordinato</button>
+                                <button class="stato-btn {% if riga.stato == 'escluso' %}active-escluso{% endif %}" onclick="setStato({{ riga.pk }}, 'escluso')">✗ Da Ordinare</button>
+                            </div>
+                            {# Utente reparto: visualizza chip stato e pulsante → Ordinato #}
+                            {% elif riga.stato == 'incluso' %}
+                            <div style="display:flex;align-items:center;gap:6px;">
+                                <span class="stato-chip chip-incluso">Ordinato</span>
+                                <button class="stato-btn" style="font-size:11px;padding:3px 8px;" onclick="setStatoReparto({{ riga.pk }}, 'neutro')">↩ Annulla</button>
+                            </div>
+                            {% else %}
+                            <div style="display:flex;align-items:center;gap:6px;">
+                                <span class="stato-chip chip-{{ riga.stato }}">{{ riga.get_stato_display }}</span>
+                                <button class="stato-btn" style="font-size:11px;padding:3px 8px;" onclick="setStatoReparto({{ riga.pk }}, 'incluso')">→ Ordinato</button>
+                            </div>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {# Editor: campo testo nota con pulsante salva #}
+                            {% if editor %}
+                            <div class="nota-wrap">
+                                <input type="text" class="nota-input" id="nota-{{ riga.pk }}" value="{{ riga.nota }}" maxlength="500" placeholder="nota...">
+                                <button class="nota-save" title="Salva nota" onclick="saveNota({{ riga.pk }})">💾</button>
+                            </div>
+                            {% else %}
+                            {{ riga.nota|default:"" }}
+                            {% endif %}
+                        </td>
+                        {# Pulsante eliminazione riga (solo editor) #}
+                        {% if editor %}
+                        <td>
+                            <form method="post" action="{% url 'piano_promo:elimina_riga' riga.pk %}" onsubmit="return confirm('Rimuovere la riga?');">
+                                {% csrf_token %}
+                                <button type="submit" style="background:none;border:none;cursor:pointer;color:#cb4335;font-size:14px;" title="Rimuovi riga">🗑</button>
+                            </form>
+                        </td>
+                        {% endif %}
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="14" style="text-align:center;padding:40px;color:#99a3a4;">Nessun articolo in questa sessione.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {# Sezione: Form aggiunta riga manuale (accordion, solo editor) #}
+    {% if editor %}
+    <div class="add-card">
+        <div class="add-header" onclick="toggleAdd()">
+            <span><i class="bi bi-plus-circle me-2"></i>Aggiungi articolo non in lista</span>
+            <i class="bi bi-chevron-down" id="add-chevron"></i>
+        </div>
+        <form method="post" class="add-body" id="add-form">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="aggiungi_riga">
+            <div class="field-sm">
+                <label>Cod. Art.</label>
+                <input type="text" name="cod_art" placeholder="es. 00123" maxlength="50">
+            </div>
+            <div class="field-sm">
+                <label>Descrizione Art.</label>
+                <input type="text" name="desc_art" placeholder="nome articolo" maxlength="200">
+            </div>
+            <div class="field-sm">
+                <label>Cod. Forn.</label>
+                <input type="text" name="cod_forn" placeholder="codice fornitore" maxlength="50">
+            </div>
+            <div class="field-sm">
+                <label>Fornitore</label>
+                <input type="text" name="desc_forn" placeholder="nome fornitore" maxlength="200">
+            </div>
+            <div class="field-sm">
+                <label>Nota</label>
+                <input type="text" name="nota" placeholder="motivazione..." maxlength="500">
+            </div>
+            <button type="submit" class="btn-app" style="background:#117a65;color:white;align-self:flex-end;">
+                <i class="bi bi-plus-lg"></i> Aggiungi
+            </button>
+        </form>
+    </div>
+    {% endif %}
+
+</div>
+
+{# Toast notification per feedback asincrono delle operazioni AJAX #}
+<div class="toast" id="toast"></div>
+
+{# Sezione: Modal "Aggiungi articoli" da Piano Gold (solo editor) #}
+{% if editor %}
+<!-- MODAL AGGIUNGI ARTICOLI -->
+<div class="modal fade" id="modalAggiungi" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-plus-circle me-2"></i>Aggiungi articoli</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Chiudi"></button>
+            </div>
+            <form method="post" action="{% url 'piano_promo:aggiungi_articoli' sessione.pk %}">
+                {% csrf_token %}
+                <div class="modal-body modal-pp d-flex flex-column gap-3">
+
+                    <small class="text-muted" style="font-size:11px;">
+                        Gli articoli già presenti verranno aggiornati (giacenze, ecc.) mantenendo lo stato attuale.
+                        I nuovi verranno aggiunti come <strong>Da Ordinare</strong>.
+                    </small>
+
+                    {# Campo: Settore per filtrare gli articoli da importare #}
+                    <div>
+                        <label>Settore</label>
+                        <select name="sett">
+                            <option value="">— tutti i settori —</option>
+                            {% for s in setti %}
+                            <option value="{{ s }}">{{ s }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    {# Campi: Intervallo date SellOut #}
+                    <div style="display:flex;gap:10px;">
+                        <div style="flex:1;">
+                            <label>SellOut dal</label>
+                            <input type="date" name="data_da">
+                        </div>
+                        <div style="flex:1;">
+                            <label>SellOut al</label>
+                            <input type="date" name="data_a">
+                        </div>
+                    </div>
+
+                    {# Campo: Dropdown multi-selezione Piano Gold #}
+                    <div style="overflow:visible;">
+                        <label>Piano Gold</label>
+                        <div class="ms-wrap" id="ms-agg-wrap">
+                            <div class="ms-btn" id="ms-agg-btn" tabindex="0">
+                                <span id="ms-agg-label">— tutti i piani —</span>
+                                <span class="arrow">&#9660;</span>
+                            </div>
+                            <div class="ms-panel" id="ms-agg-panel">
+                                {# Lista piani disponibili con data inizio #}
+                                {% for p in piani %}
+                                <label>
+                                    <input type="checkbox" name="piano_gold" value="{{ p.cod }}">
+                                    {{ p.cod }}{% if p.inizio %} — {{ p.inizio }}{% endif %}
+                                </label>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Annulla</button>
+                    <button type="submit" class="btn btn-sm fw-semibold" style="background:#117a65;color:white;">
+                        <i class="bi bi-cloud-download me-1"></i>Importa
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<script>
+{# URL per le chiamate AJAX di aggiornamento stato/nota (il pk 0 verrà sostituito dinamicamente) #}
+const AGGIORNA_URL = "{% url 'piano_promo:aggiorna_riga' 0 %}";
+const CSRF = "{{ csrf_token }}";
+
+// Mostra un toast di feedback (verde = ok, rosso = errore)
+function showToast(msg, err) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast show' + (err ? ' err' : '');
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => { t.className = 'toast'; }, 2200);
+}
+
+// Chiama l'API aggiorna_riga via AJAX con il payload specificato
+async function updateRiga(rigaId, payload) {
+    const resp = await fetch(AGGIORNA_URL.replace('/0/', '/' + rigaId + '/'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+        body: JSON.stringify(payload),
+    });
+    if (!resp.ok) throw new Error('errore');
+    return resp.json();
+}
+
+// Cambia lo stato di una riga e aggiorna visivamente la riga e i contatori
+function setStato(rigaId, stato) {
+    const row = document.getElementById('row-' + rigaId);
+    const group = row.querySelector('.stato-group');
+    const btns = group.querySelectorAll('.stato-btn');
+
+    updateRiga(rigaId, { stato }).then(data => {
+        row.className = data.stato + (row.classList.contains('has-nota') ? ' has-nota' : '');
+        row.dataset.stato = data.stato;
+        btns.forEach(b => b.className = 'stato-btn');
+        btns[0].className = 'stato-btn' + (data.stato === 'neutro'  ? ' active-neutro'  : '');
+        btns[1].className = 'stato-btn' + (data.stato === 'incluso' ? ' active-incluso' : '');
+        btns[2].className = 'stato-btn' + (data.stato === 'escluso' ? ' active-escluso' : '');
+        aggiornaContatori();
+        // Nasconde la riga se il toggle "Nascondi Ordinato" è attivo
+        const hideInc = document.getElementById('btn-toggle-inc').classList.contains('active');
+        if (hideInc) row.classList.toggle('hidden-exc', data.stato === 'incluso');
+        showToast(data.stato === 'incluso' ? '✓ Ordinato' : data.stato === 'escluso' ? '✗ Da Ordinare' : '— Neutro');
+    }).catch(() => showToast('Errore salvataggio', true));
+}
+
+// Salva la nota di una riga tramite AJAX
+function saveNota(rigaId) {
+    const val = document.getElementById('nota-' + rigaId).value;
+    updateRiga(rigaId, { nota: val }).then(() => {
+        // Aggiunge/rimuove classe has-nota per il colore sfondo giallo
+        document.getElementById('row-' + rigaId).classList.toggle('has-nota', val.trim() !== '');
+        showToast('💾 Nota salvata');
+    }).catch(() => showToast('Errore salvataggio', true));
+}
+
+// Ricalcola e aggiorna i chip statistici dell'header
+function aggiornaContatori() {
+    const rows = document.querySelectorAll('tbody tr[data-stato]');
+    let inc = 0, exc = 0, neu = 0;
+    rows.forEach(r => {
+        const s = r.dataset.stato;
+        if (s === 'incluso') inc++;
+        else if (s === 'escluso') exc++;
+        else neu++;
+    });
+    const chips = document.querySelectorAll('.stat-chip');
+    if (chips[0]) chips[0].innerHTML = '<i class="bi bi-check-circle me-1"></i>' + inc + ' ordinati';
+    if (chips[1]) chips[1].innerHTML = '<i class="bi bi-x-circle me-1"></i>' + exc + ' da ordinare';
+    if (chips[2]) chips[2].textContent = neu + ' neutri';
+}
+
+// Filtra le righe per descrizione fornitore (case-insensitive, sottostringa)
+function filtraFornitore(q) {
+    const term = q.trim().toLowerCase();
+    document.querySelectorAll('tbody tr[data-stato]').forEach(row => {
+        const forn = row.dataset.forn || '';
+        row.classList.toggle('hidden-filter', term !== '' && !forn.includes(term));
+    });
+}
+
+let incHidden = false;
+// Alterna la visibilità delle righe con stato "incluso" (Ordinato)
+function toggleOrdinati() {
+    incHidden = !incHidden;
+    document.querySelectorAll('tbody tr[data-stato="incluso"]').forEach(r => {
+        r.classList.toggle('hidden-exc', incHidden);
+    });
+    const btn = document.getElementById('btn-toggle-inc');
+    btn.classList.toggle('active', incHidden);
+    btn.innerHTML = incHidden
+        ? '<i class="bi bi-eye me-1"></i>Mostra Ordinato'
+        : '<i class="bi bi-eye-slash me-1"></i>Nascondi Ordinato';
+}
+
+// Espande/comprime il pannello aggiungi riga manuale
+function toggleAdd() {
+    const body = document.getElementById('add-form');
+    const chev = document.getElementById('add-chevron');
+    body.classList.toggle('open');
+    chev.className = body.classList.contains('open') ? 'bi bi-chevron-up' : 'bi bi-chevron-down';
+}
+
+const SEGNA_TUTTI_URL = "{% url 'piano_promo:segna_tutti_ordinato' sessione.pk %}";
+
+// Segna tutti gli articoli "Da Ordinare" come Ordinato (solo utente reparto)
+function segnaTuttiOrdinato() {
+    if (!confirm('Segna tutti gli articoli "Da Ordinare" come Ordinato?')) return;
+    fetch(SEGNA_TUTTI_URL, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': CSRF },
+    }).then(r => r.json()).then(data => {
+        if (!data.ok) { showToast('Errore', true); return; }
+        // Aggiorna visivamente tutte le righe escluse senza ricaricare la pagina
+        document.querySelectorAll('tbody tr[data-stato="escluso"]').forEach(row => {
+            row.className = 'incluso';
+            row.dataset.stato = 'incluso';
+            const cell = row.querySelector('.stato-cell');
+            if (cell) cell.innerHTML = '<span class="stato-chip chip-incluso">Ordinato</span>';
+        });
+        aggiornaContatori();
+        showToast('✓ ' + data.updated + ' articoli segnati come Ordinato');
+    }).catch(() => showToast('Errore', true));
+}
+
+// Segna una singola riga come Ordinato (utente reparto)
+function setStatoReparto(rigaId, stato) {
+    const row = document.getElementById('row-' + rigaId);
+    updateRiga(rigaId, { stato }).then(data => {
+        const hasNota = row.classList.contains('has-nota');
+        row.className = data.stato + (hasNota ? ' has-nota' : '');
+        row.dataset.stato = data.stato;
+        const cell = row.querySelector('.stato-cell');
+        if (cell) {
+            if (data.stato === 'incluso') {
+                cell.innerHTML = '<div style="display:flex;align-items:center;gap:6px;">'
+                    + '<span class="stato-chip chip-incluso">Ordinato</span>'
+                    + '<button class="stato-btn" style="font-size:11px;padding:3px 8px;" onclick="setStatoReparto(' + rigaId + ', \'neutro\')">↩ Annulla</button>'
+                    + '</div>';
+            } else {
+                cell.innerHTML = '<div style="display:flex;align-items:center;gap:6px;">'
+                    + '<span class="stato-chip chip-neutro">Neutro</span>'
+                    + '<button class="stato-btn" style="font-size:11px;padding:3px 8px;" onclick="setStatoReparto(' + rigaId + ', \'incluso\')">→ Ordinato</button>'
+                    + '</div>';
+            }
+        }
+        aggiornaContatori();
+        showToast(data.stato === 'incluso' ? '✓ Segnato come Ordinato' : '↩ Rimesso in Neutro');
+    }).catch(() => showToast('Errore salvataggio', true));
+}
+
+// Salva nota premendo Invio nel campo input nota
+document.querySelectorAll('.nota-input').forEach(inp => {
+    inp.addEventListener('keydown', e => {
+        if (e.key === 'Enter') { e.preventDefault(); saveNota(inp.id.replace('nota-', '')); }
+    });
+});
+
+{# Sezione: Logica JavaScript per il dropdown multi-selezione nel modal "Aggiungi articoli" #}
+(function () {
+    const btn   = document.getElementById('ms-agg-btn');
+    const panel = document.getElementById('ms-agg-panel');
+    const lbl   = document.getElementById('ms-agg-label');
+    const wrap  = document.getElementById('ms-agg-wrap');
+    if (!btn) return;
+
+    function updateLabel() {
+        const checked = panel.querySelectorAll('input[type=checkbox]:checked');
+        if (checked.length === 0) {
+            lbl.innerHTML = '— tutti i piani —';
+        } else if (checked.length === 1) {
+            lbl.textContent = checked[0].value;
+        } else {
+            lbl.innerHTML = checked.length + ' piani &nbsp;<span class="ms-badge">' + checked.length + '</span>';
+        }
+    }
+
+    function openPanel()  { panel.classList.add('open'); btn.classList.add('open'); }
+    function closePanel() { panel.classList.remove('open'); btn.classList.remove('open'); }
+
+    btn.addEventListener('click', () => panel.classList.contains('open') ? closePanel() : openPanel());
+
+    panel.querySelectorAll('label').forEach(row => {
+        const cb = row.querySelector('input[type=checkbox]');
+        cb.addEventListener('change', () => { row.classList.toggle('checked', cb.checked); updateLabel(); });
+    });
+
+    document.addEventListener('click', e => { if (!wrap.contains(e.target)) closePanel(); });
+    btn.addEventListener('keydown', e => {
+        if (e.key === 'Escape') closePanel();
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); panel.classList.contains('open') ? closePanel() : openPanel(); }
+    });
+
+    // Resetta il dropdown quando il modal Bootstrap viene chiuso
+    const modal = document.getElementById('modalAggiungi');
+    if (modal) {
+        modal.addEventListener('hidden.bs.modal', () => {
+            panel.querySelectorAll('input[type=checkbox]').forEach(cb => { cb.checked = false; cb.closest('label').classList.remove('checked'); });
+            closePanel();
+            updateLabel();
+        });
+    }
+})();
+</script>
+{% endblock %}

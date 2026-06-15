@@ -1,0 +1,311 @@
+{% extends 'portal/base.html' %}
+{# Descrizione del template: Pagina principale del Piano Promo. Mostra tutte le sessioni come card. Gli editor vedono il pulsante per creare nuove sessioni e il link ai Dati Live. #}
+
+{% block extra_css %}
+<style>
+    .pp-wrap { padding: 16px; display: flex; flex-direction: column; gap: 16px; }
+
+    .page-title { font-size: 18px; font-weight: 700; color: #1a5276; }
+
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; }
+
+    .session-card {
+        background: white; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+        overflow: hidden; display: flex; flex-direction: column; transition: box-shadow 0.15s;
+    }
+    .session-card:hover { box-shadow: 0 3px 10px rgba(0,0,0,0.15); }
+
+    .card-top    { padding: 14px 16px; display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+    .card-piano  { font-size: 18px; font-weight: 700; color: #1a5276; }
+    .card-titolo { font-size: 12px; color: #7f8c8d; margin-top: 2px; }
+
+
+    .card-stats  { display: flex; gap: 8px; padding: 0 16px 12px; flex-wrap: wrap; }
+    .stat-chip   { padding: 3px 10px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+    .stat-inc    { background: #d5f5e3; color: #1e8449; }
+    .stat-exc    { background: #fdedec; color: #cb4335; }
+    .stat-neu    { background: #f2f3f4; color: #717d7e; }
+
+    .card-footer { border-top: 1px solid #eaecee; padding: 10px 16px; display: flex; align-items: center; justify-content: space-between; background: #fafafa; }
+    .card-meta   { font-size: 11px; color: #99a3a4; }
+    .card-link   { font-size: 12px; font-weight: 600; color: #1a5276; text-decoration: none; }
+    .card-link:hover { text-decoration: underline; }
+
+    .empty { text-align: center; padding: 60px 20px; color: #99a3a4; background: white; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+    .empty .icon { font-size: 48px; margin-bottom: 12px; }
+
+    .pp-alert-ok  { background: #d5f5e3; border: 1px solid #a9dfbf; border-radius: 6px; padding: 10px 14px; color: #1e8449; font-size: 12px; }
+    .pp-alert-err { background: #fdedec; border: 1px solid #f1948a; border-radius: 6px; padding: 10px 14px; color: #922b21; font-size: 12px; }
+
+    /* Modal header custom color */
+    #modalNuova .modal-header { background: #1a5276; color: white; }
+    #modalNuova .modal-title  { font-size: 15px; font-weight: 700; }
+    #modalNuova .btn-close    { filter: invert(1); }
+
+    .pp-field label { display: block; font-size: 11px; font-weight: 600; color: #566573; text-transform: uppercase; margin-bottom: 4px; }
+    .pp-field select, .pp-field input, .pp-field textarea {
+        width: 100%; border: 1px solid #d5d8dc; border-radius: 5px; padding: 8px 10px;
+        font-size: 13px; color: #2c3e50; box-sizing: border-box;
+    }
+    .pp-field select:focus, .pp-field input:focus, .pp-field textarea:focus {
+        outline: none; border-color: #1a5276; box-shadow: 0 0 0 2px rgba(26,82,118,0.15);
+    }
+
+    /* Dropdown multi-select Piano Gold (modal) */
+    .ms-wrap  { position: relative; }
+    .ms-btn   {
+        display: flex; align-items: center; justify-content: space-between; gap: 8px;
+        width: 100%; padding: 8px 10px; box-sizing: border-box;
+        border: 1px solid #d5d8dc; border-radius: 5px;
+        background: white; font-size: 13px; color: #2c3e50;
+        cursor: pointer; user-select: none;
+    }
+    .ms-btn:hover  { border-color: #1a5276; }
+    .ms-btn.open   { border-color: #1a5276; box-shadow: 0 0 0 2px rgba(26,82,118,0.15); }
+    .ms-btn .arrow { font-size: 10px; color: #999; transition: transform 0.15s; }
+    .ms-btn.open .arrow { transform: rotate(180deg); }
+    .ms-badge { background: #1a5276; color: white; border-radius: 10px; padding: 1px 7px; font-size: 11px; font-weight: 700; }
+    .ms-panel {
+        display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 1060;
+        max-height: 200px; overflow-y: auto;
+        background: white; border: 1px solid #aed6f1; border-radius: 6px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    .ms-panel.open { display: block; }
+    .ms-panel label {
+        display: flex !important; align-items: center; gap: 8px;
+        padding: 7px 12px; font-size: 12px; color: #2c3e50;
+        cursor: pointer; text-transform: none !important; font-weight: 400 !important;
+        margin-bottom: 0; transition: background 0.1s;
+    }
+    .ms-panel label:hover  { background: #eaf4fb; }
+    .ms-panel label.checked { background: #d6eaf8; font-weight: 600 !important; }
+    .ms-panel input[type=checkbox] { accent-color: #1a5276; width: 14px; height: 14px; flex-shrink: 0; }
+</style>
+{% endblock %}
+
+{% block page_content %}
+<div class="pp-wrap">
+
+    {# Sezione: Intestazione pagina con titolo e pulsanti azione editor #}
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <span class="page-title"><i class="bi bi-calendar2-check me-2"></i>Piano Promo — Staging</span>
+        {# I pulsanti Dati Live e Nuova Sessione sono visibili solo agli editor #}
+        {% if editor %}
+        <div class="d-flex gap-2">
+            <a href="{% url 'piano_promo:dati_live' %}" class="btn btn-sm" style="background:#117a65;color:white;font-weight:600;">
+                <i class="bi bi-database me-1"></i>Dati Live DB
+            </a>
+            <button class="btn btn-sm btn-primary fw-semibold" data-bs-toggle="modal" data-bs-target="#modalNuova">
+                <i class="bi bi-plus-lg me-1"></i>Nuova Sessione
+            </button>
+        </div>
+        {% endif %}
+    </div>
+
+    {# Sezione: Messaggi di feedback (successo/errore) da Django messages #}
+    {% if messages %}
+    {% for msg in messages %}
+    {# Il tag del messaggio determina il colore: 'success' = verde, altro = rosso #}
+    <div class="{% if msg.tags == 'success' %}pp-alert-ok{% else %}pp-alert-err{% endif %}">
+        <i class="bi bi-{% if msg.tags == 'success' %}check-circle{% else %}exclamation-triangle{% endif %} me-1"></i>
+        {{ msg }}
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    {# Mostra errore se il caricamento dei piani dal DB è fallito #}
+    {% if error_piani %}
+    <div class="pp-alert-err"><i class="bi bi-exclamation-triangle me-1"></i> Errore caricamento piani: {{ error_piani }}</div>
+    {% endif %}
+
+    {# Sezione: Griglia delle sessioni salvate #}
+    {% if sessioni %}
+    <div class="grid">
+        {# Itera su tutte le sessioni e le mostra come card #}
+        {% for s in sessioni %}
+        <div class="session-card">
+            <div class="card-top">
+                <div>
+                    <div class="card-piano">{{ s.piano_gold }}</div>
+                    {# Mostra il titolo opzionale se presente #}
+                    {% if s.titolo %}<div class="card-titolo">{{ s.titolo }}</div>{% endif %}
+                    {# Mostra la data di inizio sellout se disponibile #}
+                    {% if s.inizio_sellout %}<div class="card-titolo">SellOut dal {{ s.inizio_sellout }}</div>{% endif %}
+                </div>
+            </div>
+            {# Chip statistiche: Ordinati (incluso), Da Ordinare (escluso), Neutri #}
+            <div class="card-stats">
+                <span class="stat-chip stat-inc"><i class="bi bi-check-circle me-1"></i>{{ s.n_inclusi }} ordinati</span>
+                <span class="stat-chip stat-exc"><i class="bi bi-x-circle me-1"></i>{{ s.n_esclusi }} da ordinare</span>
+                <span class="stat-chip stat-neu">{{ s.n_neutri }} neutri</span>
+                <span class="stat-chip" style="background:#eaf0fb;color:#1a5276;"><i class="bi bi-list-ul me-1"></i>{{ s.n_totale }} tot.</span>
+            </div>
+            <div class="card-footer">
+                <span class="card-meta">{{ s.creato_da }} · {{ s.creato_il|date:"d/m/Y H:i" }}</span>
+                <a href="{% url 'piano_promo:dettaglio' s.pk %}" class="card-link">
+                    Apri <i class="bi bi-arrow-right"></i>
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    {# Stato vuoto: messaggio differenziato per editor e utente reparto #}
+    <div class="empty">
+        <div class="icon">📦</div>
+        <div>{% if editor %}Nessuna sessione ancora. Crea la prima!{% else %}Nessuna sessione disponibile al momento.{% endif %}</div>
+    </div>
+    {% endif %}
+
+</div>
+
+{# Sezione: Modal "Nuova Sessione" (solo per editor) #}
+{% if editor %}
+<!-- MODAL BOOTSTRAP 5 -->
+<div class="modal fade" id="modalNuova" tabindex="-1" aria-labelledby="modalNuovaLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalNuovaLabel">
+                    <i class="bi bi-plus-circle me-2"></i>Nuova Sessione
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Chiudi"></button>
+            </div>
+            <form method="post" action="{% url 'piano_promo:nuova' %}">
+                {% csrf_token %}
+                <div class="modal-body d-flex flex-column gap-3">
+
+                    <small class="text-muted" style="font-size:11px;">
+                        Seleziona un <strong>Settore</strong> e/o un <strong>Piano Gold</strong> oppure specifica un <strong>intervallo di date SellOut</strong>.
+                    </small>
+
+                    {# Campo: Settore - filtro opzionale per categoria merceologica #}
+                    <div class="pp-field">
+                        <label>Settore</label>
+                        <select name="sett">
+                            <option value="">— tutti i settori —</option>
+                            {% for s in setti %}
+                            <option value="{{ s }}">{{ s }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    {# Campi: Intervallo date SellOut - filtro alternativo o aggiuntivo al piano #}
+                    <div style="display:flex;gap:10px;">
+                        <div class="pp-field" style="flex:1;">
+                            <label>SellOut dal</label>
+                            <input type="date" name="data_da">
+                        </div>
+                        <div class="pp-field" style="flex:1;">
+                            <label>SellOut al</label>
+                            <input type="date" name="data_a">
+                        </div>
+                    </div>
+
+                    {# Campo: Dropdown multi-selezione Piano Gold (componente custom JS) #}
+                    <div class="pp-field" style="overflow: visible;">
+                        <label>Piano Gold</label>
+                        {# Avviso se nessun piano è disponibile nel DB #}
+                        {% if not piani %}
+                        <div class="pp-alert-err mb-2">
+                            <i class="bi bi-exclamation-triangle me-1"></i>
+                            Nessun piano trovato nel DB.
+                        </div>
+                        {% endif %}
+                        <div class="ms-wrap" id="ms-modal-wrap">
+                            <div class="ms-btn" id="ms-modal-btn" tabindex="0">
+                                <span id="ms-modal-label">— tutti i piani —</span>
+                                <span class="arrow">&#9660;</span>
+                            </div>
+                            <div class="ms-panel" id="ms-modal-panel">
+                                {# Lista checkbox dei piani disponibili con data inizio #}
+                                {% for p in piani %}
+                                <label>
+                                    <input type="checkbox" name="piano_gold" value="{{ p.cod }}">
+                                    {{ p.cod }}{% if p.inizio %} — {{ p.inizio }}{% endif %}
+                                </label>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+
+                    {# Campo: Titolo opzionale per identificare la sessione #}
+                    <div class="pp-field">
+                        <label>Titolo (opzionale)</label>
+                        <input type="text" name="titolo" placeholder="es. Prima selezione reparto freschi">
+                    </div>
+
+                    {# Campo: Note libere visibili al reparto #}
+                    <div class="pp-field">
+                        <label>Note</label>
+                        <textarea name="note" rows="3" placeholder="Note per il reparto..."></textarea>
+                    </div>
+
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Annulla</button>
+                    <button type="submit" class="btn btn-primary btn-sm fw-semibold">
+                        <i class="bi bi-cloud-download me-1"></i>Crea e importa articoli
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<script>
+{# Sezione: Logica JavaScript per il dropdown multi-selezione Piano Gold nel modal #}
+(function () {
+    const btn   = document.getElementById('ms-modal-btn');
+    const panel = document.getElementById('ms-modal-panel');
+    const lbl   = document.getElementById('ms-modal-label');
+    const wrap  = document.getElementById('ms-modal-wrap');
+    if (!btn) return;
+
+    // Aggiorna l'etichetta del pulsante in base alle checkbox selezionate
+    function updateLabel() {
+        const checked = panel.querySelectorAll('input[type=checkbox]:checked');
+        if (checked.length === 0) {
+            lbl.innerHTML = '— tutti i piani —';
+        } else if (checked.length === 1) {
+            lbl.textContent = checked[0].value;
+        } else {
+            lbl.innerHTML = checked.length + ' piani &nbsp;<span class="ms-badge">' + checked.length + '</span>';
+        }
+    }
+
+    function openPanel()  { panel.classList.add('open'); btn.classList.add('open'); }
+    function closePanel() { panel.classList.remove('open'); btn.classList.remove('open'); }
+
+    btn.addEventListener('click', () => panel.classList.contains('open') ? closePanel() : openPanel());
+
+    // Aggiorna stile visivo della riga selezionata al cambio checkbox
+    panel.querySelectorAll('label').forEach(row => {
+        const cb = row.querySelector('input[type=checkbox]');
+        cb.addEventListener('change', () => {
+            row.classList.toggle('checked', cb.checked);
+            updateLabel();
+        });
+    });
+
+    // Chiude il pannello cliccando fuori dal componente
+    document.addEventListener('click', e => { if (!wrap.contains(e.target)) closePanel(); });
+    btn.addEventListener('keydown', e => {
+        if (e.key === 'Escape') closePanel();
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); panel.classList.contains('open') ? closePanel() : openPanel(); }
+    });
+
+    // Resetta il dropdown quando il modal Bootstrap viene chiuso
+    const modal = document.getElementById('modalNuova');
+    if (modal) {
+        modal.addEventListener('hidden.bs.modal', () => {
+            panel.querySelectorAll('input[type=checkbox]').forEach(cb => { cb.checked = false; cb.closest('label').classList.remove('checked'); });
+            closePanel();
+            updateLabel();
+        });
+    }
+})();
+</script>
+{% endblock %}

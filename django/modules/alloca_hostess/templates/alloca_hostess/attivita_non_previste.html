@@ -1,0 +1,630 @@
+{% extends "alloca_hostess/base_minimal.html" %}
+{# Gestione attività non previste (Punto Info): tabella nominativi con orari ingresso/uscita, filtri e modal aggiunta persona. #}
+{% load alloca_tags %}
+{% block title %}Attività non previste - Punto Info{% endblock %}
+
+{% block extra_css %}
+{# Sezione: Stili CSS specifici della pagina attività non previste #}
+<style>
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #9c27b0;
+    }
+
+    .day-navigator {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: white;
+        padding: 10px 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 15px;
+    }
+
+    .day-navigator .btn {
+        padding: 5px 15px;
+    }
+
+    .day-navigator h5 {
+        margin: 0;
+        min-width: 220px;
+        text-align: center;
+    }
+
+    {# Barra di filtro con ricerca testo, checkbox e statistiche #}
+    .filter-bar {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        background: white;
+        color: #212529;
+        padding: 12px 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 15px;
+    }
+
+    .filter-bar .search-box {
+        flex: 1;
+        max-width: 350px;
+        position: relative;
+    }
+
+    .filter-bar .search-box input {
+        width: 100%;
+        padding: 8px 12px 8px 35px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 0.95em;
+    }
+
+    .filter-bar .search-box input:focus {
+        border-color: #9c27b0;
+        outline: none;
+    }
+
+    .filter-bar .search-box .search-icon {
+        position: absolute;
+        left: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #999;
+        font-size: 18px;
+    }
+
+    .filter-bar .stats {
+        color: #666;
+        font-size: 0.9em;
+    }
+
+    .filter-bar .stats strong {
+        color: #9c27b0;
+    }
+
+    .filter-toggle {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.9em;
+    }
+
+    .filter-toggle input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+    }
+
+    {# Card tabella con scroll verticale per liste lunghe #}
+    .table-card {
+        background: white;
+        color: #212529;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        overflow: hidden;
+    }
+
+    .table-scroll {
+        max-height: calc(100vh - 300px);
+        overflow-y: auto;
+    }
+
+    .attivita-table {
+        width: 100%;
+        font-size: 0.85em;
+        border-collapse: collapse;
+    }
+
+    {# Intestazione sticky: rimane visibile durante lo scroll della tabella #}
+    .attivita-table thead {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+
+    .attivita-table th {
+        background: #9c27b0;
+        color: white;
+        padding: 12px 8px;
+        text-align: center;
+        font-weight: 600;
+    }
+
+    .attivita-table th:first-child {
+        text-align: left;
+        padding-left: 15px;
+    }
+
+    .attivita-table td {
+        padding: 6px 8px;
+        border-bottom: 1px solid #eee;
+        text-align: center;
+        vertical-align: middle;
+    }
+
+    .attivita-table td:first-child {
+        text-align: left;
+        padding-left: 15px;
+    }
+
+    .attivita-table tbody tr {
+        transition: background 0.15s;
+    }
+
+    .attivita-table tbody tr:hover {
+        background: #f5f5f5;
+    }
+
+    {# Riga con orari compilati: sfondo viola chiaro per distinguerla dalle righe vuote #}
+    .attivita-table tbody tr.has-data {
+        background: #f3e5f5;
+    }
+
+    .attivita-table tbody tr.has-data:hover {
+        background: #e1bee7;
+    }
+
+    {# Riga nascosta dal filtro: display none applicato da JavaScript #}
+    .attivita-table tbody tr.hidden {
+        display: none;
+    }
+
+    .attivita-table input[type="time"] {
+        width: 75px;
+        padding: 4px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        text-align: center;
+        font-size: 0.9em;
+    }
+
+    .attivita-table input[type="time"]:focus {
+        border-color: #9c27b0;
+        outline: none;
+    }
+
+    {# Campi orario con valore evidenziati in giallo #}
+    .attivita-table input[type="time"].has-value {
+        background: #fff9c4;
+        border-color: #fbc02d;
+    }
+
+    .nominativo-cell {
+        font-weight: 600;
+        max-width: 180px;
+    }
+
+    .note-cell {
+        font-size: 0.8em;
+        color: #666;
+        max-width: 200px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .btn-salva-riga {
+        padding: 4px 8px;
+        min-width: 36px;
+    }
+
+    .btn-salva-riga .bi {
+        font-size: 16px;
+    }
+
+    {# Pulsante salva disabilitato (riga non modificata): semitrasparente #}
+    .btn-salva-riga.btn-outline-secondary {
+        opacity: 0.5;
+    }
+
+    .btn-salva-riga.btn-success {
+        opacity: 1;
+    }
+
+    .checkbox-confirm {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+    }
+
+    .table-footer {
+        background: #f5f5f5;
+        padding: 10px 15px;
+        border-top: 1px solid #ddd;
+        font-size: 0.85em;
+        color: #666;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+{# Sezione: Intestazione pagina con titolo e badge categoria #}
+<div class="page-header">
+    <h4 class="mb-0">
+        <i class="bi bi-person-lines-fill" style="vertical-align: middle;"></i>
+        Attività non previste
+    </h4>
+    <span class="badge bg-secondary">Rilevamento Prezzi e altre attività</span>
+</div>
+
+{# Sezione: Navigazione tra i giorni con datepicker e pulsante "Vai a oggi" #}
+<div class="day-navigator">
+    <a href="?data={{ data_prec|date:'Y-m-d' }}" class="btn btn-outline-primary">
+        <i class="bi bi-chevron-left"></i>
+    </a>
+
+    <h5>
+        <i class="bi bi-calendar-date" style="vertical-align: middle;"></i>
+        {{ data_sel|date:"l d F Y" }}
+        {# Badge "Oggi" mostrato solo quando la data selezionata corrisponde alla data odierna #}
+        {% if data_sel == oggi %}
+        <span class="badge bg-success ms-2">Oggi</span>
+        {% endif %}
+    </h5>
+
+    <a href="?data={{ data_succ|date:'Y-m-d' }}" class="btn btn-outline-primary">
+        <i class="bi bi-chevron-right"></i>
+    </a>
+
+    {# Datepicker diretto per saltare a una data specifica #}
+    <input type="date" class="form-control ms-3" style="width: auto;"
+           value="{{ data_sel|date:'Y-m-d' }}"
+           onchange="window.location.href='?data=' + this.value">
+
+    {# Pulsante "Vai a oggi" visibile solo quando si visualizza un altro giorno #}
+    {% if data_sel != oggi %}
+    <a href="?data={{ oggi|date:'Y-m-d' }}" class="btn btn-outline-secondary ms-2">
+        Vai a oggi
+    </a>
+    {% endif %}
+</div>
+
+{# Sezione: Barra filtri con ricerca per nome, filtro orari e statistiche #}
+<div class="filter-bar">
+    <div class="search-box">
+        <i class="bi bi-search search-icon"></i>
+        <input type="text" id="search-nominativo" placeholder="Cerca nominativo..." autocomplete="off">
+    </div>
+
+    {# Checkbox per filtrare solo i nominativi con orari registrati nel giorno selezionato #}
+    <label class="filter-toggle">
+        <input type="checkbox" id="filter-con-orari">
+        Solo con orari
+    </label>
+
+    {# Statistiche: totale nominativi e quanti hanno orari per il giorno corrente #}
+    <div class="stats">
+        Totale: <strong>{{ nominativi_list|length }}</strong> nominativi |
+        Con orari oggi: <strong id="count-con-orari">{{ attivita_dict|length }}</strong>
+    </div>
+
+    {# Pulsante per aprire il modal di aggiunta nuovo nominativo #}
+    <button type="button" class="btn btn-sm btn-outline-primary ms-auto" onclick="document.getElementById('modal-aggiungi').style.display='flex'">
+        <i class="bi bi-person-plus" style="font-size:18px;vertical-align:middle;"></i>
+        Aggiungi persona
+    </button>
+</div>
+
+{# Sezione: Modal per aggiungere un nuovo nominativo all'anagrafica polmone #}
+<div id="modal-aggiungi" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.4);z-index:1000;align-items:center;justify-content:center;">
+    <div style="background:white;border-radius:8px;padding:24px;width:400px;box-shadow:0 4px 20px rgba(0,0,0,0.2);">
+        <h5 class="mb-3">Aggiungi persona</h5>
+        <div class="mb-3">
+            <label class="form-label">Nominativo *</label>
+            <input type="text" id="new-nominativo" class="form-control" placeholder="Nome e cognome">
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Note</label>
+            <textarea id="new-note" class="form-control" rows="2" placeholder="Facoltativo"></textarea>
+        </div>
+        <div class="d-flex gap-2 justify-content-end">
+            <button type="button" class="btn btn-outline-secondary" onclick="chiudiModale()">Annulla</button>
+            <button type="button" class="btn btn-primary" onclick="aggiungiPersona()">Aggiungi</button>
+        </div>
+    </div>
+</div>
+
+{# Sezione: Tabella principale con tutti i nominativi e i campi orario #}
+<div class="table-card">
+    <div class="table-scroll">
+        <table class="attivita-table" id="tabella-attivita">
+            <thead>
+                <tr>
+                    <th style="width: 180px;">Nominativo</th>
+                    <th>Note</th>
+                    <th>I.1</th>
+                    <th>U.1</th>
+                    <th>I.2</th>
+                    <th>U.2</th>
+                    <th>I.Ex</th>
+                    <th>U.Ex</th>
+                    <th style="width: 50px;"></th>
+                </tr>
+            </thead>
+            <tbody>
+                {# Itera su tutti i nominativi attivi del polmone #}
+                {% for nom in nominativi_list %}
+                {# Cerca l'attività del giorno nel dizionario per evitare query in loop #}
+                {% with att=attivita_dict|get_item:nom.id %}
+                {# La riga ha classe has-data se esiste un'attività con almeno un orario #}
+                <tr data-id="{{ nom.id }}"
+                    data-nominativo="{{ nom.nominativo|lower }}"
+                    data-attivita-id="{% if att %}{{ att.id }}{% endif %}"
+                    class="{% if att %}has-data{% endif %}">
+                    <td class="nominativo-cell">{{ nom.nominativo }}</td>
+                    <td class="note-cell" title="{{ nom.note|default:'' }}">
+                        {{ nom.note|default:"-"|truncatechars:30 }}
+                    </td>
+                    {# Campi orario: pre-compilati se esiste già un'attività per il giorno #}
+                    <td>
+                        <input type="time" name="ing1"
+                               value="{% if att and att.ingresso_1 %}{{ att.ingresso_1|time:'H:i' }}{% endif %}"
+                               class="{% if att and att.ingresso_1 %}has-value{% endif %}"
+                               ondblclick="setCurrentTime(this)" onchange="markDirty(this)">
+                    </td>
+                    <td>
+                        <input type="time" name="usc1"
+                               value="{% if att and att.uscita_1 %}{{ att.uscita_1|time:'H:i' }}{% endif %}"
+                               class="{% if att and att.uscita_1 %}has-value{% endif %}"
+                               ondblclick="setCurrentTime(this)" onchange="markDirty(this)">
+                    </td>
+                    <td>
+                        <input type="time" name="ing2"
+                               value="{% if att and att.ingresso_2 %}{{ att.ingresso_2|time:'H:i' }}{% endif %}"
+                               class="{% if att and att.ingresso_2 %}has-value{% endif %}"
+                               ondblclick="setCurrentTime(this)" onchange="markDirty(this)">
+                    </td>
+                    <td>
+                        <input type="time" name="usc2"
+                               value="{% if att and att.uscita_2 %}{{ att.uscita_2|time:'H:i' }}{% endif %}"
+                               class="{% if att and att.uscita_2 %}has-value{% endif %}"
+                               ondblclick="setCurrentTime(this)" onchange="markDirty(this)">
+                    </td>
+                    <td>
+                        <input type="time" name="ingex"
+                               value="{% if att and att.ingresso_extra_1 %}{{ att.ingresso_extra_1|time:'H:i' }}{% endif %}"
+                               class="{% if att and att.ingresso_extra_1 %}has-value{% endif %}"
+                               ondblclick="setCurrentTime(this)" onchange="markDirty(this)">
+                    </td>
+                    <td>
+                        <input type="time" name="uscex"
+                               value="{% if att and att.uscita_extra_1 %}{{ att.uscita_extra_1|time:'H:i' }}{% endif %}"
+                               class="{% if att and att.uscita_extra_1 %}has-value{% endif %}"
+                               ondblclick="setCurrentTime(this)" onchange="markDirty(this)">
+                    </td>
+                    {# Pulsante salva riga: disabilitato finché la riga non viene modificata #}
+                    <td>
+                        <button type="button" class="btn btn-sm btn-outline-secondary btn-salva-riga"
+                                onclick="salvaRiga(this)" disabled>
+                            <i class="bi bi-floppy"></i>
+                        </button>
+                    </td>
+                </tr>
+                {% endwith %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {# Footer con suggerimento all'utente #}
+    <div class="table-footer">
+        <i class="bi bi-info-circle" style="font-size: 14px; vertical-align: middle;"></i>
+        Doppio click sui campi orario per inserire l'ora corrente
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const dataCorrente = '{{ data_sel|date:"Y-m-d" }}';
+
+function getCookie(name) {
+    const c = document.cookie.split('; ').find(r => r.startsWith(name + '='));
+    return c ? decodeURIComponent(c.split('=')[1]) : '';
+}
+const csrfToken = getCookie('csrftoken');
+
+// ── Filtri tabella ──
+const searchInput = document.getElementById('search-nominativo');
+const filterConOrari = document.getElementById('filter-con-orari');
+
+// Applica contemporaneamente il filtro testo e il filtro "solo con orari"
+function applicaFiltri() {
+    const searchText = searchInput.value.toLowerCase().trim();
+    const soloConOrari = filterConOrari.checked;
+
+    document.querySelectorAll('#tabella-attivita tbody tr').forEach(row => {
+        const nominativo = row.dataset.nominativo;
+        const hasData = row.classList.contains('has-data');
+
+        let visible = true;
+
+        // Nasconde le righe il cui nominativo non contiene il testo cercato
+        if (searchText && !nominativo.includes(searchText)) {
+            visible = false;
+        }
+
+        // Se attivo, nasconde le righe senza orari registrati
+        if (soloConOrari && !hasData) {
+            visible = false;
+        }
+
+        row.classList.toggle('hidden', !visible);
+    });
+}
+
+searchInput.addEventListener('input', applicaFiltri);
+filterConOrari.addEventListener('change', applicaFiltri);
+
+// Imposta l'ora corrente nel campo e auto-salva la riga
+function setCurrentTime(input) {
+    const now = new Date();
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    input.value = `${hours}:${minutes}`;
+    input.classList.add('has-value');
+    markDirty(input);
+    // Auto-salva immediatamente dopo il doppio click
+    const btn = input.closest('tr').querySelector('.btn-salva-riga');
+    salvaRiga(btn);
+}
+
+// Marca la riga come modificata: abilita il pulsante salva e aggiorna has-value
+function markDirty(element) {
+    const row = element.closest('tr');
+    const btn = row.querySelector('.btn-salva-riga');
+    btn.disabled = false;
+    btn.classList.remove('btn-outline-secondary');
+    btn.classList.add('btn-success');
+    if (element.value) element.classList.add('has-value');
+    else element.classList.remove('has-value');
+}
+
+// Salva la riga tramite AJAX: crea o aggiorna l'attività per questo nominativo e data
+function salvaRiga(btn) {
+    const row = btn.closest('tr');
+    const slotPolmoneId = row.dataset.id;
+    const attivitaId = row.dataset.attivitaId || '';
+
+    btn.disabled = true;
+    const icon = btn.querySelector('.bi');
+    icon.className = 'bi bi-hourglass-split';  // Icona clessidra durante il salvataggio
+
+    const formData = {
+        slot_polmone_id: slotPolmoneId,
+        id: attivitaId || null,
+        data: dataCorrente,
+        ingresso_1: row.querySelector('[name="ing1"]').value || null,
+        uscita_1: row.querySelector('[name="usc1"]').value || null,
+        ingresso_2: row.querySelector('[name="ing2"]').value || null,
+        uscita_2: row.querySelector('[name="usc2"]').value || null,
+        ingresso_extra_1: row.querySelector('[name="ingex"]').value || null,
+        uscita_extra_1: row.querySelector('[name="uscex"]').value || null,
+    };
+
+    fetch("{% url 'alloca_hostess:salva_attivita_non_prevista' %}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken,
+        },
+        body: JSON.stringify(formData)
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            // Aggiorna l'ID attività sul dataset della riga (per modifiche successive)
+            if (data.id) {
+                row.dataset.attivitaId = data.id;
+            }
+
+            // Ricalcola has-data in base alla presenza di almeno un orario compilato
+            let hasOrari = false;
+            row.querySelectorAll('input[type="time"]').forEach(input => {
+                if (input.value) { input.classList.add('has-value'); hasOrari = true; }
+                else input.classList.remove('has-value');
+            });
+
+            // Aggiorna la classe has-data e ricalcola il badge contatore
+            if (hasOrari) {
+                row.classList.add('has-data');
+            } else {
+                row.classList.remove('has-data');
+            }
+            document.getElementById('count-con-orari').textContent =
+                document.querySelectorAll('#tabella-attivita tbody tr.has-data').length;
+            applicaFiltri();  // Riapplica i filtri dopo l'aggiornamento
+
+            // Feedback visivo: icona check per 1,5 secondi poi ripristino pulsante
+            icon.className = 'bi bi-check-lg';
+            btn.classList.replace('btn-success', 'btn-primary');
+            setTimeout(() => {
+                icon.className = 'bi bi-floppy';
+                btn.classList.replace('btn-primary', 'btn-outline-secondary');
+                btn.disabled = true;
+            }, 1500);
+        } else {
+            alert('Errore: ' + (data.error || 'Salvataggio fallito'));
+            icon.className = 'bi bi-floppy';
+            btn.classList.remove('btn-success');
+            btn.classList.add('btn-outline-secondary');
+            btn.disabled = true;
+        }
+    })
+    .catch(err => {
+        alert('Errore di connessione');
+        icon.className = 'bi bi-floppy';
+        btn.disabled = false;
+    });
+}
+
+// Scorciatoie da tastiera: Ctrl+F apre la ricerca, Escape chiude il modal
+document.addEventListener('keydown', function(e) {
+    if (e.ctrlKey && e.key === 'f') {
+        e.preventDefault();
+        searchInput.focus();
+        searchInput.select();
+    }
+    if (e.key === 'Escape') {
+        chiudiModale();
+    }
+});
+
+// Chiude il modal di aggiunta persona e pulisce i campi
+function chiudiModale() {
+    document.getElementById('modal-aggiungi').style.display = 'none';
+    document.getElementById('new-nominativo').value = '';
+    document.getElementById('new-note').value = '';
+}
+
+// Chiama l'API per aggiungere un nuovo nominativo e inserisce la riga nella tabella senza ricaricare
+function aggiungiPersona() {
+    const nominativo = document.getElementById('new-nominativo').value.trim();
+    const note = document.getElementById('new-note').value.trim();
+
+    if (!nominativo) {
+        document.getElementById('new-nominativo').focus();
+        return;
+    }
+
+    fetch("{% url 'alloca_hostess:aggiungi_nominativo_polmone' %}", {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrfToken},
+        body: JSON.stringify({nominativo, note})
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            chiudiModale();
+            // Aggiunge dinamicamente la nuova riga in fondo alla tabella senza ricaricare la pagina
+            const tbody = document.querySelector('#tabella-attivita tbody');
+            const tr = document.createElement('tr');
+            tr.dataset.id = data.id;
+            tr.dataset.nominativo = data.nominativo.toLowerCase();
+            tr.dataset.attivitaId = '';
+            tr.innerHTML = `
+                <td class="nominativo-cell"><strong>${data.nominativo}</strong></td>
+                <td class="note-cell" title="${data.note}">${data.note || '-'}</td>
+                <td><input type="time" name="ing1" ondblclick="setCurrentTime(this)" onchange="markDirty(this)"></td>
+                <td><input type="time" name="usc1" ondblclick="setCurrentTime(this)" onchange="markDirty(this)"></td>
+                <td><input type="time" name="ing2" ondblclick="setCurrentTime(this)" onchange="markDirty(this)"></td>
+                <td><input type="time" name="usc2" ondblclick="setCurrentTime(this)" onchange="markDirty(this)"></td>
+                <td><input type="time" name="ingex" ondblclick="setCurrentTime(this)" onchange="markDirty(this)"></td>
+                <td><input type="time" name="uscex" ondblclick="setCurrentTime(this)" onchange="markDirty(this)"></td>
+                <td>
+                    <button type="button" class="btn btn-sm btn-outline-secondary btn-salva-riga" onclick="salvaRiga(this)" disabled>
+                        <i class="bi bi-floppy"></i>
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        } else {
+            alert('Errore: ' + (data.error || 'Operazione fallita'));
+        }
+    })
+    .catch(() => alert('Errore di connessione'));
+}
+</script>
+{% endblock %}

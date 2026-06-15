@@ -1,0 +1,55 @@
+{% extends 'alloca_hostess/base_minimal.html' %}
+{# Descrizione del template: Elenco delle agenzie di somministrazione. Mostra una tabella con
+   codice, descrizione, referente, telefono ed email per ciascuna agenzia registrata nel sistema. #}
+
+
+{% block title %}Agenzie{% endblock %}
+
+{% block content %}
+{# Sezione: Intestazione pagina #}
+<div class="card mb-4">
+    <div class="card-body">
+        <h4 class="mb-0">
+            <i class="bi bi-building" style="vertical-align: middle; font-size: 28px;"></i>
+            Elenco Agenzie
+        </h4>
+    </div>
+</div>
+
+{# Sezione: Tabella elenco agenzie #}
+<div class="card">
+    <div class="card-body">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Codice</th>
+                    <th>Descrizione</th>
+                    <th>Referente</th>
+                    <th>Telefono</th>
+                    <th>Email</th>
+                </tr>
+            </thead>
+            <tbody>
+                {# Itera su tutte le agenzie passate dalla view #}
+                {% for agenzia in agenzie %}
+                <tr>
+                    <td><strong>{{ agenzia.codice }}</strong></td>
+                    <td>{{ agenzia.descrizione }}</td>
+                    {# I campi facoltativi mostrano un trattino se non compilati #}
+                    <td>{{ agenzia.referente|default:"-" }}</td>
+                    <td>{{ agenzia.telefono|default:"-" }}</td>
+                    <td>{{ agenzia.email|default:"-" }}</td>
+                </tr>
+                {# Messaggio mostrato se non ci sono agenzie nel sistema #}
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="text-center text-muted py-5">
+                        Nessuna agenzia trovata
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

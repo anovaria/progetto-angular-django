@@ -1,0 +1,59 @@
+{% extends 'cursori/base_cursori.html' %}
+{# Descrizione del template: lista delle posizioni a scaffale registrate nella sessione corrente #}
+{# Permette la revisione e l'eliminazione delle posizioni inserite tramite il terminale #}
+
+{% block title %}Lista Posizioni{% endblock %}
+{% block page_title %}Posizioni sessione{% endblock %}
+
+{% block content %}
+
+{# Sezione: tabella posizioni — visibile solo se ci sono elementi nella sessione #}
+{% if items %}
+<table class="tbl-cursori">
+    <thead>
+        <tr>
+            <th>CdArt</th>
+            <th>Descr.</th>
+            <th>Co</th>
+            <th>Ca</th>
+            <th>Fa</th>
+            <th>Min</th>
+            <th>Max</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+    {# Itera sulle posizioni registrate nella sessione corrente #}
+    {% for item in items %}
+    <tr>
+        <td>{{ item.cod_articolo }}</td>
+        <td style="max-width:100px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+            {{ item.descrizione|truncatechars:15 }}</td>
+        <td>{{ item.corsia }}</td>
+        <td>{{ item.campata }}</td>
+        <td>{{ item.facing }}</td>
+        <td>{{ item.mini }}</td>
+        <td>{{ item.max_val }}</td>
+        <td>
+            {# Form inline di eliminazione singola con conferma prima dell'azione #}
+            <form method="post" action="{% url 'cursori:pos_elimina' %}" style="margin:0;">
+                {% csrf_token %}
+                <input type="hidden" name="codart" value="{{ item.cod_articolo }}">
+                <button type="submit" class="btn btn-sm btn-clr"
+                        onclick="return confirm('Eliminare?')">X</button>
+            </form>
+        </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% else %}
+{# Messaggio mostrato quando non ci sono posizioni nella sessione corrente #}
+<div style="color:#aaa; text-align:center; margin-top:30px;">Nessuna posizione in questa sessione.</div>
+{% endif %}
+
+{# Link per tornare alla pagina di scansione posizionamento #}
+<div class="mt-3">
+    <a href="{% url 'cursori:pos' %}" class="btn btn-terminal btn-home">&#8592; Indietro</a>
+</div>
+{% endblock %}

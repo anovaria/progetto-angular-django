@@ -1,0 +1,138 @@
+{% extends 'rio_fornitori_new/base_rio_fornitori.html' %}
+
+{% block page_title %}Proposta d'ordine{% endblock %}
+
+{% block breadcrumb_extra %}
+<li class="breadcrumb-item active">{{ ccom }}</li>
+{% endblock %}
+
+{% block rio_content %}
+<div class="row">
+    <div class="col-md-8 col-lg-6">
+
+        {% if messaggio %}
+        <div class="alert alert-success d-flex align-items-center gap-2">
+            <i class="bi bi-check-circle-fill"></i>{{ messaggio }}
+        </div>
+        {% endif %}
+        {% if errore %}
+        <div class="alert alert-danger d-flex align-items-center gap-2">
+            <i class="bi bi-exclamation-triangle-fill"></i>{{ errore }}
+        </div>
+        {% endif %}
+
+        {# Info fornitore #}
+        <div class="card shadow-sm mb-3">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="text-muted small mb-1">Fornitore</div>
+                        <h5 class="mb-0 fw-bold text-primary">{{ ccom }}</h5>
+                        <div class="text-secondary">{{ descrccom }}</div>
+                    </div>
+                    {% if config %}
+                    <div class="text-end">
+                        <div class="text-muted small mb-1">Ultimo ordine</div>
+                        {% if config.ul_ordine %}
+                        <div class="fw-semibold">{{ config.ul_ordine|date:"d/m/Y" }}</div>
+                        {% if config.numord %}<div class="text-muted small">N° {{ config.numord }}</div>{% endif %}
+                        {% else %}
+                        <span class="badge bg-secondary">Nessun ordine</span>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+
+                {% if config %}
+                <hr class="my-2">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <div class="small">
+                        <span class="text-muted">Email notifica proposta: </span>
+                        {% if config.emails_fornitore %}
+                            {% for em in config.emails_fornitore %}
+                            <span class="text-primary fw-semibold">{{ em }}</span>{% if not forloop.last %}, {% endif %}
+                            {% endfor %}
+                        {% else %}
+                            <span class="text-danger fw-semibold">nessuna email configurata</span>
+                        {% endif %}
+                    </div>
+                    <a href="{% url 'rio_fornitori_new:modifica_email' %}" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-pencil me-1"></i>Modifica email
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        {# Form ordine #}
+        <div class="card shadow-sm">
+            <div class="card-header fw-semibold">
+                <i class="bi bi-sliders me-2"></i>Parametri proposta
+            </div>
+            <div class="card-body">
+                <form method="post" action="{% url 'rio_fornitori_new:esegui' %}">
+                    {% csrf_token %}
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-6">
+                            <label class="form-label fw-semibold">Giorni consegna</label>
+                            <input type="number" name="gg_cons" value="{{ gg_cons_default }}"
+                                   min="1" max="999" class="form-control">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-semibold">Giorni copertura</label>
+                            <input type="number" name="gg_cop" value="{{ gg_cop_default }}"
+                                   min="1" max="999" class="form-control">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Tipo ordine</label>
+                        <div class="d-flex gap-4">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="tip_ord"
+                                       id="tipNorm" value="0" checked onchange="togglePerc(this.value)">
+                                <label class="form-check-label" for="tipNorm">Normale</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="tip_ord"
+                                       id="tipPerc" value="1" onchange="togglePerc(this.value)">
+                                <label class="form-check-label" for="tipPerc">Percentuale</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3" id="box-perc" style="display:none;">
+                        <label class="form-label fw-semibold">Riduzione %</label>
+                        <div class="input-group" style="max-width:180px;">
+                            <input type="number" name="riduzione_perc" value="0"
+                                   min="0" max="99" class="form-control">
+                            <span class="input-group-text">%</span>
+                        </div>
+                        <div class="form-text">Es. 20 = ordina l'80% del suggerito</div>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-success btn-lg">
+                            <i class="bi bi-play-fill me-2"></i>Crea proposta d'ordine
+                        </button>
+                        <a href="{% url 'rio_fornitori_new:home' %}" class="btn btn-outline-secondary btn-lg">
+                            <i class="bi bi-arrow-left me-1"></i>Nuova ricerca
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+function togglePerc(val) {
+    document.getElementById('box-perc').style.display = (val === '1') ? 'block' : 'none';
+}
+</script>
+{% endblock %}
+
+{% endblock %}

@@ -1,0 +1,155 @@
+:root{--fg:#111;--muted:#666;--bg:#fafafa;--card:#fff;--border:#e6e6e6;--accent:#0b66c3;--green:#e7f5ea;--red:#ffe8e8;}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--fg);background:var(--bg)}
+.container{max-width:1200px;margin:0 auto;padding:16px}
+.topbar{background:#fff;border-bottom:1px solid var(--border)}
+.topbar .container{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.brand{display:flex;align-items:center;gap:12px}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--accent);display:inline-block}
+.brand-title{font-weight:700}
+.brand-sub{font-size:12px;color:var(--muted)}
+.nav a{margin-left:12px;color:var(--accent);text-decoration:none;font-weight:600}
+.nav a:hover{text-decoration:underline}
+
+h1{margin:8px 0 12px}
+.panel{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;margin:14px 0}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:12px 0}
+.card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px}
+.card-label{color:var(--muted);font-size:12px}
+.card-value{font-size:22px;font-weight:800;margin-top:6px}
+
+.muted{color:var(--muted);font-size:13px}
+.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+
+.filters{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:8px 0 10px}
+.filters input[type=text]{min-width:360px;max-width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px}
+.chk{font-size:13px;color:var(--muted)}
+
+.btn{background:var(--accent);color:#fff;border:0;border-radius:8px;padding:8px 12px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-block}
+.btn.secondary{background:#efefef;color:#222}
+.btn:hover{filter:brightness(0.95)}
+
+.table-wrap{overflow:auto;background:var(--card);border:1px solid var(--border);border-radius:10px}
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl th,.tbl td{padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:top;white-space:nowrap}
+.tbl th{position:sticky;top:0;background:#fff;z-index:1}
+.tbl td{white-space:nowrap}
+.tbl td:nth-child(5){white-space:nowrap;min-width:0;width:60px;max-width:60px;text-align:center}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+.row-green{background:var(--green)}
+.cell-red{background:var(--red);font-weight:800}
+
+.pager{display:flex;align-items:center;justify-content:center;gap:14px;margin:12px 0;color:var(--muted)}
+.pager a{color:var(--accent);text-decoration:none;font-weight:700}
+.pager a:hover{text-decoration:underline}
+
+.messages{margin:8px 0}
+.msg{border-radius:10px;padding:10px 12px;margin:6px 0;border:1px solid var(--border);background:#fff}
+.msg.success{border-color:#b7e1c1;background:#f2fbf4}
+.msg.error{border-color:#ffc0c0;background:#fff3f3}
+.msg.warning{border-color:#ffe2a8;background:#fff9ef}
+
+
+/* Righe EAN principale (EANPRINC=1) */
+tr.row-main td {
+  background-color: #e6f4ea;
+}
+
+/* =========================================================
+   v8 - Fix colorazioni (EAN principale vs giacenza negativa)
+   1) Se GIACENZA è negativa (td.cell-red), deve prevalere sempre il ROSSO
+      anche quando la riga è EAN principale (tr.row-main).
+   2) Aumenta il contrasto: righe normali bianche (con zebra molto tenue),
+      righe EAN principale verde più intenso.
+   Nota: la tabella in template usa class="tbl".
+   ========================================================= */
+
+/* Base: righe normali */
+.tbl tbody tr td { background-color: #ffffff; }
+/* Zebra tenue per leggibilità (non "verde") */
+.tbl tbody tr:nth-child(even) td { background-color: #f9fbf9; }
+
+/* Righe EAN principale (EANPRINC=1): verde più netto */
+.tbl tbody tr.row-main td { background-color: #cfeecd; }
+
+/* (Se presente) la vecchia classe row-green: rendila più pallida e applicala ai TD */
+.tbl tbody tr.row-green td { background-color: #eef9f0; }
+
+/* ROSSO: deve vincere sempre */
+.tbl td.cell-red { background-color: var(--red) !important; font-weight: 800; }
+.tbl tbody tr.row-main td.cell-red,
+.tbl tbody tr.row-green td.cell-red { background-color: var(--red) !important; font-weight: 800; }
+
+/* v13: listbox scroll come Access (~40 righe visibili) */
+.scrollbox{
+  height: 720px;
+  overflow-y: auto;
+  border: 1px solid #d9d9d9;
+  border-radius: 8px;
+}
+
+
+/* =========================
+   Unified screen (vnext)
+   ========================= */
+.small-inline input{
+  margin-left: 6px;
+  width: 90px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.action-row{justify-content:flex-start}
+.descr-cell{min-width: 340px; white-space: normal !important;}
+.edit-cell{min-width: 150px;}
+.inline-input{
+  width: 100%;
+  min-width: 110px;
+  padding: 6px 8px;
+  border: 1px solid #cfd7df;
+  border-radius: 6px;
+  background: #fff;
+  font-family: inherit;
+  font-size: 12px;
+}
+.inline-input:focus{
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(11,102,195,.12);
+}
+.inline-input-price{text-align:right}
+.inline-input-date{min-width: 170px}
+.save-bar{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  flex-wrap:wrap;
+  margin-top: 12px;
+}
+.tbl th:nth-child(2), .tbl td:nth-child(2){white-space: normal;}
+
+.note-temporary{margin:6px 0 12px}
+.inline-input.save-ok{border-color:#2e8b57;box-shadow:0 0 0 2px rgba(46,139,87,.12)}
+.inline-input.save-error{border-color:#c93c3c;box-shadow:0 0 0 2px rgba(201,60,60,.12)}
+
+
+/* v2 cache-bust + column rebalance */
+.tbl{table-layout:auto;}
+.tbl th:nth-child(1), .tbl td:nth-child(1){width:105px; min-width:105px;}
+.tbl th:nth-child(2), .tbl td:nth-child(2){width:auto; min-width:270px;}
+.tbl th:nth-child(3), .tbl td:nth-child(3){width:70px; text-align:center;}
+.tbl th:nth-child(4), .tbl td:nth-child(4){width:185px; min-width:185px;}
+.tbl th:nth-child(5), .tbl td:nth-child(5){width:60px !important; min-width:60px !important; max-width:60px !important; text-align:center;}
+.tbl th:nth-child(6), .tbl td:nth-child(6){width:90px; text-align:right;}
+.tbl th:nth-child(7), .tbl td:nth-child(7){width:120px;}
+.tbl th:nth-child(8), .tbl td:nth-child(8){width:170px;}
+
+
+/* Evidenziazione leggera righe con Data valorizzata */
+.tbl tbody tr.row-has-date td { background-color: #eef6ff; }
+.tbl tbody tr.row-has-date:nth-child(even) td { background-color: #e9f2ff; }
+/* Priorità al rosso giacenza negativa */
+.tbl tbody tr.row-has-date td.cell-red { background-color: var(--red) !important; }
+/* Se il record è anche EAN principale, mantieni una tinta dedicata ma leggibile */
+.tbl tbody tr.row-main.row-has-date td { background-color: #d9efe2; }
+.tbl tbody tr.row-main.row-has-date td.cell-red { background-color: var(--red) !important; }

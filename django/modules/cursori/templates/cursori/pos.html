@@ -1,0 +1,127 @@
+{% extends 'cursori/base_cursori.html' %}
+{# Descrizione del template: pagina di posizionamento articoli a scaffale #}
+{# L'operatore scansiona un EAN e assegna all'articolo corsia, campata, facing, min e max #}
+
+{% block title %}Posizionamento Articoli{% endblock %}
+{% block page_title %}Posizionamento{% endblock %}
+
+{% block content %}
+
+{# Sezione: messaggi di feedback (conferma operazione o errore) #}
+{% if msg %}<div class="msg-ok">{{ msg }}</div>{% endif %}
+{% if errore %}<div class="msg-err">{{ errore }}</div>{% endif %}
+
+{# Sezione: selettore modalità — Normale (aggiunge/aggiorna posizione) o Togli (rimuove) #}
+{# Al cambio di selezione il form si invia automaticamente per aggiornare lo stato #}
+<!-- Selettore modo -->
+<form method="post" autocomplete="off" style="margin-bottom:8px;">
+    {% csrf_token %}
+    <input type="hidden" name="azione" value="scan">
+    <input type="hidden" name="ean" value="">
+    <div class="d-flex gap-2 align-items-center mb-2">
+        <label class="field-lbl" style="margin:0; white-space:nowrap;">Modo:</label>
+        <select name="modo" class="field-input" style="width:auto; padding:4px 8px;"
+                onchange="this.form.submit()">
+            {# Il modo selezionato viene preservato tra le richieste tramite il contesto della view #}
+            <option value="normale" {% if modo == 'normale' %}selected{% endif %}>Normale</option>
+            <option value="togli"   {% if modo == 'togli'   %}selected{% endif %}>Togli</option>
+        </select>
+    </div>
+</form>
+
+{# Sezione: form scansione EAN — rileva l'articolo su cui operare #}
+<!-- Scansione EAN -->
+<form method="post" autocomplete="off" id="frmScan">
+    {% csrf_token %}
+    <input type="hidden" name="azione" value="scan">
+    <input type="hidden" name="modo" value="{{ modo }}">
+    <div style="margin-bottom:8px;">
+        <label class="field-lbl">Scansiona EAN</label>
+        <input type="text" name="ean" class="ean-input" value=""
+               autofocus inputmode="numeric" id="eanInput" placeholder="EAN...">
+    </div>
+    <button type="submit" class="btn btn-terminal btn-ok w-100 mb-2">CERCA</button>
+</form>
+
+{# Sezione: scheda articolo trovato + form di posizionamento #}
+{# Mostrato solo se la scansione ha trovato l'articolo #}
+{% if articolo %}
+<div class="art-card">
+    <div class="art-descr">{{ articolo.descrizione }}</div>
+    <div class="art-codart">CdArt: {{ articolo.codart }} &nbsp;|&nbsp; EAN: {{ articolo.ean }}</div>
+    <div class="field-row mt-2">
+        <div class="field-badge">Stato <span>{{ articolo.stato }}</span></div>
+        <div class="field-badge">G.PDV <span>{{ articolo.giac_pdv }}</span></div>
+        <div class="field-badge">G.Dep <span>{{ articolo.giac_dep }}</span></div>
+        <div class="field-badge">PzXCrt <span>{{ articolo.pz_xcrt }}</span></div>
+    </div>
+</div>
+
+{# Form di inserimento/aggiornamento posizione — 6 campi su griglia 3-colonne #}
+<!-- Form posizione -->
+<form method="post" autocomplete="off" class="mt-2">
+    {% csrf_token %}
+    <input type="hidden" name="azione" value="ok">
+    <input type="hidden" name="ean" value="{{ ean }}">
+    <input type="hidden" name="codart" value="{{ articolo.codart }}">
+    <input type="hidden" name="modo" value="{{ modo }}">
+
+    <div class="row g-2">
+        <div class="col-4">
+            <label class="field-lbl">Corsia</label>
+            <input type="text" name="corsia" class="field-input" value="{{ corsia }}" id="corsiaInput">
+        </div>
+        <div class="col-4">
+            <label class="field-lbl">Campata</label>
+            <input type="text" name="campata" class="field-input" value="{{ campata }}">
+        </div>
+        <div class="col-4">
+            <label class="field-lbl">Facing</label>
+            <input type="text" name="facing" class="field-input" value="{{ facing }}" inputmode="numeric">
+        </div>
+        <div class="col-4">
+            <label class="field-lbl">Min</label>
+            <input type="text" name="mini" class="field-input" value="{{ mini }}" inputmode="numeric">
+        </div>
+        <div class="col-4">
+            <label class="field-lbl">Max</label>
+            <input type="text" name="max_val" class="field-input" value="{{ max_val }}" inputmode="numeric">
+        </div>
+        <div class="col-4">
+            <label class="field-lbl">Qta</label>
+            <input type="text" name="qta" class="field-input" value="{{ qta }}" inputmode="numeric">
+        </div>
+    </div>
+
+    <div class="d-flex gap-2 mt-3">
+        <button type="submit" class="btn btn-terminal btn-ok flex-fill">OK</button>
+        {# CLR invia il form nascosto frmCanc che esegue l'azione 'cancella' #}
+        <button type="submit" form="frmCanc" class="btn btn-terminal btn-clr flex-fill">CLR</button>
+    </div>
+</form>
+
+{# Form nascosto per la cancellazione della posizione — attivato dal bottone CLR sopra #}
+<form method="post" id="frmCanc" autocomplete="off">
+    {% csrf_token %}
+    <input type="hidden" name="azione" value="cancella">
+    <input type="hidden" name="codart" value="{{ articolo.codart }}">
+    <input type="hidden" name="modo" value="{{ modo }}">
+</form>
+
+{# Autofocus sul primo campo (Corsia) per velocizzare l'inserimento dopo la scansione #}
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+    var c = document.getElementById('corsiaInput');
+    if(c){ c.focus(); c.select(); }
+});
+</script>
+
+{% else %}
+{# Se nessun articolo è caricato, mostra i pulsanti di navigazione secondaria #}
+<div class="d-flex gap-2 mt-2">
+    <a href="{% url 'cursori:vedi_pos' %}" class="btn btn-terminal btn-blu flex-fill">VEDI LISTA</a>
+    <a href="{% url 'cursori:home' %}" class="btn btn-terminal btn-home">&#8592;</a>
+</div>
+{% endif %}
+
+{% endblock %}

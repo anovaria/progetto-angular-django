@@ -1,0 +1,75 @@
+{% extends 'rio_fornitori_new/base_rio_fornitori.html' %}
+
+{% block page_title %}Modifica email{% endblock %}
+
+{% block breadcrumb_extra %}
+<li class="breadcrumb-item"><a href="{% url 'rio_fornitori_new:ordine' %}">{{ ccom }}</a></li>
+<li class="breadcrumb-item active">Modifica email</li>
+{% endblock %}
+
+{% block rio_content %}
+<div class="row">
+    <div class="col-md-6 col-lg-5">
+
+        {% if messaggio %}
+        <div class="alert alert-success d-flex align-items-center gap-2">
+            <i class="bi bi-check-circle-fill"></i>{{ messaggio }}
+        </div>
+        {% endif %}
+        {% if errore %}
+        <div class="alert alert-danger d-flex align-items-center gap-2">
+            <i class="bi bi-exclamation-triangle-fill"></i>{{ errore }}
+        </div>
+        {% endif %}
+
+        <div class="card shadow-sm mb-3">
+            <div class="card-body py-2 px-3">
+                <div class="text-muted small">Fornitore</div>
+                <span class="fw-bold text-primary">{{ ccom }}</span>
+                <span class="text-secondary ms-2">{{ descrccom }}</span>
+            </div>
+        </div>
+
+        <div class="card shadow-sm">
+            <div class="card-header fw-semibold">
+                <i class="bi bi-envelope me-2"></i>Email notifica proposta
+            </div>
+            <div class="card-body">
+                <p class="text-muted small mb-3">
+                    Questi indirizzi ricevono la notifica quando viene creata una proposta d'ordine.
+                    L'email al fornitore viene gestita dal gestionale dopo la conferma della proposta.
+                </p>
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Email principale</label>
+                        <input type="email" name="email0" value="{{ email0 }}"
+                               class="form-control" placeholder="fornitore@esempio.it">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Email 2 <span class="text-muted">(opzionale)</span></label>
+                        <input type="email" name="email1" value="{{ email1 }}" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Email 3 <span class="text-muted">(opzionale)</span></label>
+                        <input type="email" name="email2" value="{{ email2 }}" class="form-control">
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label">Email 4 <span class="text-muted">(opzionale)</span></label>
+                        <input type="email" name="email3" value="{{ email3 }}" class="form-control">
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save me-1"></i>Salva
+                        </button>
+                        <a href="{% url 'rio_fornitori_new:ordine' %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left me-1"></i>Torna all'ordine
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}

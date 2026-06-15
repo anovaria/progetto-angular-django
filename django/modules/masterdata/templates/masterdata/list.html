@@ -1,0 +1,220 @@
+{% extends 'portal/base.html' %}
+{# Descrizione del template: Pagina di consultazione del catalogo articoli (Masterdata). Mostra un form con filtri per reparto, stato, fornitore, testo libero, EAN principale e Cervinia. I risultati sono paginati e possono essere esportati in Excel. #}
+{% load masterdata_tags %}
+
+{% block extra_css %}
+<style>
+    .md-container { display: flex; flex-direction: column; min-height: calc(100vh - 64px); }
+    .filters { background: white; color: #212529; padding: 16px 20px; border-bottom: 1px solid #e0e0e0; display: flex; gap: 15px; flex-wrap: wrap; align-items: flex-end; border-radius: 8px 8px 0 0; }
+    .filter-group { display: flex; flex-direction: column; gap: 5px; }
+    .filter-group label { font-size: 12px; color: #666; font-weight: 500; }
+    .filter-group select, .filter-group input { padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; min-width: 150px; }
+    .filter-group select:focus, .filter-group input:focus { outline: none; border-color: #2E5090; }
+    .btn-md { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; display: inline-flex; align-items: center; gap: 5px; text-decoration: none; }
+    .btn-md-primary { background: #2E5090; color: white; }
+    .btn-md-primary:hover { background: #1e3a6a; }
+    .btn-md-success { background: #4CAF50; color: white; }
+    .btn-md-success:hover { background: #388E3C; }
+    .btn-md-outline { background: white; border: 1px solid #ddd; color: #666; }
+    .btn-md-outline:hover { background: #f5f5f5; }
+    .prezzo-aosta { color: #1b5e20; font-weight: 600; }
+    .prezzo-cervinia { color: #1565c0; font-weight: 600; }
+    .prezzo-diff { color: #b71c1c; }
+    .totale-badge { margin-left: auto; align-self: center; background: #e3f2fd; color: #1565c0; padding: 5px 14px; border-radius: 20px; font-size: 13px; font-weight: 500; white-space: nowrap; }
+    .table-container { background: white; color: #212529; border-radius: 0 0 8px 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); flex: 1; display: flex; flex-direction: column; min-height: 0; }
+    .md-table { width: 100%; border-collapse: collapse; }
+    .md-table th { background: #f8f9fa; padding: 10px 12px; text-align: left; font-weight: 600; color: #333; border-bottom: 2px solid #e0e0e0; position: sticky; top: 0; font-size: 13px; }
+    .md-table td { padding: 8px 12px; border-bottom: 1px solid #eee; vertical-align: middle; font-size: 13px; }
+    .md-table tr:hover { background: #f8f9fa; }
+    .md-table tr:nth-child(even) { background: #fafafa; }
+    .md-table tr:nth-child(even):hover { background: #f0f0f0; }
+    .stato-badge { padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+    .stato-I { background: #e8f5e9; color: #2e7d32; }
+    .stato-A { background: #fff3e0; color: #e65100; }
+    .stato-other { background: #f5f5f5; color: #666; }
+    .reparto-chip { background: #e3f2fd; color: #1565c0; padding: 3px 8px; border-radius: 12px; font-size: 12px; white-space: nowrap; }
+    .ean-code { font-family: 'Consolas', monospace; font-size: 12px; color: #555; }
+    .empty-state { text-align: center; padding: 60px 20px; color: #999; }
+    .empty-state h3 { margin-bottom: 10px; color: #666; }
+    .empty-state i { font-size: 48px; color: #ccc; display: block; margin-bottom: 16px; }
+    .actions { display: flex; gap: 10px; }
+    .table-scroll { flex: 1; overflow-y: auto; min-height: 0; max-height: calc(100vh - 320px); }
+    .pagination-bar { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 16px; border-top: 1px solid #e0e0e0; background: white; flex-wrap: wrap; }
+    .pagination-bar a, .pagination-bar span { padding: 6px 12px; border-radius: 4px; font-size: 13px; text-decoration: none; }
+    .pagination-bar a { border: 1px solid #ddd; color: #2E5090; }
+    .pagination-bar a:hover { background: #e3f2fd; }
+    .pagination-bar .current { background: #2E5090; color: white; border: 1px solid #2E5090; }
+    .pagination-bar .disabled { color: #aaa; border: 1px solid #eee; }
+    .pagination-info { font-size: 13px; color: #666; }
+</style>
+{% endblock %}
+
+{% block page_content %}
+{# Sezione: form di filtro (si invia automaticamente al cambio dei select) #}
+<div class="md-container">
+    <form method="get" class="filters">
+
+        {# Filtro reparto: al cambio submit automatico del form #}
+        <div class="filter-group">
+            <label>Reparto</label>
+            <select name="reparto" onchange="this.form.submit()">
+                <option value="">Tutti i reparti</option>
+                {% for code, name in filter_options.reparti %}
+                {# Mantiene la selezione corrente dopo il submit #}
+                <option value="{{ code }}" {% if filters.reparto == code|stringformat:"s" %}selected{% endif %}>{{ name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        {# Filtro stato articolo #}
+        <div class="filter-group">
+            <label>Stato</label>
+            <select name="stato" onchange="this.form.submit()">
+                <option value="">Tutti</option>
+                {% for code, name in filter_options.stati %}
+                <option value="{{ code }}" {% if filters.stato == code %}selected{% endif %}>{{ name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        {# Filtro fornitore (CCOM) #}
+        <div class="filter-group">
+            <label>Fornitore</label>
+            <select name="fornitore" onchange="this.form.submit()">
+                <option value="">Tutti i fornitori</option>
+                {% for code, name in filter_options.fornitori %}
+                <option value="{{ code }}" {% if filters.fornitore == code %}selected{% endif %}>{{ name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        {# Ricerca testuale libera su codice, descrizione, EAN e fornitore #}
+        <div class="filter-group">
+            <label>Cerca</label>
+            <input type="text" name="search" value="{{ filters.search|default:'' }}" placeholder="Codice, descrizione, EAN...">
+        </div>
+
+        {# Checkbox per filtrare solo gli EAN principali #}
+        <div style="display:flex;align-items:center;align-self:flex-end;padding-bottom:8px;">
+            <input type="checkbox" id="chk_ean_princ" name="solo_ean_princ" value="1"
+                   style="width:16px;height:16px;margin:0;padding:0;cursor:pointer;"
+                   {% if filters.solo_ean_princ %}checked{% endif %}
+                   onchange="this.form.submit()">
+            <label for="chk_ean_princ" style="margin:0;padding-left:3px;font-size:14px;color:#333;font-weight:500;cursor:pointer;white-space:nowrap;">Solo EAN principale</label>
+        </div>
+
+        {# Checkbox per filtrare solo gli articoli associati al PDV Cervinia #}
+        <div style="display:flex;align-items:center;align-self:flex-end;padding-bottom:8px;">
+            <input type="checkbox" id="chk_cervinia" name="cervinia" value="1"
+                   style="width:16px;height:16px;margin:0;padding:0;cursor:pointer;"
+                   {% if filters.cervinia %}checked{% endif %}
+                   onchange="this.form.submit()">
+            <label for="chk_cervinia" style="margin:0;padding-left:3px;font-size:14px;color:#333;font-weight:500;cursor:pointer;white-space:nowrap;">Solo Cervinia</label>
+        </div>
+
+        <div class="actions">
+            <button type="submit" class="btn-md btn-md-primary">🔍 Cerca</button>
+            {# Reset: torna alla URL base senza parametri #}
+            <a href="?" class="btn-md btn-md-outline">✕ Reset</a>
+            {# Il link export Excel è visibile solo se ci sono risultati #}
+            {% if page_obj %}
+            <a href="{% url 'masterdata:export' %}?{{ request.GET.urlencode }}" class="btn-md btn-md-success">📥 Export Excel</a>
+            {% endif %}
+        </div>
+        {# Badge con il totale articoli trovati #}
+        {% if page_obj %}
+        <div class="totale-badge">{{ totale }} articoli</div>
+        {% endif %}
+    </form>
+
+    {# Sezione: tabella risultati o stato vuoto #}
+    <div class="table-container">
+        {# Mostra la tabella solo se page_obj è valorizzato (filtri applicati) #}
+        {% if page_obj %}
+            <div class="table-scroll">
+                <table class="md-table">
+                    <thead>
+                        <tr>
+                            <th>Cod. Articolo</th>
+                            <th>Descrizione</th>
+                            <th>Stato</th>
+                            <th>Reparto</th>
+                            <th>Sottoreparto</th>
+                            <th>Famiglia</th>
+                            <th>EAN</th>
+                            <th>Fornitore</th>
+                            <th>Linea Comm.</th>
+                            <th>Prezzo Aosta</th>
+                            <th>Prezzo Cervinia</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {# Itera gli articoli della pagina corrente #}
+                        {% for art in page_obj %}
+                        <tr>
+                            <td><code>{{ art.CODART }}</code></td>
+                            <td>{{ art.DESCRART }}</td>
+                            {# Il badge stato cambia classe CSS in base al valore (I=verde, A=arancio) #}
+                            <td><span class="stato-badge stato-{{ art.STATO|default:'other' }}">{{ art.STATO|default:"-" }}</span></td>
+                            {# Mostra la descrizione reparto se disponibile, altrimenti il codice #}
+                            <td><span class="reparto-chip">{{ art.DESCRREP|default:art.REP }}</span></td>
+                            <td>{{ art.DESCRSREP|default:"-" }}</td>
+                            <td>{{ art.DESCRFAM|default:"-" }}</td>
+                            <td><span class="ean-code">{{ art.EAN|default:"-" }}</span></td>
+                            <td>{{ art.DESCFORN|default:"-" }}</td>
+                            <td>{{ art.DESCRCCOM|default:"-" }}</td>
+                            {# Se i prezzi Aosta e Cervinia sono diversi, aggiunge la classe prezzo-diff per evidenziare la discrepanza #}
+                            <td class="prezzo-aosta{% if art.PREZZO_AOSTA and art.PREZZO_CERVINIA and art.PREZZO_AOSTA != art.PREZZO_CERVINIA %} prezzo-diff{% endif %}">
+                                {{ art.PREZZO_AOSTA|default:"-" }}
+                            </td>
+                            <td class="prezzo-cervinia{% if art.PREZZO_AOSTA and art.PREZZO_CERVINIA and art.PREZZO_AOSTA != art.PREZZO_CERVINIA %} prezzo-diff{% endif %}">
+                                {{ art.PREZZO_CERVINIA|default:"-" }}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {# Sezione paginazione: visibile solo se ci sono più pagine #}
+            {% if page_obj.paginator.num_pages > 1 %}
+            <div class="pagination-bar">
+                <span class="pagination-info">Pagina {{ page_obj.number }} di {{ page_obj.paginator.num_pages }}</span>
+                {# Link alla prima pagina e alla precedente #}
+                {% if page_obj.has_previous %}
+                <a href="?{% query_transform page=1 %}">«</a>
+                <a href="?{% query_transform page=page_obj.previous_page_number %}">‹ Prec</a>
+                {% else %}
+                <span class="disabled">«</span>
+                <span class="disabled">‹ Prec</span>
+                {% endif %}
+
+                {# Mostra al massimo le pagine nell'intervallo ±3 rispetto alla corrente #}
+                {% for num in page_obj.paginator.page_range %}
+                    {% if num == page_obj.number %}
+                    <span class="current">{{ num }}</span>
+                    {% elif num >= page_obj.number|add:"-3" and num <= page_obj.number|add:"3" %}
+                    <a href="?{% query_transform page=num %}">{{ num }}</a>
+                    {% endif %}
+                {% endfor %}
+
+                {# Link alla successiva e all'ultima pagina #}
+                {% if page_obj.has_next %}
+                <a href="?{% query_transform page=page_obj.next_page_number %}">Succ ›</a>
+                <a href="?{% query_transform page=page_obj.paginator.num_pages %}">»</a>
+                {% else %}
+                <span class="disabled">Succ ›</span>
+                <span class="disabled">»</span>
+                {% endif %}
+            </div>
+            {% endif %}
+        {% else %}
+        {# Stato vuoto: invita l'utente ad applicare un filtro #}
+        <div class="empty-state">
+            <i class="bi bi-funnel"></i>
+            <h3>Applica un filtro per visualizzare i risultati</h3>
+            <p>Seleziona reparto, stato, fornitore o digita nella ricerca</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,420 @@
+{% extends "pallet_promoter/base_minimal.html" %}
+{# Descrizione del template: Griglia di assegnazione testate per il mese/anno selezionato. Elenca ogni testata con il fornitore assegnato; le testate bloccate non sono modificabili. L'assegnazione avviene tramite modal con ricerca fornitore autocomplete. #}
+{% load pallet_tags %}
+
+{% block title %}Testate {{ mese }}/{{ anno }} - Pallet-Promoter{% endblock %}
+
+{% block extra_css %}
+<style>
+    .testata-row {
+        display: flex;
+        align-items: center;
+        padding: 12px 15px;
+        border-bottom: 1px solid #eee;
+        transition: background 0.2s;
+    }
+
+    .testata-row:hover {
+        background: #f8f9fa;
+    }
+
+    .testata-id {
+        width: 50px;
+        font-weight: bold;
+        color: #1976d2;
+    }
+
+    .testata-locazione {
+        flex: 1;
+        padding: 0 15px;
+    }
+
+    .testata-fornitore {
+        flex: 1;
+        padding: 0 15px;
+    }
+
+    .testata-fornitore.vuoto {
+        color: #999;
+        font-style: italic;
+    }
+
+    .testata-fornitore.assegnato {
+        color: #2e7d32;
+        font-weight: 500;
+    }
+
+    .testata-actions {
+        width: 100px;
+        text-align: right;
+    }
+
+    .testata-bloccata {
+        background: #ffebee;
+    }
+
+    .badge-bloccata {
+        font-size: 0.7em;
+    }
+    
+    .nav-selector {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .nav-selector select {
+        padding: 6px 12px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 14px;
+    }
+    
+    .nav-btn {
+        padding: 6px 12px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        background: white;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+    }
+    
+    .nav-btn:hover {
+        background: #f5f5f5;
+    }
+    
+    .nav-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <a href="{% url 'pallet_promoter:testate_list' %}" class="btn btn-outline-secondary btn-sm mb-2">
+            <i class="bi bi-arrow-left" style="font-size: 16px; vertical-align: middle;"></i>
+            Torna alla lista
+        </a>
+        <h4 class="mb-0">
+            <i class="bi bi-layout-three-columns" style="vertical-align: middle;"></i>
+            Gestione Testate
+        </h4>
+    </div>
+    
+    <!-- Selettore Mese/Anno -->
+    <div class="nav-selector">
+        <button class="nav-btn" id="btn-prev" title="Mese precedente">
+            <i class="bi bi-chevron-left"></i>
+        </button>
+        
+        <select id="select-mese">
+            <option value="1" {% if mese == 1 %}selected{% endif %}>Gennaio</option>
+            <option value="2" {% if mese == 2 %}selected{% endif %}>Febbraio</option>
+            <option value="3" {% if mese == 3 %}selected{% endif %}>Marzo</option>
+            <option value="4" {% if mese == 4 %}selected{% endif %}>Aprile</option>
+            <option value="5" {% if mese == 5 %}selected{% endif %}>Maggio</option>
+            <option value="6" {% if mese == 6 %}selected{% endif %}>Giugno</option>
+            <option value="7" {% if mese == 7 %}selected{% endif %}>Luglio</option>
+            <option value="8" {% if mese == 8 %}selected{% endif %}>Agosto</option>
+            <option value="9" {% if mese == 9 %}selected{% endif %}>Settembre</option>
+            <option value="10" {% if mese == 10 %}selected{% endif %}>Ottobre</option>
+            <option value="11" {% if mese == 11 %}selected{% endif %}>Novembre</option>
+            <option value="12" {% if mese == 12 %}selected{% endif %}>Dicembre</option>
+        </select>
+        
+        <select id="select-anno">
+            {% for a in anni %}
+            <option value="{{ a }}" {% if a == anno %}selected{% endif %}>{{ a }}</option>
+            {% endfor %}
+        </select>
+        
+        <button class="nav-btn" id="btn-next" title="Mese successivo">
+            <i class="bi bi-chevron-right"></i>
+        </button>
+    </div>
+</div>
+
+{# Sezione: statistiche riepilogative — badge contatori assegnate/libere/bloccate #}
+<!-- Statistiche -->
+<div class="row mb-3">
+    <div class="col-auto">
+        <span class="badge bg-success">{{ count_assegnate }} assegnate</span>
+        <span class="badge bg-secondary">{{ count_libere }} libere</span>
+        {# Il badge "bloccate" appare solo se esistono testate non modificabili #}
+        {% if count_bloccate > 0 %}
+        <span class="badge bg-danger">{{ count_bloccate }} bloccate</span>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header d-flex">
+        <div style="width: 50px;"><strong>#</strong></div>
+        <div style="flex: 1; padding: 0 15px;"><strong>Locazione</strong></div>
+        <div style="flex: 1; padding: 0 15px;"><strong>Fornitore</strong></div>
+        <div style="width: 100px;"></div>
+    </div>
+    {# Sezione: lista testate — ogni riga mostra id, locazione, fornitore e pulsante modifica #}
+    <div class="card-body p-0">
+        {% for testata in testate %}
+        {# Recupera l'assegnazione per questa testata tramite il template tag get_item #}
+        {% with assegn=assegnazioni|get_item:testata.id %}
+        {# Le testate bloccate ricevono lo stile testata-bloccata (sfondo rosso chiaro) #}
+        <div class="testata-row {% if testata.bloccata %}testata-bloccata{% endif %}" data-testata-id="{{ testata.id }}"
+            data-testata-locazione="{{ testata.locazione }}"
+            data-fornitore-id="{% if assegn and assegn.fornitore %}{{ assegn.fornitore.codice }}{% endif %}"
+            data-fornitore-nome="{% if assegn and assegn.fornitore %}{{ assegn.fornitore.nome }}{% endif %}">
+            <div class="testata-id">
+                {{ testata.id }}
+                {# Badge BLOCCATA visibile solo sulle testate non modificabili #}
+                {% if testata.bloccata %}
+                <span class="badge bg-danger badge-bloccata">BLOCCATA</span>
+                {% endif %}
+            </div>
+            <div class="testata-locazione">{{ testata.locazione }}</div>
+            {# La classe CSS cambia in base allo stato dell'assegnazione: "assegnato" (verde) o "vuoto" (grigio) #}
+            <div class="testata-fornitore {% if assegn and assegn.fornitore %}assegnato{% else %}vuoto{% endif %}">
+                {% if assegn and assegn.fornitore %}
+                {{ assegn.fornitore.nome }}
+                {% else %}
+                — disponibile —
+                {% endif %}
+            </div>
+            <div class="testata-actions">
+                {# Il pulsante modifica è nascosto per le testate bloccate #}
+                {% if not testata.bloccata %}
+                <button class="btn btn-sm btn-outline-primary btn-assegna-testata" data-bs-toggle="modal"
+                    data-bs-target="#modalTestata">
+                    <i class="bi bi-pencil-square" style="font-size: 16px;"></i>
+                </button>
+                {% endif %}
+            </div>
+        </div>
+        {% endwith %}
+        {% empty %}
+        {# Messaggio mostrato se non ci sono testate configurate nel sistema #}
+        <div class="text-center text-muted py-4">
+            <i class="bi bi-layout-three-columns" style="font-size: 48px;"></i>
+            <p>Nessuna testata configurata</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Modal Assegnazione Testata -->
+<div class="modal fade" id="modalTestata" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-pencil-square" style="vertical-align: middle;"></i>
+                    Assegna Testata <span id="modal-testata-id"></span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted" id="modal-testata-locazione"></p>
+                <form id="form-assegna-testata">
+                    {% csrf_token %}
+                    <input type="hidden" name="testata_id" id="input-testata-id">
+                    <input type="hidden" name="anno" value="{{ anno }}">
+                    <input type="hidden" name="mese" value="{{ mese }}">
+                    <input type="hidden" name="fornitore_id" id="input-testata-fornitore-id">
+
+                    <div class="mb-3">
+                        <label class="form-label">Fornitore</label>
+                        <div class="fornitore-search">
+                            <input type="text" class="form-control" id="input-testata-fornitore-search" name="q"
+                                placeholder="Cerca fornitore..." autocomplete="off">
+                            <div class="fornitore-results" id="testata-fornitore-results"></div>
+                        </div>
+                        <div id="testata-fornitore-selezionato" class="mt-2"></div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-danger" id="btn-rimuovi-testata"
+                    style="margin-right: auto;">
+                    <i class="bi bi-trash" style="vertical-align: middle;"></i>
+                    Rimuovi
+                </button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                <button type="button" class="btn btn-primary" id="btn-salva-testata">
+                    <i class="bi bi-floppy" style="vertical-align: middle;"></i>
+                    Salva
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const modal = document.getElementById('modalTestata');
+        const fornitoreResults = document.getElementById('testata-fornitore-results');
+        const inputFornitoreSearch = document.getElementById('input-testata-fornitore-search');
+        let currentRow = null;
+        
+        // Navigazione mese/anno
+        const selectMese = document.getElementById('select-mese');
+        const selectAnno = document.getElementById('select-anno');
+        
+        function navigateTo(anno, mese) {
+            window.location.href = `/app/pallet-promoter/testate/${anno}/${mese}/`;
+        }
+        
+        selectMese.addEventListener('change', function() {
+            navigateTo(selectAnno.value, this.value);
+        });
+        
+        selectAnno.addEventListener('change', function() {
+            navigateTo(this.value, selectMese.value);
+        });
+        
+        document.getElementById('btn-prev').addEventListener('click', function() {
+            let mese = parseInt(selectMese.value);
+            let anno = parseInt(selectAnno.value);
+            mese--;
+            if (mese < 1) {
+                mese = 12;
+                anno--;
+            }
+            navigateTo(anno, mese);
+        });
+        
+        document.getElementById('btn-next').addEventListener('click', function() {
+            let mese = parseInt(selectMese.value);
+            let anno = parseInt(selectAnno.value);
+            mese++;
+            if (mese > 12) {
+                mese = 1;
+                anno++;
+            }
+            navigateTo(anno, mese);
+        });
+
+        // Apri modal
+        document.querySelectorAll('.btn-assegna-testata').forEach(btn => {
+            btn.addEventListener('click', function () {
+                currentRow = this.closest('.testata-row');
+                document.getElementById('input-testata-id').value = currentRow.dataset.testataId;
+                document.getElementById('modal-testata-id').textContent = '#' + currentRow.dataset.testataId;
+                document.getElementById('modal-testata-locazione').textContent = currentRow.dataset.testataLocazione;
+
+                const fornitoreId = currentRow.dataset.fornitoreId;
+                const fornitoreNome = currentRow.dataset.fornitoreNome;
+
+                if (fornitoreId) {
+                    document.getElementById('input-testata-fornitore-id').value = fornitoreId;
+                    document.getElementById('testata-fornitore-selezionato').innerHTML = `
+                    <span class="badge bg-success">
+                        ${fornitoreNome}
+                        <span class="ms-1" style="cursor:pointer" onclick="clearTestataFornitore()">×</span>
+                    </span>`;
+                } else {
+                    document.getElementById('input-testata-fornitore-id').value = '';
+                    document.getElementById('testata-fornitore-selezionato').innerHTML = '';
+                }
+                document.getElementById('input-testata-fornitore-search').value = '';
+                fornitoreResults.innerHTML = '';
+            });
+        });
+
+        // Ricerca fornitore con JS puro
+        let searchTimeout;
+        inputFornitoreSearch.addEventListener('keyup', function () {
+            clearTimeout(searchTimeout);
+            const q = this.value;
+
+            if (q.length < 2) {
+                fornitoreResults.innerHTML = '';
+                return;
+            }
+
+            searchTimeout = setTimeout(function () {
+                fetch(`{% url 'pallet_promoter:cerca_fornitore' %}?q=${encodeURIComponent(q)}`)
+                    .then(response => response.text())
+                    .then(html => {
+                        fornitoreResults.innerHTML = html;
+                    });
+            }, 300);
+        });
+
+        // Click su fornitore
+        fornitoreResults.addEventListener('click', function (event) {
+            const item = event.target.closest('.fornitore-item');
+            if (item) {
+                document.getElementById('input-testata-fornitore-id').value = item.dataset.id;
+                document.getElementById('testata-fornitore-selezionato').innerHTML = `
+                <span class="badge bg-success">
+                    ${item.dataset.nome}
+                    <span class="ms-1" style="cursor:pointer" onclick="clearTestataFornitore()">×</span>
+                </span>`;
+                fornitoreResults.innerHTML = '';
+                document.getElementById('input-testata-fornitore-search').value = '';
+            }
+        });
+
+        // Nascondi risultati quando clicchi fuori
+        document.addEventListener('click', function (event) {
+            if (!event.target.closest('.fornitore-search')) {
+                fornitoreResults.innerHTML = '';
+            }
+        });
+
+        // Salva
+        document.getElementById('btn-salva-testata').addEventListener('click', function () {
+            const form = document.getElementById('form-assegna-testata');
+            const formData = new FormData(form);
+            const btn = this;
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Salvataggio...';
+
+            fetch("{% url 'pallet_promoter:assegna_testata' %}", {
+                method: 'POST',
+                body: formData
+            }).then(response => {
+                if (response.ok) {
+                    bootstrap.Modal.getInstance(modal).hide();
+                    location.reload();
+                } else {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="bi bi-floppy" style="vertical-align: middle;"></i> Salva';
+                    alert('Errore durante il salvataggio');
+                }
+            });
+        });
+
+        // Rimuovi
+        document.getElementById('btn-rimuovi-testata').addEventListener('click', function () {
+            document.getElementById('input-testata-fornitore-id').value = '';
+            const form = document.getElementById('form-assegna-testata');
+            const formData = new FormData(form);
+            const btn = this;
+
+            btn.disabled = true;
+
+            fetch("{% url 'pallet_promoter:assegna_testata' %}", {
+                method: 'POST',
+                body: formData
+            }).then(response => {
+                if (response.ok) {
+                    bootstrap.Modal.getInstance(modal).hide();
+                    location.reload();
+                }
+            });
+        });
+    });
+
+    function clearTestataFornitore() {
+        document.getElementById('input-testata-fornitore-id').value = '';
+        document.getElementById('testata-fornitore-selezionato').innerHTML = '';
+    }
+</script>
+{% endblock %}

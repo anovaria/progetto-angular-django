@@ -1,0 +1,115 @@
+{% extends 'merchandiser/base_minimal.html' %}
+{# Descrizione del template: Form per la creazione e modifica di una hostess. Usato sia per nuova (senza variabile hostess nel contesto) sia per modifica (con hostess precompilata). Il submit è gestito via AJAX con risposta JSON. #}
+
+{# Il titolo cambia dinamicamente in base a se stiamo modificando o creando #}
+{% block title %}{% if hostess %}Modifica{% else %}Nuova{% endif %} Hostess{% endblock %}
+
+{% block content %}
+{# Sezione: Intestazione con titolo contestuale #}
+<div class="card mb-4">
+    <div class="card-body">
+        <h4 class="mb-0">
+            <i class="bi bi-{% if hostess %}edit{% else %}add{% endif %}" style="vertical-align: middle; font-size: 28px;"></i>
+            {% if hostess %}Modifica Hostess{% else %}Nuova Hostess{% endif %}
+        </h4>
+    </div>
+</div>
+
+{# Sezione: Form dati hostess #}
+<div class="card">
+    <div class="card-body">
+        <form id="hostess-form" method="post">
+            {% csrf_token %}
+
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label class="form-label">Nominativo <span class="text-danger">*</span></label>
+                    <input type="text"
+                           class="form-control"
+                           name="nominativo"
+                           value="{% if hostess %}{{ hostess.nominativo }}{% endif %}"
+                           required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Ruolo</label>
+                    <input type="text"
+                           class="form-control"
+                           name="ruolo"
+                           value="{% if hostess %}{{ hostess.ruolo }}{% endif %}"
+                           placeholder="Es: Promoter, Hostess">
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Note</label>
+                <textarea class="form-control"
+                          name="nota"
+                          rows="3"
+                          placeholder="Note opzionali...">{% if hostess %}{{ hostess.nota }}{% endif %}</textarea>
+            </div>
+
+            <div class="mb-3">
+                <div class="form-check">
+                    <input type="checkbox"
+                           class="form-check-input"
+                           name="attiva"
+                           id="attiva"
+                           {# Checkbox attiva spuntata per default per i nuovi record; per la modifica segue il valore corrente #}
+                           {% if not hostess or hostess.attiva %}checked{% endif %}>
+                    <label class="form-check-label" for="attiva">
+                        Attiva
+                    </label>
+                </div>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-merchandiser">
+                    <i class="bi bi-floppy" style="vertical-align: middle;"></i>
+                    Salva
+                </button>
+                <a href="{% url 'merchandiser:hostess_list' %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-x-circle" style="vertical-align: middle;"></i>
+                    Annulla
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Intercetta il submit del form e lo invia via AJAX per ricevere una risposta JSON
+document.getElementById('hostess-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    const formData = new FormData(this);
+    const btn = this.querySelector('button[type="submit"]');
+    // Disabilita il bottone durante il salvataggio per evitare doppi invii
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Salvataggio...';
+
+    fetch(this.action || window.location.href, {
+        method: 'POST',
+        body: formData
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            // Redirect alla lista hostess dopo il salvataggio
+            window.location.href = '{% url "merchandiser:hostess_list" %}';
+        } else {
+            alert(data.error || 'Errore durante il salvataggio');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-floppy" style="vertical-align: middle;"></i> Salva';
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        alert('Errore durante il salvataggio');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-floppy" style="vertical-align: middle;"></i> Salva';
+    });
+});
+</script>
+{% endblock %}

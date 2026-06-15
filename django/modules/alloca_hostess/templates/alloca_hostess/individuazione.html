@@ -1,0 +1,718 @@
+{% extends "pallet_promoter/base_minimal.html" %}
+{# Descrizione del template: Form principale per l'individuazione e coordinamento delle hostess.
+   Permette la navigazione per periodo e giorno, la modifica degli slot (fornitore, hostess,
+   agenzia, orari, note), la copia degli slot su altri giorni tramite modal, e il riepilogo
+   storico dell'intero periodo in una tabella. #}
+
+{% load pallet_tags %}
+
+{% block title %}Individuazione Hostess - Pallet-Promoter{% endblock %}
+
+{% block extra_css %}
+{# Sezione: Stili CSS specifici della pagina di individuazione #}
+<style>
+    .header-info { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .periodo-info { display: flex; gap: 20px; align-items: center; }
+    .periodo-info .badge { font-size: 1.1em; padding: 8px 16px; }
+    .day-navigator { display: flex; align-items: center; gap: 10px; background: white; padding: 10px 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; }
+    .day-navigator .btn { padding: 5px 15px; }
+    .day-navigator h5 { margin: 0; min-width: 250px; text-align: center; }
+    {# Contenitore degli slot con scroll orizzontale per accomodare molti slot #}
+    .slots-container { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 10px; }
+    .slot-card { min-width: 180px; max-width: 180px; background: white; color: #212529; border: 2px solid #ddd; border-radius: 8px; padding: 10px; flex-shrink: 0; position: relative; }
+    .slot-card.has-data { border-color: #4caf50; background: #f8fff8; }
+    .slot-header { background: #1976d2; color: white; margin: -10px -10px 10px -10px; padding: 8px 8px 8px 10px; border-radius: 6px 6px 0 0; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
+    .slot-card.has-data .slot-header { background: #4caf50; }
+    .btn-copy-slot { background: rgba(255,255,255,0.2); border: none; color: white; cursor: pointer; padding: 2px 4px; border-radius: 4px; display: flex; align-items: center; transition: background 0.2s; }
+    .btn-copy-slot:hover { background: rgba(255,255,255,0.35); }
+    .btn-copy-slot .bi { font-size: 16px; }
+    .slot-field { margin-bottom: 8px; }
+    .slot-field label { display: block; font-size: 0.75em; color: #666; margin-bottom: 2px; }
+    .slot-field input, .slot-field select { width: 100%; padding: 4px 6px; border: 1px solid #ddd; border-radius: 4px; font-size: 0.85em; }
+    .slot-field input:focus, .slot-field select:focus { border-color: #1976d2; outline: none; }
+    {# Campi orario affiancati (mattino/pomeriggio) in griglia 2 colonne #}
+    .slot-field.time-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+    .slot-field.time-fields label { grid-column: span 2; }
+    .slot-field input[type="time"] { padding: 2px 4px; }
+    .fornitore-search-mini, .hostess-search-mini, .agenzia-search-mini { position: relative; }
+    .fornitore-search-mini input, .hostess-search-mini input, .agenzia-search-mini input { font-size: 0.8em; }
+    {# Dropdown dei risultati di ricerca: nascosto di default, visibile con classe .show #}
+    .fornitore-results-mini, .hostess-results-mini, .agenzia-results-mini { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #ddd; border-radius: 4px; max-height: 150px; overflow-y: auto; z-index: 1000; display: none; font-size: 0.8em; }
+    .fornitore-results-mini.show, .hostess-results-mini.show, .agenzia-results-mini.show { display: block; }
+    .fornitore-item-mini, .hostess-item-mini, .agenzia-item-mini { padding: 5px 8px; cursor: pointer; border-bottom: 1px solid #eee; }
+    .fornitore-item-mini:hover, .hostess-item-mini:hover, .agenzia-item-mini:hover { background: #e3f2fd; }
+    {# Elemento selezionato (badge verde con pulsante di rimozione) #}
+    .selected-fornitore, .selected-hostess, .selected-agenzia { font-size: 0.75em; background: #e8f5e9; color: #212529; padding: 3px 6px; border-radius: 3px; margin-top: 3px; display: flex; justify-content: space-between; align-items: center; }
+    .selected-fornitore .remove, .selected-hostess .remove, .selected-agenzia .remove { cursor: pointer; color: #f44336; font-weight: bold; }
+    .storico-container { margin-top: 20px; background: white; color: #212529; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); overflow: hidden; }
+    .storico-header { background: #f5f5f5; color: #212529; padding: 10px 15px; font-weight: bold; border-bottom: 1px solid #ddd; }
+    .storico-table { width: 100%; font-size: 0.85em; }
+    .storico-table th { background: #fafafa; color: #212529; padding: 8px; text-align: left; font-weight: 600; border-bottom: 1px solid #ddd; }
+    .storico-table td { color: #212529; padding: 6px 8px; border-bottom: 1px solid #eee; }
+    .storico-table tr:hover { background: #f8f9fa; }
+    {# Riga del giorno corrente evidenziata in azzurro nella tabella storico #}
+    .storico-table tr.current-day { background: #e3f2fd; }
+    .storico-table .day-link { color: #1976d2; text-decoration: none; font-weight: 500; }
+    .storico-table .day-link:hover { text-decoration: underline; }
+    {# Barra di salvataggio fissa in fondo alla pagina #}
+    .save-bar { position: sticky; bottom: 0; background: white; color: #212529; padding: 15px; border-top: 2px solid #1976d2; display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+    /* Modal copia slot */
+    .modal-copy-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 2000; align-items: center; justify-content: center; }
+    .modal-copy-overlay.show { display: flex; }
+    .modal-copy-box { background: white; border-radius: 10px; width: 480px; max-width: 95vw; box-shadow: 0 8px 30px rgba(0,0,0,0.2); overflow: hidden; }
+    .modal-copy-header { background: #1976d2; color: white; padding: 12px 16px; display: flex; align-items: center; gap: 8px; font-weight: 600; }
+    .modal-copy-header .bi { font-size: 20px; }
+    .modal-copy-body { padding: 16px; }
+    .modal-copy-body .field-label { display: block; font-size: 0.82em; color: #555; margin-bottom: 6px; font-weight: 500; margin-top: 12px; }
+    .modal-copy-body .field-label:first-child { margin-top: 0; }
+    .modal-copy-body select { width: 100%; padding: 7px 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 0.9em; }
+    .modal-copy-body select:focus { outline: none; border-color: #1976d2; }
+    .giorni-check-list { max-height: 220px; overflow-y: auto; border: 1px solid #ddd; border-radius: 6px; padding: 6px 0; margin-top: 4px; }
+    .giorni-check-list .check-item { display: flex; align-items: center; gap: 8px; padding: 5px 10px; cursor: pointer; font-size: 0.88em; }
+    .giorni-check-list .check-item:hover { background: #e3f2fd; }
+    {# Giorni con dati già presenti evidenziati in arancione nel modal di copia #}
+    .giorni-check-list .check-item.has-data { color: #e65100; }
+    .giorni-check-list .check-item input[type="checkbox"] { accent-color: #1976d2; width: 15px; height: 15px; cursor: pointer; }
+    .quick-btns { display: flex; gap: 6px; margin-top: 6px; }
+    .quick-btns button { font-size: 0.78em; padding: 2px 10px; }
+    .modal-copy-info { margin-top: 10px; font-size: 0.78em; color: #888; background: #f5f5f5; padding: 6px 10px; border-radius: 5px; }
+    .modal-copy-footer { padding: 10px 16px; border-top: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+    .periodo-navigator { display: flex; align-items: center; gap: 6px; }
+    .periodo-navigator select { border: 1px solid #1976d2; border-radius: 6px; padding: 4px 8px; font-size: 0.9em; color: #1976d2; font-weight: 500; cursor: pointer; background: white; }
+    .periodo-navigator select:focus { outline: none; box-shadow: 0 0 0 2px rgba(25,118,210,0.2); }
+    .periodo-navigator .btn-nav { padding: 3px 8px; line-height: 1; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+{# Sezione: Dati JSON inline per uso JavaScript lato client #}
+{# Dizionario con tutti i giorni che hanno presenze, usato nel modal di copia slot #}
+<script id="giorni-periodo-data" type="application/json">
+    {{ giorni_periodo_json|safe }}
+</script>
+{# Lista hostess attive serializzata per la ricerca client-side (senza chiamate API) #}
+<script id="hostess-data" type="application/json">
+    [{% for h in hostess_list %}{"id": {{ h.id }}, "nome": "{{ h.nominativo|escapejs }}"}{% if not forloop.last %},{% endif %}{% endfor %}]
+</script>
+{# Lista agenzie serializzata per la ricerca client-side (senza chiamate API) #}
+<script id="agenzie-data" type="application/json">
+    [{% for a in agenzie_list %}{"id": {{ a.id }}, "nome": "{{ a.descrizione|escapejs }}"}{% if not forloop.last %},{% endif %}{% endfor %}]
+</script>
+
+{# Sezione: Intestazione pagina con badge numero hostess del periodo #}
+<div class="header-info">
+    <h4 class="mb-0">
+        <i class="bi bi-people" style="vertical-align: middle;"></i>
+        Individuazione Hostess
+    </h4>
+    <span class="badge bg-info">NHostess: {{ periodo.num_hostess }}</span>
+</div>
+
+{# Sezione: Navigatore periodo e giorno (frecce + selettore a tendina + datepicker) #}
+<div class="day-navigator">
+    {# Freccia sinistra per periodo precedente: disabilitata se non esiste #}
+    {% if periodo_prec %}
+    <a href="?periodo={{ periodo_prec.id }}" class="btn btn-outline-secondary btn-sm btn-nav" title="Periodo precedente">
+        <i class="bi bi-chevron-double-left" style="font-size:18px;vertical-align:middle;"></i>
+    </a>
+    {% else %}
+    <button class="btn btn-outline-secondary btn-sm btn-nav" disabled>
+        <i class="bi bi-chevron-double-left" style="font-size:18px;vertical-align:middle;"></i>
+    </button>
+    {% endif %}
+
+    {# Selettore a tendina per navigare direttamente tra i periodi disponibili #}
+    <div class="periodo-navigator">
+        <select onchange="window.location.href='?periodo=' + this.value" title="Seleziona periodo">
+            {% for p in tutti_periodi %}
+            {# Il periodo corrente è preselezionato #}
+            <option value="{{ p.id }}" {% if p.id == periodo.id %}selected{% endif %}>
+                {{ p.data_inizio|date:"d/m/Y" }} → {{ p.data_fine|date:"d/m/Y" }}
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    {# Freccia destra per periodo successivo: disabilitata se non esiste #}
+    {% if periodo_succ %}
+    <a href="?periodo={{ periodo_succ.id }}" class="btn btn-outline-secondary btn-sm btn-nav" title="Periodo successivo">
+        <i class="bi bi-chevron-double-right" style="font-size:18px;vertical-align:middle;"></i>
+    </a>
+    {% else %}
+    <button class="btn btn-outline-secondary btn-sm btn-nav" disabled>
+        <i class="bi bi-chevron-double-right" style="font-size:18px;vertical-align:middle;"></i>
+    </button>
+    {% endif %}
+
+    <div style="width:1px; height:24px; background:#ddd; margin:0 4px;"></div>
+
+    {# Navigazione giorno: datepicker + frecce. Il datepicker è limitato alle date del periodo. #}
+    <input type="date" class="form-control" style="width: auto;"
+           value="{{ giorno|date:'Y-m-d' }}"
+           min="{{ periodo.data_inizio|date:'Y-m-d' }}"
+           max="{{ periodo.data_fine|date:'Y-m-d' }}"
+           onchange="window.location.href='?periodo={{ periodo.id }}&giorno=' + this.value">
+    {# Freccia giorno precedente: disabilitata al primo giorno del periodo #}
+    {% if giorno_prec %}
+    <a href="?periodo={{ periodo.id }}&giorno={{ giorno_prec|date:'Y-m-d' }}" class="btn btn-outline-primary">
+        <i class="bi bi-chevron-left"></i>
+    </a>
+    {% else %}
+    <button class="btn btn-outline-secondary" disabled><i class="bi bi-chevron-left"></i></button>
+    {% endif %}
+
+    <h5>
+        <i class="bi bi-calendar-date" style="vertical-align: middle;"></i>
+        {{ giorno|date:"l d F Y" }}
+    </h5>
+
+    {# Freccia giorno successivo: disabilitata all'ultimo giorno del periodo #}
+    {% if giorno_succ %}
+    <a href="?periodo={{ periodo.id }}&giorno={{ giorno_succ|date:'Y-m-d' }}" class="btn btn-outline-primary">
+        <i class="bi bi-chevron-right"></i>
+    </a>
+    {% else %}
+    <button class="btn btn-outline-secondary" disabled><i class="bi bi-chevron-right"></i></button>
+    {% endif %}
+</div>
+
+{# Sezione: Form degli slot del giorno selezionato #}
+{# L'attributo data-giorno viene letto da JavaScript per il salvataggio AJAX #}
+<form id="form-presenze" data-giorno="{{ giorno|date:'Y-m-d' }}">
+{% csrf_token %}
+<div class="slots-container">
+    {# Itera su tutti gli slot del periodo (range 1..num_slots) #}
+    {% for slot in slots %}
+    {# Recupera la presenza corrispondente al numero slot usando il filtro custom get_item #}
+    {% with presenza=presenze|get_item:slot %}
+    {# La classe has-data evidenzia in verde gli slot con una hostess assegnata #}
+    <div class="slot-card {% if presenza.hostess %}has-data{% endif %}" data-slot="{{ slot }}">
+        <div class="slot-header">
+            <span>Slot {{ slot }}</span>
+            {# Pulsante copia slot: apre il modal per scegliere i giorni di destinazione #}
+            <button type="button" class="btn-copy-slot" onclick="aprireCopiaSlot({{ slot }})" title="Copia slot su altro giorno">
+                <i class="bi bi-copy"></i>
+            </button>
+        </div>
+        {# Campo fornitore con ricerca AJAX (cerca_fornitore API) #}
+        <div class="slot-field">
+            <label>Fornitore</label>
+            <div class="fornitore-search-mini">
+                {# Input nascosto se già selezionato, visibile se da selezionare #}
+                <input type="text" placeholder="Cerca..." class="fornitore-search-input" data-slot="{{ slot }}" autocomplete="off" {% if presenza.fornitore %}style="display:none;"{% endif %}>
+                <div class="fornitore-results-mini"></div>
+            </div>
+            <input type="hidden" name="fornitore_id_{{ slot }}" value="{% if presenza.fornitore %}{{ presenza.fornitore.codice }}{% endif %}">
+            {# Badge del fornitore selezionato con pulsante di rimozione #}
+            {% if presenza.fornitore %}
+            <div class="selected-fornitore" id="sel-forn-{{ slot }}">
+                <span>{{ presenza.fornitore.nome|truncatechars:25 }}</span>
+                <span class="remove" onclick="clearFornitoreSlot({{ slot }})">&times;</span>
+            </div>
+            {% else %}
+            <div class="selected-fornitore" id="sel-forn-{{ slot }}" style="display:none;"></div>
+            {% endif %}
+        </div>
+        <div class="slot-field">
+            <label>Nota</label>
+            <input type="text" name="nota_fornitore_{{ slot }}" value="{{ presenza.nota_fornitore|default:'' }}">
+        </div>
+        {# Campo hostess con ricerca client-side (dati inline da script id="hostess-data") #}
+        <div class="slot-field">
+            <label>Hostess</label>
+            <div class="hostess-search-mini">
+                <input type="text" placeholder="Cerca..." class="hostess-search-input" data-slot="{{ slot }}" autocomplete="off" {% if presenza.hostess %}style="display:none;"{% endif %}>
+                <div class="hostess-results-mini"></div>
+            </div>
+            <input type="hidden" name="hostess_id_{{ slot }}" value="{% if presenza.hostess %}{{ presenza.hostess.id }}{% endif %}">
+            {# Badge hostess selezionata: display:flex se presente, nascosta altrimenti #}
+            {% if presenza.hostess %}
+            <div class="selected-hostess" id="sel-host-{{ slot }}" style="display:flex;">
+                <span>{{ presenza.hostess.nominativo|truncatechars:25 }}</span>
+                <span class="remove" onclick="clearHostessSlot({{ slot }})">&times;</span>
+            </div>
+            {% else %}
+            <div class="selected-hostess" id="sel-host-{{ slot }}" style="display:none;"></div>
+            {% endif %}
+        </div>
+        {# Campo agenzia con ricerca client-side (dati inline da script id="agenzie-data") #}
+        <div class="slot-field">
+            <label>Agenzia</label>
+            <div class="agenzia-search-mini">
+                <input type="text" placeholder="Cerca..." class="agenzia-search-input" data-slot="{{ slot }}" autocomplete="off" {% if presenza.agenzia %}style="display:none;"{% endif %}>
+                <div class="agenzia-results-mini"></div>
+            </div>
+            <input type="hidden" name="agenzia_id_{{ slot }}" value="{% if presenza.agenzia %}{{ presenza.agenzia.id }}{% endif %}">
+            {# Badge agenzia selezionata #}
+            {% if presenza.agenzia %}
+            <div class="selected-agenzia" id="sel-ag-{{ slot }}" style="display:flex;">
+                <span>{{ presenza.agenzia.descrizione|truncatechars:20 }}</span>
+                <span class="remove" onclick="clearAgenziaSlot({{ slot }})">&times;</span>
+            </div>
+            {% else %}
+            <div class="selected-agenzia" id="sel-ag-{{ slot }}" style="display:none;"></div>
+            {% endif %}
+        </div>
+        {# Campi orario mattino: due input time affiancati (ingresso e uscita) #}
+        <div class="slot-field time-fields">
+            <label>Mattino</label>
+            <input type="time" name="ingresso_mattino_{{ slot }}" value="{% if presenza.ingresso_mattino %}{{ presenza.ingresso_mattino|time:'H:i' }}{% endif %}">
+            <input type="time" name="uscita_mattino_{{ slot }}" value="{% if presenza.uscita_mattino %}{{ presenza.uscita_mattino|time:'H:i' }}{% endif %}">
+        </div>
+        {# Campi orario pomeriggio: due input time affiancati (ingresso e uscita) #}
+        <div class="slot-field time-fields">
+            <label>Pomeriggio</label>
+            <input type="time" name="ingresso_pomeriggio_{{ slot }}" value="{% if presenza.ingresso_pomeriggio %}{{ presenza.ingresso_pomeriggio|time:'H:i' }}{% endif %}">
+            <input type="time" name="uscita_pomeriggio_{{ slot }}" value="{% if presenza.uscita_pomeriggio %}{{ presenza.uscita_pomeriggio|time:'H:i' }}{% endif %}">
+        </div>
+        <div class="slot-field">
+            <label>Varie</label>
+            <input type="text" name="varie_{{ slot }}" value="{{ presenza.nota|default:'' }}">
+        </div>
+    </div>
+    {% endwith %}
+    {% endfor %}
+</div>
+</form>
+
+{# Sezione: Barra di salvataggio fissa in fondo con badge copie in sospeso #}
+<div class="save-bar">
+    {# Badge arancione che appare quando ci sono copie slot in attesa di essere salvate #}
+    <span id="pending-copies-badge" style="display:none; background:#fb8c00; color:white; border-radius:12px; padding:4px 12px; font-size:0.82em; font-weight:600;">
+        <i class="bi bi-copy" style="vertical-align:middle;"></i>
+        <span></span>
+    </span>
+    <div style="display:flex; gap:10px;">
+        <button type="button" class="btn btn-secondary" onclick="location.reload()">
+            <i class="bi bi-arrow-clockwise" style="vertical-align: middle;"></i> Annulla
+        </button>
+        {# Salva tutti gli slot del giorno + esegue le copie in sospeso #}
+        <button type="button" class="btn btn-primary" id="btn-salva-tutto" onclick="salvaTutto()">
+            <i class="bi bi-floppy" style="vertical-align: middle;"></i> Salva Tutto
+        </button>
+    </div>
+</div>
+
+{# Sezione: Tabella riepilogo storico del periodo (tutti i giorni con hostess per slot) #}
+<div class="storico-container">
+    <div class="storico-header">
+        <i class="bi bi-clock-history" style="vertical-align: middle;"></i>
+        Riepilogo Periodo
+    </div>
+    <table class="storico-table">
+        <thead>
+            <tr>
+                <th>Giorno</th>
+                {# Intestazione dinamica: una colonna per ogni slot del periodo #}
+                {% for s in slots %}<th>Slot {{ s }}</th>{% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {# Itera su tutti i giorni del periodo per costruire lo storico #}
+            {% for g in giorni_periodo %}
+            {# La riga del giorno correntemente visualizzato viene evidenziata #}
+            <tr class="{% if g.data == giorno %}current-day{% endif %}">
+                <td>
+                    {# Link cliccabile per navigare direttamente a quel giorno #}
+                    <a href="?periodo={{ periodo.id }}&giorno={{ g.data|date:'Y-m-d' }}" class="day-link">
+                        {{ g.data|date:"D d/m" }}
+                    </a>
+                </td>
+                {# Per ogni slot, mostra il nominativo della hostess assegnata (se presente) #}
+                {% for s in slots %}
+                <td>
+                    {% for p in g.presenze %}
+                        {# Mostra solo la presenza che corrisponde a questo slot e ha una hostess #}
+                        {% if p.slot == s and p.hostess %}{{ p.hostess.nominativo|truncatechars:15 }}{% endif %}
+                    {% endfor %}
+                </td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{# Sezione: Modal per la copia di uno slot su altri giorni/periodi #}
+<div class="modal-copy-overlay" id="modal-copia">
+    <div class="modal-copy-box">
+        <div class="modal-copy-header">
+            <i class="bi bi-copy"></i>
+            <span id="modal-copia-title">Copia Slot</span>
+        </div>
+        <div class="modal-copy-body">
+            <span class="field-label">Periodo di destinazione</span>
+            {# Selettore periodo: al cambio ricarica la lista giorni disponibili #}
+            <select id="select-periodo-dest" onchange="aggiornaPeriodoDest()">
+                {% for p in periodi_giorni %}
+                {# data-giorni contiene la lista CSV delle date del periodo, usata da JS #}
+                <option value="{{ p.id }}"
+                    data-giorni="{% for g in p.giorni %}{{ g|date:'Y-m-d' }}{% if not forloop.last %},{% endif %}{% endfor %}"
+                    {% if p.id == periodo.id %}selected{% endif %}>
+                    {{ p.label }}
+                </option>
+                {% endfor %}
+            </select>
+            <span class="field-label">Giorni di destinazione</span>
+            {# Lista checkbox giorni: popolata dinamicamente da JavaScript (aggiornaPeriodoDest) #}
+            <div class="giorni-check-list" id="giorni-check-list"></div>
+            <div class="quick-btns">
+                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="selezionaTuttiGiorni(true)">Tutti</button>
+                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="selezionaTuttiGiorni(false)">Nessuno</button>
+            </div>
+            {# Box informativo: avvisa se i giorni selezionati hanno già dati (sovrascrittura) #}
+            <div class="modal-copy-info" id="modal-copy-info">
+                Verranno copiati: fornitore, nota, hostess, agenzia, varie. Gli orari NON vengono copiati.
+            </div>
+        </div>
+        <div class="modal-copy-footer">
+            <span id="modal-copy-count" style="font-size:0.82em; color:#555;"></span>
+            <div style="display:flex; gap:8px;">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="chiudiCopiaSlot()">Annulla</button>
+                <button type="button" class="btn btn-primary btn-sm" id="btn-conferma-copia" onclick="confermaCopiaSlot()">
+                    <i class="bi bi-copy" style="font-size:15px;vertical-align:middle;"></i> Copia
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Carica il dizionario presenze per tutti i periodi (da json_script inline)
+var giorniPeriodoData = JSON.parse(document.getElementById('giorni-periodo-data').textContent);
+var giornoCorrente = "{{ giorno|date:'Y-m-d' }}";
+var periodoCorrenteId = {{ periodo.id }};
+
+// ── Gestione Modal Copia Slot ──
+var slotDaCopire = null;
+var pendingCopies = [];  // Array di {giorni: [...], presenza: {...}} in attesa di salvataggio
+
+// Apre il modal di copia per lo slot indicato
+function aprireCopiaSlot(slot) {
+    slotDaCopire = slot;
+    document.getElementById('modal-copia-title').textContent = 'Copia Slot ' + slot;
+    document.getElementById('select-periodo-dest').value = periodoCorrenteId;
+    aggiornaPeriodoDest();
+    document.getElementById('modal-copia').classList.add('show');
+}
+
+function chiudiCopiaSlot() {
+    document.getElementById('modal-copia').classList.remove('show');
+    slotDaCopire = null;
+}
+
+// Aggiorna la lista checkbox giorni quando si cambia il periodo di destinazione
+function aggiornaPeriodoDest() {
+    var sel = document.getElementById('select-periodo-dest');
+    var opt = sel.options[sel.selectedIndex];
+    var periodoId = parseInt(sel.value);
+    var giorniStr = opt.getAttribute('data-giorni') || '';
+    var giorni = giorniStr ? giorniStr.split(',') : [];
+
+    var lista = document.getElementById('giorni-check-list');
+    lista.innerHTML = '';
+
+    giorni.forEach(function(g) {
+        // Esclude il giorno corrente dal periodo corrente (non ha senso copiare su se stesso)
+        if (periodoId === periodoCorrenteId && g === giornoCorrente) return;
+        // Verifica se questo slot ha già dati nel giorno (per evidenziare la sovrascrittura)
+        var hasData = giorniPeriodoData[g] && giorniPeriodoData[g].presenze && giorniPeriodoData[g].presenze[String(slotDaCopire)];
+        var d = new Date(g + 'T00:00:00');
+        var label = d.toLocaleDateString('it-IT', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' });
+        if (hasData) label += ' ⚠';  // Simbolo di avviso per i giorni con dati esistenti
+
+        var item = document.createElement('label');
+        item.className = 'check-item' + (hasData ? ' has-data' : '');
+        item.innerHTML = '<input type="checkbox" value="' + g + '"> ' + label;
+        item.querySelector('input').addEventListener('change', aggiornaContatore);
+        lista.appendChild(item);
+    });
+
+    aggiornaContatore();
+}
+
+// Seleziona o deseleziona tutte le checkbox dei giorni
+function selezionaTuttiGiorni(seleziona) {
+    document.querySelectorAll('#giorni-check-list input[type="checkbox"]').forEach(function(cb) {
+        cb.checked = seleziona;
+    });
+    aggiornaContatore();
+}
+
+// Aggiorna il contatore giorni selezionati e il messaggio di avviso sovrascrittura
+function aggiornaContatore() {
+    var selezionati = document.querySelectorAll('#giorni-check-list input[type="checkbox"]:checked').length;
+    var totale = document.querySelectorAll('#giorni-check-list input[type="checkbox"]').length;
+    var countEl = document.getElementById('modal-copy-count');
+    countEl.textContent = selezionati + ' di ' + totale + ' giorni selezionati';
+
+    // Controlla se almeno uno dei giorni selezionati ha già dati (sovrascrittura)
+    var hasOverwrite = Array.from(document.querySelectorAll('#giorni-check-list input[type="checkbox"]:checked'))
+        .some(function(cb) {
+            var g = cb.value;
+            return giorniPeriodoData[g] && giorniPeriodoData[g].presenze && giorniPeriodoData[g].presenze[String(slotDaCopire)];
+        });
+    var infoBox = document.getElementById('modal-copy-info');
+    if (hasOverwrite) {
+        infoBox.className = 'modal-copy-info warn';
+        infoBox.textContent = '⚠ Alcuni giorni hanno già dati: verranno sovrascritti. Gli orari NON vengono copiati.';
+    } else {
+        infoBox.className = 'modal-copy-info';
+        infoBox.textContent = 'Verranno copiati: fornitore, nota, hostess, agenzia, varie. Gli orari NON vengono copiati.';
+    }
+}
+
+// Legge tutti i campi dello slot (inclusi orari) dal form - usata da salvaTutto
+function leggiDatiSlotCompleto(slot) {
+    var form = document.getElementById('form-presenze');
+    return {
+        slot: slot,
+        fornitore_id: form.querySelector('input[name="fornitore_id_' + slot + '"]').value || null,
+        nota_fornitore: form.querySelector('input[name="nota_fornitore_' + slot + '"]').value || '',
+        hostess_id: form.querySelector('input[name="hostess_id_' + slot + '"]').value || null,
+        agenzia_id: form.querySelector('input[name="agenzia_id_' + slot + '"]').value || null,
+        ingresso_mattino: form.querySelector('input[name="ingresso_mattino_' + slot + '"]').value || null,
+        uscita_mattino: form.querySelector('input[name="uscita_mattino_' + slot + '"]').value || null,
+        ingresso_pomeriggio: form.querySelector('input[name="ingresso_pomeriggio_' + slot + '"]').value || null,
+        uscita_pomeriggio: form.querySelector('input[name="uscita_pomeriggio_' + slot + '"]').value || null,
+        varie: form.querySelector('input[name="varie_' + slot + '"]').value || '',
+    };
+}
+
+// Legge solo i campi anagrafici dello slot (senza orari) - usata per la copia
+function leggiDatiSlotSenzaOrari(slot) {
+    var form = document.getElementById('form-presenze');
+    return {
+        slot: slot,
+        fornitore_id: form.querySelector('input[name="fornitore_id_' + slot + '"]').value || null,
+        nota_fornitore: form.querySelector('input[name="nota_fornitore_' + slot + '"]').value || '',
+        hostess_id: form.querySelector('input[name="hostess_id_' + slot + '"]').value || null,
+        agenzia_id: form.querySelector('input[name="agenzia_id_' + slot + '"]').value || null,
+        varie: form.querySelector('input[name="varie_' + slot + '"]').value || '',
+    };
+}
+
+// Accoda la copia in pendingCopies (non salva subito: verrà eseguita in salvaTutto)
+function confermaCopiaSlot() {
+    var giorni = Array.from(document.querySelectorAll('#giorni-check-list input[type="checkbox"]:checked'))
+        .map(function(cb) { return cb.value; });
+
+    if (giorni.length === 0) { alert('Seleziona almeno un giorno di destinazione'); return; }
+
+    // Aggiunge la copia alla coda senza eseguirla subito
+    pendingCopies.push({ giorni: giorni, presenza: leggiDatiSlotSenzaOrari(slotDaCopire) });
+    chiudiCopiaSlot();
+
+    // Feedback visivo: intestazione slot arancione per 1,2 secondi
+    var header = document.querySelector('.slot-card[data-slot="' + slotDaCopire + '"] .slot-header');
+    if (header) {
+        header.style.background = '#fb8c00';
+        setTimeout(function() { header.style.background = ''; }, 1200);
+    }
+
+    aggiornaPendingBadge();
+}
+
+// Aggiorna il badge arancione con il numero di copie in sospeso
+function aggiornaPendingBadge() {
+    var totale = pendingCopies.reduce(function(acc, c) { return acc + c.giorni.length; }, 0);
+    var badge = document.getElementById('pending-copies-badge');
+    if (totale > 0) {
+        badge.querySelector('span').textContent = totale + ' cop' + (totale === 1 ? 'ia' : 'ie') + ' in sospeso';
+        badge.style.display = 'inline-block';
+    } else {
+        badge.style.display = 'none';
+    }
+}
+
+// Chiudi il modal cliccando fuori dalla finestra modale
+document.getElementById('modal-copia').addEventListener('click', function(e) {
+    if (e.target === this) chiudiCopiaSlot();
+});
+
+// ── Ricerca fornitore (AJAX con partial HTML) ──
+document.querySelectorAll('.fornitore-search-input').forEach(function(input) {
+    var timeout;
+    var slot = input.dataset.slot;
+    var resultsDiv = input.nextElementSibling;
+
+    input.addEventListener('keyup', function() {
+        clearTimeout(timeout);
+        var q = this.value;
+        if (q.length < 2) { resultsDiv.innerHTML = ''; resultsDiv.classList.remove('show'); return; }
+        // Debounce 300ms per evitare troppe chiamate API durante la digitazione
+        timeout = setTimeout(function() {
+            fetch("{% url 'pallet_promoter:cerca_fornitore' %}?q=" + encodeURIComponent(q))
+                .then(function(r) { return r.text(); })
+                .then(function(html) { resultsDiv.innerHTML = html; resultsDiv.classList.add('show'); });
+        }, 300);
+    });
+
+    resultsDiv.addEventListener('click', function(e) {
+        var item = e.target.closest('.fornitore-item');
+        if (item) {
+            document.querySelector('input[name="fornitore_id_' + slot + '"]').value = item.dataset.id;
+            var selDiv = document.getElementById('sel-forn-' + slot);
+            selDiv.innerHTML = '<span>' + item.dataset.nome.substring(0, 25) + '</span><span class="remove" onclick="clearFornitoreSlot(' + slot + ')">&times;</span>';
+            selDiv.style.display = 'flex';
+            input.style.display = 'none';
+            input.value = '';
+            resultsDiv.classList.remove('show');
+        }
+    });
+});
+
+function clearFornitoreSlot(slot) {
+    document.querySelector('input[name="fornitore_id_' + slot + '"]').value = '';
+    document.getElementById('sel-forn-' + slot).style.display = 'none';
+    var searchInput = document.querySelector('.fornitore-search-input[data-slot="' + slot + '"]');
+    if (searchInput) { searchInput.style.display = ''; searchInput.value = ''; }
+}
+
+// ── Ricerca hostess client-side (filtro su dati inline JSON) ──
+var hostessData = JSON.parse(document.getElementById('hostess-data').textContent);
+
+document.querySelectorAll('.hostess-search-input').forEach(function(input) {
+    var slot = input.dataset.slot;
+    var resultsDiv = input.nextElementSibling;
+
+    input.addEventListener('input', function() {
+        var q = this.value.toLowerCase().trim();
+        if (q.length < 1) { resultsDiv.innerHTML = ''; resultsDiv.classList.remove('show'); return; }
+        var filtered = hostessData.filter(function(h) { return h.nome.toLowerCase().includes(q); }).slice(0, 15);
+        if (filtered.length === 0) { resultsDiv.innerHTML = ''; resultsDiv.classList.remove('show'); return; }
+        resultsDiv.innerHTML = filtered.map(function(h) {
+            return '<div class="hostess-item-mini" data-id="' + h.id + '" data-nome="' + h.nome.replace(/"/g, '&quot;') + '">' + h.nome + '</div>';
+        }).join('');
+        resultsDiv.classList.add('show');
+    });
+
+    resultsDiv.addEventListener('click', function(e) {
+        var item = e.target.closest('.hostess-item-mini');
+        if (item) {
+            document.querySelector('input[name="hostess_id_' + slot + '"]').value = item.dataset.id;
+            var selDiv = document.getElementById('sel-host-' + slot);
+            selDiv.innerHTML = '<span>' + item.dataset.nome.substring(0, 25) + '</span><span class="remove" onclick="clearHostessSlot(' + slot + ')">&times;</span>';
+            selDiv.style.display = 'flex';
+            input.style.display = 'none';
+            input.value = '';
+            resultsDiv.classList.remove('show');
+        }
+    });
+});
+
+function clearHostessSlot(slot) {
+    document.querySelector('input[name="hostess_id_' + slot + '"]').value = '';
+    document.getElementById('sel-host-' + slot).style.display = 'none';
+    var searchInput = document.querySelector('.hostess-search-input[data-slot="' + slot + '"]');
+    if (searchInput) { searchInput.style.display = ''; searchInput.value = ''; }
+}
+
+// ── Ricerca agenzia client-side (filtro su dati inline JSON) ──
+var agenzieData = JSON.parse(document.getElementById('agenzie-data').textContent);
+
+document.querySelectorAll('.agenzia-search-input').forEach(function(input) {
+    var slot = input.dataset.slot;
+    var resultsDiv = input.nextElementSibling;
+
+    input.addEventListener('input', function() {
+        var q = this.value.toLowerCase().trim();
+        if (q.length < 1) { resultsDiv.innerHTML = ''; resultsDiv.classList.remove('show'); return; }
+        var filtered = agenzieData.filter(function(a) { return a.nome.toLowerCase().includes(q); }).slice(0, 15);
+        if (filtered.length === 0) { resultsDiv.innerHTML = ''; resultsDiv.classList.remove('show'); return; }
+        resultsDiv.innerHTML = filtered.map(function(a) {
+            return '<div class="agenzia-item-mini" data-id="' + a.id + '" data-nome="' + a.nome.replace(/"/g, '&quot;') + '">' + a.nome + '</div>';
+        }).join('');
+        resultsDiv.classList.add('show');
+    });
+
+    resultsDiv.addEventListener('click', function(e) {
+        var item = e.target.closest('.agenzia-item-mini');
+        if (item) {
+            document.querySelector('input[name="agenzia_id_' + slot + '"]').value = item.dataset.id;
+            var selDiv = document.getElementById('sel-ag-' + slot);
+            selDiv.innerHTML = '<span>' + item.dataset.nome.substring(0, 20) + '</span><span class="remove" onclick="clearAgenziaSlot(' + slot + ')">&times;</span>';
+            selDiv.style.display = 'flex';
+            input.style.display = 'none';
+            input.value = '';
+            resultsDiv.classList.remove('show');
+        }
+    });
+});
+
+function clearAgenziaSlot(slot) {
+    document.querySelector('input[name="agenzia_id_' + slot + '"]').value = '';
+    document.getElementById('sel-ag-' + slot).style.display = 'none';
+    var searchInput = document.querySelector('.agenzia-search-input[data-slot="' + slot + '"]');
+    if (searchInput) { searchInput.style.display = ''; searchInput.value = ''; }
+}
+
+// Chiudi tutti i dropdown di ricerca cliccando fuori
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.fornitore-search-mini')) {
+        document.querySelectorAll('.fornitore-results-mini').forEach(function(d) { d.classList.remove('show'); });
+    }
+    if (!e.target.closest('.hostess-search-mini')) {
+        document.querySelectorAll('.hostess-results-mini').forEach(function(d) { d.classList.remove('show'); });
+    }
+    if (!e.target.closest('.agenzia-search-mini')) {
+        document.querySelectorAll('.agenzia-results-mini').forEach(function(d) { d.classList.remove('show'); });
+    }
+});
+
+// ── Salva tutto: salva gli slot del giorno + esegue le copie in sospeso in sequenza ──
+function salvaTutto() {
+    var btn = document.getElementById('btn-salva-tutto');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Salvataggio...';
+
+    var form = document.getElementById('form-presenze');
+    var csrfToken = form.querySelector('[name="csrfmiddlewaretoken"]').value;
+    var presenze = [];
+    document.querySelectorAll('.slot-card').forEach(function(card) {
+        presenze.push(leggiDatiSlotCompleto(card.dataset.slot));
+    });
+
+    // Fase 1: salva gli slot del giorno corrente
+    fetch("{% url 'pallet_promoter:salva_presenze' %}", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+        body: JSON.stringify({ giorno: form.dataset.giorno, presenze: presenze })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (!data.success) throw new Error('Errore salvataggio giorno corrente');
+
+        // Fase 2: esegui le copie in sospeso una alla volta (reduce in catena di Promise)
+        var copies = pendingCopies.slice();
+        pendingCopies = [];
+        aggiornaPendingBadge();
+
+        return copies.reduce(function(chain, copia) {
+            return chain.then(function() {
+                return fetch("{% url 'alloca_hostess:copia_slot' %}", {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+                    body: JSON.stringify({ giorni: copia.giorni, presenza: copia.presenza })
+                }).then(function(r) { return r.json(); });
+            });
+        }, Promise.resolve());
+    })
+    .then(function() {
+        // Tutte le operazioni riuscite: feedback visivo e ricarica pagina
+        btn.innerHTML = '<i class="bi bi-check" style="vertical-align: middle;"></i> Salvato!';
+        btn.classList.replace('btn-primary', 'btn-success');
+        setTimeout(function() { location.reload(); }, 1000);
+    })
+    .catch(function(err) {
+        alert('Errore durante il salvataggio: ' + (err.message || err));
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-floppy" style="vertical-align: middle;"></i> Salva Tutto';
+    });
+}
+</script>
+{% endblock %}
