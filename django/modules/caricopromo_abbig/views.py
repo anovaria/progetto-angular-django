@@ -35,6 +35,7 @@ from modules.caricopromo_reparto.services import (
     conta_fase1, conta_export,
     get_meccaniche, get_tipi_sconto,
     importa_articoli_excel,
+    piano_esiste,
 )
 
 
@@ -238,6 +239,15 @@ def api_accoda_promo(request):
     # Le date sell-in sono obbligatorie per procedere con l'accodamento
     if not params['sellin_inizio'] or not params['sellin_fine']:
         return JsonResponse({'success': False, 'message': 'Date Sell-in obbligatorie'})
+
+    # Verifica che il piano selezionato esista davvero su Gold in questo momento:
+    # evita di accodare/esportare promozioni legate a piani non reali/autorizzati.
+    piano_codice = data.get('piano_codice', '')
+    if not piano_esiste(piano_codice):
+        return JsonResponse({
+            'success': False,
+            'message': f'Il Piano Promo "{piano_codice}" non risulta presente su Gold: verifica di averlo selezionato correttamente.',
+        })
 
     # Verifica che ci siano articoli selezionati prima di procedere
     selezionati = ArtFreFase1.objects.filter(utente=utente, scelta=True).count()

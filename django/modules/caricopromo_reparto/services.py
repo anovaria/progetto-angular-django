@@ -51,6 +51,21 @@ def get_piani_promo():
              'fine_sellin': r[5].strip() if r[5] else ''} for r in rows]
 
 
+def piano_esiste(piano_codice):
+    """Verifica che il codice piano sia effettivamente presente in t_PianoPromo su Gold
+    al momento dell'accodamento, per evitare di accodare/esportare promozioni legate
+    a piani non (più) reali/autorizzati lato Gold."""
+    piano_codice = (piano_codice or '').strip()
+    if not piano_codice:
+        return False
+    with get_gold_cursor() as cursor:
+        cursor.execute(
+            "SELECT TOP 1 1 FROM t_PianoPromo WHERE PIANO = %s",
+            [piano_codice]
+        )
+        return cursor.fetchone() is not None
+
+
 # ============================================================
 # FASE 1: CARICA ARTICOLI PER CCOM
 # ============================================================
@@ -527,6 +542,166 @@ def importa_articoli_excel(file_obj, utente):
     # batch_size=100: SQL Server limita a 2100 parametri per query (~20 campi × 100 = 2000)
     ArtFreFase1.objects.bulk_create(objs, batch_size=100)
     return len(objs)
+
+
+def importa_articoli_excel_svendita(file_obj, utente):
+    """
+    Importa articoli da file Excel svendita in ArtFreFase1 (scelta=True).
+    Formato atteso: Codice | Descrizione | Prezzo svendita [€]
+    Non cancella gli articoli esistenti: si aggiungono, i duplicati per CEXR
+    vengono ignorati (stesso comportamento del caricamento barcode).
+    """
+    import openpyxl
+
+    if hasattr(file_obj, 'seek'):
+        file_obj.seek(0)
+
+    wb = openpyxl.load_workbook(file_obj, read_only=True, data_only=True)
+
+    esistenti = set(ArtFreFase1.objects.filter(utente=utente).values_list('CEXR', flat=True))
+    visti = set(esistenti)
+    objs = []
+
+    def idx(headers, *names):
+        for name in names:
+            try:
+                return headers.index(name.upper())
+            except ValueError:
+                pass
+        for name in names:
+            for i, h in enumerate(headers):
+                if h.startswith(name.upper()):
+                    return i
+        return None
+
+    for sheet_name in wb.sheetnames:
+        ws = wb[sheet_name]
+        rows = list(ws.iter_rows(values_only=True))
+        if len(rows) < 2:
+            continue
+
+        headers = [str(h).strip().upper() if h is not None else '' for h in rows[0]]
+        i_codice = idx(headers, 'CODICE')
+        i_descr  = idx(headers, 'DESCRIZIONE')
+        i_prezzo = idx(headers, 'PREZZO SVENDITA', 'PREZZO')
+
+        if i_codice is None:
+            continue
+
+        for row in rows[1:]:
+            val_codice = row[i_codice] if i_codice < len(row) else None
+            if val_codice is None:
+                continue
+            cexr = str(val_codice).strip()
+            if not cexr or cexr in visti:
+                continue
+            visti.add(cexr)
+
+            descr = ''
+            if i_descr is not None and i_descr < len(row) and row[i_descr] is not None:
+                descr = str(row[i_descr]).strip()
+
+            prezzo = ''
+            if i_prezzo is not None and i_prezzo < len(row) and row[i_prezzo] is not None:
+                val = row[i_prezzo]
+                if not hasattr(val, 'year'):
+                    prezzo = str(val).strip()
+
+            objs.append(ArtFreFase1(
+                SOBCEXT='', TSOBDESC='', CNUF='', CNUM='', DESC_CNUF='',
+                DESC_CEXR=descr, LINEA_PRODOTTO='', TIPO_RIORDINO='',
+                ARTFO='', Desc_Linea='', PrezzoV='',
+                CEXR=cexr, VL='', STATO='',
+                PrezzoVOff=prezzo,
+                scelta=True, utente=utente,
+            ))
+
+    wb.close()
+
+    if not objs:
+        raise ValueError("Nessun articolo nuovo da importare (file vuoto o tutti già presenti)")
+
+    # Arricchimento dati da Gold: recupera in batch i campi mancanti (CNUM, CNUF,
+    # SOBCEXT, VL, ecc.) necessari per l'accodamento promo.
+    codici = [o.CEXR for o in objs]
+    placeholders = ','.join(['%s'] * len(codici))
+    gold_data = {}
+    try:
+        with get_gold_cursor() as cursor:
+            # Prima passata: t_artfrepromo (articoli attivi, ha LINEA_PRODOTTO e TIPO_RIORDINO)
+            cursor.execute(f"""
+                SELECT CEXR, REP, DESCREP, CCOM, CODFO, DIVISIONE,
+                       LINEA_PRODOTTO, TIPO_RIORDINO, ARTFO, DESCR_LINEA, PRZ_VEND, VL
+                FROM t_artfrepromo
+                WHERE CEXR IN ({placeholders})
+            """, codici)
+            for row in cursor.fetchall():
+                cexr = str(row[0] or '').strip()
+                if cexr and cexr not in gold_data:
+                    gold_data[cexr] = {
+                        'SOBCEXT':        str(row[1] or '').strip(),
+                        'TSOBDESC':       str(row[2] or '').strip(),
+                        'CNUF':           str(row[3] or '').strip(),
+                        'CNUM':           str(row[4] or '').strip(),
+                        'DESC_CNUF':      str(row[5] or '').strip(),
+                        'LINEA_PRODOTTO': str(row[6] or '').strip(),
+                        'TIPO_RIORDINO':  str(row[7] or '').strip(),
+                        'ARTFO':          str(row[8] or '').strip(),
+                        'Desc_Linea':     str(row[9] or '').strip(),
+                        'PrezzoV':        str(row[10] or '').strip(),
+                        'VL':             str(row[11] or '').strip(),
+                    }
+
+            # Seconda passata: t_masterData per gli articoli fine serie non in t_artfrepromo
+            mancanti = [c for c in codici if c not in gold_data]
+            if mancanti:
+                mp = ','.join(['%s'] * len(mancanti))
+                cursor.execute(f"""
+                    SELECT CODART, REPARTO, DESCREP, CCOM, CODFORN, DESCRCCOM,
+                           CODARTFO, PRZ_VEND, VL
+                    FROM t_masterData
+                    WHERE CODART IN ({mp})
+                """, mancanti)
+                for row in cursor.fetchall():
+                    cexr = str(row[0] or '').strip()
+                    if cexr and cexr not in gold_data:
+                        gold_data[cexr] = {
+                            'SOBCEXT':        str(row[1] or '').strip(),
+                            'TSOBDESC':       str(row[2] or '').strip(),
+                            'CNUF':           str(row[3] or '').strip(),
+                            'CNUM':           str(row[4] or '').strip(),
+                            'DESC_CNUF':      str(row[5] or '').strip(),
+                            'LINEA_PRODOTTO': '',
+                            'TIPO_RIORDINO':  '',
+                            'ARTFO':          str(row[6] or '').strip(),
+                            'Desc_Linea':     '',
+                            'PrezzoV':        str(row[7] or '').strip(),
+                            'VL':             str(row[8] or '').strip(),
+                        }
+    except Exception:
+        pass  # Se Gold non risponde, procede con i soli campi Excel
+
+    incompleti = []
+    for o in objs:
+        g = gold_data.get(o.CEXR, {})
+        o.SOBCEXT        = g.get('SOBCEXT', '')
+        o.TSOBDESC       = g.get('TSOBDESC', '')
+        o.CNUF           = g.get('CNUF', '')
+        o.CNUM           = g.get('CNUM', '')
+        o.DESC_CNUF      = g.get('DESC_CNUF', '')
+        o.LINEA_PRODOTTO = g.get('LINEA_PRODOTTO', '')
+        o.TIPO_RIORDINO  = g.get('TIPO_RIORDINO', '')
+        o.ARTFO          = g.get('ARTFO', '')
+        o.Desc_Linea     = g.get('Desc_Linea', '')
+        o.PrezzoV        = g.get('PrezzoV', '')
+        o.VL             = g.get('VL', '')
+        if not o.DESC_CEXR:
+            o.DESC_CEXR = g.get('DESC_CEXR', '')
+        if not o.CNUF or not o.CNUM:
+            incompleti.append({'codart': o.CEXR, 'descr': o.DESC_CEXR})
+
+    ArtFreFase1.objects.bulk_create(objs, batch_size=100)
+    return len(objs), incompleti
 
 
 # ============================================================

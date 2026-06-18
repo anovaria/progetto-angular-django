@@ -325,7 +325,8 @@
                 {# Menu espandibile (con figli) - usa forloop.counter come ID univoco del sottomenu #}
                 <button class="nav-link menu-parent {% if item.parent_active %}active{% endif %}"
                         onclick="toggleSubmenu('sub-{{ forloop.counter }}')"
-                        data-submenu="sub-{{ forloop.counter }}">
+                        data-submenu="sub-{{ forloop.counter }}"
+                        title="{{ item.desc|default:item.label }}">
                     <i class="bi bi-{{ item.icon }}"></i>
                     <span class="nav-label">{{ item.label }}</span>
                     <i class="bi bi-chevron-down expand-icon" id="icon-sub-{{ forloop.counter }}"></i>
@@ -335,7 +336,8 @@
                     {% for child in item.children %}
                     <li>
                         <a class="nav-link {% if child.child_active %}active{% endif %}"
-                           href="{{ child.path }}">
+                           href="{{ child.path }}"
+                           title="{{ child.desc|default:child.label }}">
                             <i class="bi bi-{{ child.icon }}"></i>
                             <span class="nav-label">{{ child.label }}</span>
                         </a>
@@ -345,7 +347,8 @@
 
                 {% elif item.is_external %}
                 {# Link esterno: si apre in una nuova scheda (es. Django Admin) #}
-                <a class="nav-link" href="{{ item.path }}" target="_blank" rel="noopener">
+                <a class="nav-link" href="{{ item.path }}" target="_blank" rel="noopener"
+                   title="{{ item.desc|default:item.label }}">
                     <i class="bi bi-{{ item.icon }}"></i>
                     <span class="nav-label">{{ item.label }}</span>
                     <i class="bi bi-box-arrow-up-right" style="font-size:12px;color:#999;"></i>
@@ -354,7 +357,8 @@
                 {% else %}
                 {# Link normale: navigazione interna al portale #}
                 <a class="nav-link {% if item.parent_active %}active{% endif %}"
-                   href="{{ item.path }}">
+                   href="{{ item.path }}"
+                   title="{{ item.desc|default:item.label }}">
                     <i class="bi bi-{{ item.icon }}"></i>
                     <span class="nav-label">{{ item.label }}</span>
                 </a>

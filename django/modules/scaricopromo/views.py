@@ -315,10 +315,10 @@ def azione_esporta_csv(request):
                 for content, filename in files:
                     zf.writestr(filename, content)
             zip_buf.seek(0)
-            # Usa il timestamp del primo file come prefisso del nome ZIP
-            timestamp = files[0][1].split('_')[0]
+            # Usa il nome del primo file (con eventuale prefisso ambiente) per il nome del ZIP
+            prefisso = files[0][1].rsplit('_Promo.csv', 1)[0].rsplit('_CondAcq.csv', 1)[0]
             response = HttpResponse(zip_buf.read(), content_type='application/zip')
-            response['Content-Disposition'] = f'attachment; filename="{timestamp}_Promo.zip"'
+            response['Content-Disposition'] = f'attachment; filename="{prefisso}_Promo.zip"'
 
         return response
     except Exception as e:

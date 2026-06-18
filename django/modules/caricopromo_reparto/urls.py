@@ -14,6 +14,7 @@ urlpatterns = [
     path('api/visualizza-inseriti/', views.api_visualizza_inseriti, name='api_visualizza_inseriti'),
     path('api/svuota-inseriti/', views.api_svuota_inseriti, name='api_svuota_inseriti'),
     path('api/rimuovi-inserito/', views.api_rimuovi_inserito, name='api_rimuovi_inserito'),
+    path('api/importa-excel-svendita/', views.api_importa_excel_svendita, name='api_importa_excel_svendita'),
     path('api/cerca-barcode/', views.api_cerca_barcode, name='api_cerca_barcode'),
     path('api/aggiungi-manuali/', views.api_aggiungi_manuali, name='api_aggiungi_manuali'),
     path('api/duplica/promos/', views.api_duplica_get_promos, name='api_duplica_get_promos'),

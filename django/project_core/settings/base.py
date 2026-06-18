@@ -231,6 +231,12 @@ CURSORI_POS_ENABLED = os.environ.get('CURSORI_POS_ENABLED', '0') == '1'
 # con RIO_PDV_ENABLED=1 nell'ambiente (NSSM) dove serve, poi riavviare.
 RIO_PDV_ENABLED = os.environ.get('RIO_PDV_ENABLED', '0') == '1'
 
+# Vecchio Riordino Fornitori (modulo rio_fornitori → srviis [172.17.10.51]). Default OFF:
+# sostituito da rio_fornitori_new (stessa funzione Dash, ma su srviisnew/Gold, senza srviis).
+# Tenere a 1 nell'ambiente (NSSM) solo durante l'affiancamento col nuovo; poi rimuovere la
+# variabile + restart per nasconderlo. È l'ultimo aggancio attivo del portale a srviis.
+RIO_FORNITORI_OLD_ENABLED = os.environ.get('RIO_FORNITORI_OLD_ENABLED', '0') == '1'
+
 # Giacenze LIVE da Oracle GOLDPROD per la Posizione Articoli (come il vecchio web
 # service DettaglioArticolo). Stesso account/host Oracle di rio_fornitori_new
 # (GOLDCEN su Srvoracle.groscidac.local): testato in dev, ritorna i valori del

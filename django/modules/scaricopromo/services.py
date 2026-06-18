@@ -31,6 +31,14 @@ def get_timestamp():
     """Formato timestamp come in VBA: ddmmyy_hhmmss"""
     return datetime.now().strftime('%d%m%y_%H%M%S')
 
+
+def env_prefix():
+    """Prefisso per i nomi dei file di export, per riconoscere a colpo d'occhio
+    se il file proviene dall'ambiente di test/dev ed evitare che venga copiato
+    per errore nella cartella di export di produzione."""
+    env = getattr(settings, 'PORTAL_ENVIRONMENT', 'dev')
+    return '' if env == 'prod' else f'{env.upper()}_'
+
 def format_date_ddmmyyyy(val):
     """Converte qualsiasi formato data in dd/mm/yyyy."""
     if not val:
@@ -560,7 +568,7 @@ def esporta_aggiorna_attributi_csv():
     Genera CSV con i dati di AggiornaAttri. Restituisce (bytes, filename).
     """
     timestamp = get_timestamp()
-    filename = f"{timestamp}_Attr.csv"
+    filename = f"{env_prefix()}{timestamp}_Attr.csv"
 
     records = AggiornaAttri.objects.all().values_list(
         'CodArticolo', 'ClasseAttri', 'CodAttri',
@@ -600,7 +608,7 @@ def esporta_promo_csv():
     Genera CSV con tutti i dati promozione da t_perExport. Restituisce (bytes, filename).
     """
     timestamp = get_timestamp()
-    filename = f"{timestamp}_Promo.csv"
+    filename = f"{env_prefix()}{timestamp}_Promo.csv"
 
     records = PerExport.objects.all().values_list(
         'Promozioni', 'FornitoreAmministrativo', 'ContrattoCommerciale',
@@ -649,7 +657,7 @@ def esporta_condacq_csv():
     Genera CSV solo per record con ScontoExtra > 0. Restituisce (bytes, filename).
     """
     timestamp = get_timestamp()
-    filename = f"{timestamp}_CondAcq.csv"
+    filename = f"{env_prefix()}{timestamp}_CondAcq.csv"
 
     records = PerExport.objects.exclude(
         ScontoExtra=''

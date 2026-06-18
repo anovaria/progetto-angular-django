@@ -211,6 +211,9 @@
             <button class="btn btn-sm btn-info" onclick="apriDuplicaPromo()" title="Copia articoli da promo Gold storica" style="margin-left:auto;">
                 &#128260; Duplica da Promo
             </button>
+            <button class="btn btn-sm btn-success" onclick="apriImportaSvendita()" title="Importa articoli da file Excel svendita">
+                <i class="bi bi-file-earmark-excel"></i> Importa Svendita
+            </button>
             {# Bottone per aggiungere articoli singoli tramite lettore barcode #}
             <button class="btn btn-sm btn-warning" onclick="apriBarcode()" title="Aggiungi articoli singoli con lettore barcode">
                 <i class="bi bi-upc-scan"></i> Caricamento Manuale
@@ -274,18 +277,20 @@
         <div class="section-title">3. Parametri Promozione</div>
 
         <div class="promo-form">
-            {# Filtro per lettera iniziale del codice piano (es. A, B, C...) #}
-            <div class="form-group">
-                <label>Filtro Piano</label>
-                <select id="prm-filtro-piano" onchange="filtraPiani(this.value)">
-                    <option value="">Tutti</option>
-                </select>
-            </div>
-            <div class="form-group" style="grid-column: span 2;">
+            <div class="form-group" style="grid-column: span 3; position:relative;">
                 <label>Piano Promo</label>
-                <select id="prm-selezione">
+                <input type="text" id="piano-search" placeholder="Cerca piano promo..."
+                    autocomplete="off"
+                    style="padding:7px 10px; border:1px solid #ccc; border-radius:4px; font-size:0.9em; width:100%; box-sizing:border-box;"
+                    oninput="filtraPianiInline(this.value)"
+                    onfocus="filtraPianiInline(this.value)"
+                    onkeydown="pianoCombinazione(event)">
+                <div id="piano-dropdown" style="display:none; position:absolute; z-index:100; background:white;
+                    border:1px solid #ccc; border-radius:4px; max-height:220px; overflow-y:auto;
+                    width:100%; box-shadow:0 4px 12px rgba(0,0,0,0.12); top:100%; left:0;"></div>
+                {# select nascosto: mantiene il valore selezionato e i data-* per l'auto-compilazione date #}
+                <select id="prm-selezione" style="display:none;">
                     <option value="">-- Nessuno --</option>
-                    {# Ogni option porta i data-* con le date del piano per l'auto-compilazione #}
                     {% for p in piani %}
                     <option value="{{ p.piano }}" data-inizio="{{ p.inizio }}" data-fine="{{ p.fine }}" data-lettera="{{ p.piano|first }}" data-inizio-sellin="{{ p.inizio_sellin }}" data-fine-sellin="{{ p.fine_sellin }}" data-descrizione="{{ p.descrizione }}">
                         {{ p.piano }} - {{ p.descrizione }}
@@ -440,6 +445,60 @@
 </div>
 
 {# Sezione: modal di avviso per date Sell-out mancanti #}
+<!-- Modal Importa Excel Svendita -->
+<div class="modal-overlay" id="modal-importa-svendita" onclick="if(event.target===this)chiudiImportaSvendita()">
+    <div class="modal" style="max-width:480px; width:96%;">
+        <h3 style="color:#27ae60;"><i class="bi bi-file-earmark-excel"></i> Importa Svendita da Excel</h3>
+        <p style="color:#666; margin-bottom:14px; font-size:0.9em;">
+            Formato atteso: <strong>Codice</strong> | <strong>Descrizione</strong> | <strong>Prezzo svendita</strong><br>
+            Gli articoli vengono aggiunti a quelli già in lista; i duplicati vengono ignorati.
+        </p>
+        <div style="margin-bottom:14px;">
+            <input type="file" id="svendita-file-input" accept=".xlsx,.xls"
+                style="display:block; width:100%; padding:8px; border:2px dashed #27ae60; border-radius:6px; cursor:pointer;">
+        </div>
+
+        <div id="svendita-msg" style="min-height:22px; font-size:0.85em; margin-bottom:10px;"></div>
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="chiudiImportaSvendita()">Annulla</button>
+            <button class="btn btn-success" id="btn-conferma-svendita" onclick="confermaImportaSvendita()" disabled>
+                <i class="bi bi-upload"></i> Importa
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Articoli Incompleti Svendita -->
+<div class="modal-overlay" id="modal-incompleti-svendita">
+    <div class="modal" style="max-width:600px; width:96%;">
+        <h3 style="color:#e67e22;">⚠ Articoli non trovati in Gold</h3>
+        <p style="color:#666; font-size:0.88em; margin-bottom:12px;">
+            Gli articoli seguenti sono stati importati ma mancano di Fornitore e CCOM
+            perché non presenti nelle tabelle Gold. Stampa la lista, correggili nel file
+            Excel aggiungendo le colonne mancanti e rifai l'import.
+        </p>
+        <div style="overflow-y:auto; max-height:350px; margin-bottom:14px;">
+            <table id="tbl-incompleti" style="width:100%; border-collapse:collapse; font-size:0.82em;">
+                <thead>
+                    <tr>
+                        <th style="background:#e67e22;color:white;padding:5px 8px;text-align:left;">Cod. Articolo</th>
+                        <th style="background:#e67e22;color:white;padding:5px 8px;text-align:left;">Descrizione</th>
+                    </tr>
+                </thead>
+                <tbody id="tbody-incompleti"></tbody>
+            </table>
+        </div>
+        <div class="modal-actions">
+            <span id="incompleti-count" style="font-size:0.85em;color:#666;"></span>
+            <div style="flex:1"></div>
+            <button class="btn btn-outline btn-sm" onclick="stampaIncompleti()">
+                <i class="bi bi-printer"></i> Stampa lista
+            </button>
+            <button class="btn btn-primary" onclick="document.getElementById('modal-incompleti-svendita').classList.remove('show')">Chiudi</button>
+        </div>
+    </div>
+</div>
+
 <!-- Modal Avviso Sell-out mancante -->
 <div class="modal-overlay" id="modal-sellout" onclick="if(event.target===this)this.classList.remove('show')">
     <div class="modal" style="max-width:420px;">
@@ -614,7 +673,18 @@ document.addEventListener('click', e => {
 // ---- fine CCOM ----
 
 // ── AUTO-RESTORE staging al caricamento pagina ───────────────
-{# Se ci sono articoli già inseriti, avvisa l'utente al caricamento della pagina #}
+{% if articoli %}
+document.addEventListener('DOMContentLoaded', function() {
+    const articoli = {{ articoli_json }};
+    const conteggi = {{ conteggi_json }};
+    renderArticoli(articoli);
+    aggiornaSelCount(conteggi);
+    document.getElementById('sel-toolbar').style.display = 'flex';
+    document.getElementById('section-promo').style.display = 'block';
+    document.getElementById('art-count').textContent = '(' + articoli.length + ')';
+    // Se tutti gli articoli sono svendita (CNUF vuoto), nascondi i filtri
+});
+{% endif %}
 {% if export_counts.tutti %}
 document.addEventListener('DOMContentLoaded', function() {
     showToast('⚠ Hai {{ export_counts.tutti }} articoli già inseriti — verifica il modal "Articoli Inseriti"', 'warning');
@@ -685,26 +755,63 @@ function dateToInput(d) {
     return '';
 }
 
-// Popola il filtro per lettera iniziale del piano promo
-(function() {
-    const lettere = new Set();
-    document.querySelectorAll('#prm-selezione option[data-lettera]').forEach(opt => {
-        if (opt.dataset.lettera) lettere.add(opt.dataset.lettera);
-    });
-    const sel = document.getElementById('prm-filtro-piano');
-    [...lettere].sort().forEach(l => {
-        sel.innerHTML += `<option value="${l}">${l}</option>`;
-    });
-})();
+// ── RICERCA INLINE PIANO PROMO ───────────────────────────────
+const _allPiani = Array.from(document.querySelectorAll('#prm-selezione option[data-lettera]'))
+    .map(o => ({ value: o.value, label: o.textContent.trim() }));
 
-function filtraPiani(lettera) {
-    const sel = document.getElementById('prm-selezione');
-    const opts = sel.querySelectorAll('option[data-lettera]');
-    opts.forEach(opt => {
-        opt.style.display = (!lettera || opt.dataset.lettera === lettera) ? '' : 'none';
-    });
-    sel.value = '';
+function filtraPianiInline(q) {
+    const dd = document.getElementById('piano-dropdown');
+    const filtrati = q.trim()
+        ? _allPiani.filter(p => p.label.toLowerCase().includes(q.toLowerCase()))
+        : _allPiani;
+    if (!filtrati.length) { dd.style.display = 'none'; return; }
+    dd.innerHTML = filtrati.map((p, i) =>
+        `<div data-value="${p.value}" data-idx="${i}"
+            style="padding:7px 10px; cursor:pointer; font-size:0.88em; border-bottom:1px solid #f0f0f0;"
+            onmousedown="selezionaPiano('${p.value}','${p.label.replace(/'/g,"\\'")}')">
+            ${p.label}
+        </div>`
+    ).join('');
+    dd.style.display = 'block';
+    _pianoFocusIdx = -1;
 }
+
+let _pianoFocusIdx = -1;
+function pianoCombinazione(e) {
+    const dd = document.getElementById('piano-dropdown');
+    const items = dd.querySelectorAll('div[data-value]');
+    if (!items.length) return;
+    if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        _pianoFocusIdx = Math.min(_pianoFocusIdx + 1, items.length - 1);
+    } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        _pianoFocusIdx = Math.max(_pianoFocusIdx - 1, 0);
+    } else if (e.key === 'Enter' && _pianoFocusIdx >= 0) {
+        e.preventDefault();
+        const it = items[_pianoFocusIdx];
+        selezionaPiano(it.dataset.value, it.textContent.trim());
+        return;
+    } else if (e.key === 'Escape') {
+        dd.style.display = 'none'; return;
+    } else { return; }
+    items.forEach((it, i) => it.style.background = i === _pianoFocusIdx ? '#eaf2f8' : '');
+    if (_pianoFocusIdx >= 0) items[_pianoFocusIdx].scrollIntoView({ block: 'nearest' });
+}
+
+function selezionaPiano(value, label) {
+    document.getElementById('piano-search').value = label;
+    document.getElementById('prm-selezione').value = value;
+    document.getElementById('piano-dropdown').style.display = 'none';
+    // Trigger auto-compilazione date
+    document.getElementById('prm-selezione').dispatchEvent(new Event('change'));
+}
+
+document.addEventListener('click', e => {
+    if (!e.target.closest('.form-group')) {
+        document.getElementById('piano-dropdown').style.display = 'none';
+    }
+});
 
 // Al cambio piano promo, auto-compila le date sell-out e sell-in
 document.getElementById('prm-selezione').addEventListener('change', function() {
@@ -831,7 +938,9 @@ function renderFiltri(linee, tipi, fasce) {
     const selFascia = document.getElementById('filtro-fascia');
     selFascia.innerHTML = '<option value="">Per fascia prezzo...</option>';
     (fasce || []).forEach(f => { selFascia.innerHTML += `<option value="${f}">${f}</option>`; });
+
 }
+
 
 function toggleRow(id) {
     postJSON(URLS.toggle, { id })
@@ -922,6 +1031,7 @@ function accodaPromo(forza, selloutConfermato) {
 
     const params = {
         selezione_promo: selezione_promo,
+        piano_codice: selOpt ? selOpt.value : '',
         data_inizio: formatDate(document.getElementById('prm-data-inizio').value),
         data_fine: formatDate(document.getElementById('prm-data-fine').value),
         sellin_inizio: formatDate(document.getElementById('prm-sellin-inizio').value),
@@ -1191,6 +1301,113 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 });
+
+// ── IMPORTA SVENDITA DA EXCEL ────────────────────────────────
+
+function apriImportaSvendita() {
+    document.getElementById('svendita-file-input').value = '';
+    document.getElementById('svendita-msg').textContent = '';
+    document.getElementById('btn-conferma-svendita').disabled = true;
+    document.getElementById('modal-importa-svendita').classList.add('show');
+}
+
+function chiudiImportaSvendita() {
+    document.getElementById('modal-importa-svendita').classList.remove('show');
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('svendita-file-input').addEventListener('change', function() {
+        const msg = document.getElementById('svendita-msg');
+        const btn = document.getElementById('btn-conferma-svendita');
+        if (this.files && this.files.length) {
+            msg.style.color = '#27ae60';
+            msg.textContent = '✓ ' + this.files[0].name;
+            btn.disabled = false;
+        } else {
+            msg.textContent = '';
+            btn.disabled = true;
+        }
+    });
+});
+
+function confermaImportaSvendita() {
+    const input = document.getElementById('svendita-file-input');
+    if (!input.files || !input.files.length) return;
+
+    const btn = document.getElementById('btn-conferma-svendita');
+    const msg = document.getElementById('svendita-msg');
+    btn.disabled = true;
+    btn.textContent = 'Importazione...';
+
+    const fd = new FormData();
+    fd.append('file', input.files[0]);
+    fd.append('csrfmiddlewaretoken', getCsrfToken());
+
+    fetch("{% url 'caricopromo_reparto:api_importa_excel_svendita' %}", { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(data => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-upload"></i> Importa';
+            if (data.success) {
+                chiudiImportaSvendita();
+                renderArticoli(data.articoli);
+                aggiornaSelCount(data.conteggi);
+                document.getElementById('sel-toolbar').style.display = 'flex';
+                document.getElementById('section-promo').style.display = 'block';
+                document.getElementById('art-count').textContent = '(' + data.articoli.length + ')';
+                showToast(data.message, 'success');
+                const incompleti = data.incompleti || [];
+                if (incompleti.length) apriIncompleti(incompleti);
+            } else {
+                msg.style.color = '#e74c3c';
+                msg.textContent = '✗ ' + data.message;
+            }
+        })
+        .catch(() => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-upload"></i> Importa';
+            msg.style.color = '#e74c3c';
+            msg.textContent = 'Errore di connessione';
+        });
+}
+
+function apriIncompleti(lista) {
+    document.getElementById('tbody-incompleti').innerHTML = lista.map(a =>
+        `<tr>
+            <td style="padding:4px 8px;border-bottom:1px solid #eee;"><strong>${a.codart}</strong></td>
+            <td style="padding:4px 8px;border-bottom:1px solid #eee;">${a.descr || ''}</td>
+        </tr>`
+    ).join('');
+    document.getElementById('incompleti-count').textContent = lista.length + ' articoli incompleti';
+    document.getElementById('modal-incompleti-svendita').classList.add('show');
+}
+
+function stampaIncompleti() {
+    const rows = document.getElementById('tbody-incompleti').innerHTML;
+    const w = window.open('', '_blank', 'width=700,height=600');
+    w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8">
+<title>Articoli incompleti svendita</title>
+<style>
+  body { font-family: Arial, sans-serif; font-size: 11px; margin: 15px; }
+  h2 { color: #e67e22; font-size: 13px; margin-bottom: 4px; }
+  p { color: #666; font-size: 10px; margin-bottom: 10px; }
+  table { width: 100%; border-collapse: collapse; }
+  th { background: #e67e22; color: white; padding: 5px 8px; text-align: left; }
+  td { padding: 4px 8px; border-bottom: 1px solid #ddd; }
+  tr:nth-child(even) td { background: #fef9f3; }
+  @media print {
+    @page { margin: 10mm 8mm 14mm 8mm;
+      @bottom-center { content: counter(page) " di " counter(pages); font-size: 9pt; }
+    }
+  }
+</style></head><body>
+<h2>Articoli incompleti — da correggere nel file Excel</h2>
+<p>Questi articoli non sono stati trovati in Gold e mancano di Fornitore e CCOM. Aggiungili manualmente e rifai l'import.</p>
+<table><thead><tr><th>Cod. Articolo</th><th>Descrizione</th></tr></thead><tbody>${rows}</tbody></table>
+<script>window.onload=function(){window.print();}<\/script>
+</body></html>`);
+    w.document.close();
+}
 
 // ── CARICAMENTO MANUALE BARCODE ──────────────────────────────
 let barcodeList = [];

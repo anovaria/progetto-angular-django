@@ -1,7 +1,8 @@
 {% extends 'portal/base.html' %}
 {% load static %}
+{% load rio_tags %}
 
-{% block title %}Proposte Ordine [TEST] — {% block page_title %}{% endblock %}{% endblock %}
+{% block title %}Proposte Ordine Fornitori — {% block page_title %}{% endblock %}{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -24,19 +25,27 @@
         font-weight: 600;
         color: #664d03;
     }
+    /* Stato "invio reale a Gold" (dry-run OFF): banner verde "operativo". */
+    .rio-live-banner {
+        background: #d1e7dd;
+        border-bottom-color: #198754;
+        color: #0f5132;
+    }
 </style>
 {% block module_css %}{% endblock %}
 {% endblock %}
 
 {% block page_content %}
-<div class="rio-test-banner">
-    <i class="bi bi-exclamation-triangle-fill me-2"></i>
-    AMBIENTE DI TEST — srviisnew — Le proposte d'ordine vengono inviate a Gold
+{% rio_banner_info as rio %}
+<div class="rio-test-banner{% if not rio.dry_run %} rio-live-banner{% endif %}">
+    <i class="bi {% if rio.dry_run %}bi-shield-check{% else %}bi-broadcast{% endif %} me-2"></i>
+    {% if rio.env == 'test' %}AMBIENTE DI TEST{% else %}PRODUZIONE{% endif %} — srviisnew —
+    {% if rio.dry_run %}modalità DRY-RUN: le proposte NON vengono inviate a Gold (solo CSV){% else %}le proposte d'ordine vengono inviate realmente a Gold{% endif %}
 </div>
 <div class="rio-header">
     <i class="bi bi-truck fs-4 text-primary"></i>
     <div>
-        <h4>Proposte Ordine Fornitori <span class="badge bg-warning text-dark ms-2" style="font-size:12px;">TEST</span></h4>
+        <h4>Proposte Ordine Fornitori{% if rio.env == 'test' %} <span class="badge bg-warning text-dark ms-2" style="font-size:12px;">TEST</span>{% endif %}</h4>
         <nav aria-label="breadcrumb">
             <ol class="breadcrumb mb-0">
                 <li class="breadcrumb-item"><a href="{% url 'rio_fornitori_new:home' %}">Ricerca</a></li>

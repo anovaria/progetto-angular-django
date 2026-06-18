@@ -2,6 +2,7 @@ import logging
 from django.core.mail import send_mail
 from django.shortcuts import render, redirect
 from django.views.decorators.http import require_POST
+from django.conf import settings
 from . import services
 
 logger = logging.getLogger(__name__)
@@ -11,6 +12,8 @@ _SESSION_DESCR = 'rio_fornitori_descr'
 
 
 def home(request):
+    if not settings.RIO_FORNITORI_OLD_ENABLED:
+        return redirect('portal:home')
     ctx = {'errore': None}
 
     if request.method == 'POST':
@@ -34,6 +37,9 @@ def home(request):
 
 
 def ordine(request):
+    if not settings.RIO_FORNITORI_OLD_ENABLED:
+        return redirect('portal:home')
+
     ccom = request.session.get(_SESSION_CCOM)
     descrccom = request.session.get(_SESSION_DESCR)
 
@@ -55,6 +61,9 @@ def ordine(request):
 
 
 def modifica_email(request):
+    if not settings.RIO_FORNITORI_OLD_ENABLED:
+        return redirect('portal:home')
+
     ccom = request.session.get(_SESSION_CCOM)
     descrccom = request.session.get(_SESSION_DESCR)
 
@@ -92,6 +101,9 @@ def modifica_email(request):
 
 @require_POST
 def esegui(request):
+    if not settings.RIO_FORNITORI_OLD_ENABLED:
+        return redirect('portal:home')
+
     ccom = request.session.get(_SESSION_CCOM)
     descrccom = request.session.get(_SESSION_DESCR)
 

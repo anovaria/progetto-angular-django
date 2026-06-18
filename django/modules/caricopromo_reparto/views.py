@@ -32,6 +32,8 @@ from .services import (
     cerca_articolo_barcode, aggiungi_articoli_manuali,
     get_promos_recupera, get_ccom_by_codgold,
     get_articoli_recupera, carica_da_recupera,
+    importa_articoli_excel_svendita,
+    piano_esiste,
 )
 
 
@@ -245,6 +247,16 @@ def api_accoda_promo(request):
     if not params['sellin_inizio'] or not params['sellin_fine']:
         return JsonResponse({'success': False, 'message': 'Date Sell-in obbligatorie'})
 
+    # Verifica che il piano selezionato esista davvero su Gold in questo momento:
+    # evita di accodare/esportare promozioni legate a piani non reali/autorizzati
+    # (es. piani di prova mai pianificati ufficialmente).
+    piano_codice = data.get('piano_codice', '')
+    if not piano_esiste(piano_codice):
+        return JsonResponse({
+            'success': False,
+            'message': f'Il Piano Promo "{piano_codice}" non risulta presente su Gold: verifica di averlo selezionato correttamente.',
+        })
+
     # Verifica che ci siano articoli selezionati prima di procedere
     selezionati = ArtFreFase1.objects.filter(utente=utente, scelta=True).count()
     if selezionati == 0:
@@ -304,6 +316,32 @@ def api_svuota_fase1(request):
         'message': 'Articoli svuotati',
     })
 
+
+
+@require_POST
+def api_importa_excel_svendita(request):
+    """API: importa articoli da file Excel svendita (Codice, Descrizione, Prezzo svendita)."""
+    utente = get_username(request)
+    excel_file = request.FILES.get('file')
+    if not excel_file:
+        return JsonResponse({'success': False, 'message': 'Nessun file inviato'}, status=400)
+    try:
+        count, incompleti = importa_articoli_excel_svendita(excel_file, utente)
+        articoli = list(ArtFreFase1.objects.filter(utente=utente).order_by('CEXR').values(
+            'id', 'SOBCEXT', 'CNUM', 'CNUF', 'DESC_CNUF',
+            'ARTFO', 'CEXR', 'DESC_CEXR', 'PrezzoVOff', 'PrezzoV',
+            'VL', 'STATO', 'scelta', 'LINEA_PRODOTTO', 'TIPO_RIORDINO',
+        ))
+        return JsonResponse({
+            'success': True,
+            'count': count,
+            'articoli': articoli,
+            'conteggi': conta_fase1(utente),
+            'incompleti': incompleti,
+            'message': f'{count} articoli importati da Excel',
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=400)
 
 
 def api_cerca_barcode(request):
