@@ -171,7 +171,7 @@ def esegui(request):
     if ok:
         try:
             send_mail(
-                subject=f"[TEST srviisnew] Ordine lanciato da portale per CCOM {ccom}",
+                subject=f"[Riordino Fornitori] Ordine lanciato da portale per CCOM {ccom}",
                 message=f"Ordine lanciato da portale per CCOM {ccom} - {descrccom}.\n\nUtente: {(request.portal_user or {}).get('username', 'sconosciuto')}\nParametri: gg consegna={gg_cons}, gg copertura={gg_cop}.",
                 from_email=None,
                 recipient_list=['alessandro.novaria@groscidac.it'],

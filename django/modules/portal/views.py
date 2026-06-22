@@ -78,17 +78,17 @@ MENU_CONFIG = [
     },
     {
         'path': '/app/rio-fornitori/',
-        'label': 'Riordino Fornitori',
+        'label': 'Riordino Fornitori srviis',
         'icon': 'truck',
-        'desc': 'Riordino fornitori (versione legacy su srviis)',
-        'groups': ['acquisti', 'itd'],
+        'desc': 'Riordino fornitori - versione legacy su srviis (fallback, solo ITD)',
+        'groups': ['itd'],
         'app_name': 'rio-fornitori',
     },
     {
         'path': '/app/rio-fornitori-new/',
-        'label': 'Riordino Fornitori srviisnew',
+        'label': 'Riordino Fornitori',
         'icon': 'truck',
-        'desc': 'Riordino fornitori per codice con trasferimento a Gold (srviisnew)',
+        'desc': 'Riordino fornitori per codice con trasferimento a Gold',
         'groups': ['acquisti', 'itd'],
         'app_name': 'rio-fornitori-new',
     },
@@ -375,9 +375,6 @@ def get_visible_menu(user_groups, username, user_app_permissions=None):
     for app in MENU_CONFIG:
         # Parametri Rio nascosta finché non è pronto il nuovo riordino (RIO_PDV_ENABLED)
         if app.get('app_name') == 'parametri-rio' and not settings.RIO_PDV_ENABLED:
-            continue
-        # Vecchio Riordino Fornitori (srviis) nascosto: sostituito da rio_fornitori_new
-        if app.get('app_name') == 'rio-fornitori' and not settings.RIO_FORNITORI_OLD_ENABLED:
             continue
         # Salta le voci padre non accessibili
         if not can_access(app, user_groups, username, user_app_permissions):

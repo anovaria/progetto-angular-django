@@ -337,7 +337,8 @@ def report_non_posso(request):
     Replica R_NonpossomettereA dell'applicazione Access.
     Mostra l'elenco degli articoli presenti in NonPossoMettereInA,
     arricchito con i dati di giacenza letti dalla tabella t_ArticoliGiacTutti
-    di GoldReport tramite query diretta (JOIN non disponibile tra i due DB).
+    di GoldReport e, in fallback, dalla giacenza Cervinia (sp_Check_GiacenzaCervinia_MettereInA),
+    tramite query diretta su GoldReport (JOIN non disponibile tra i due DB).
     Questi articoli devono essere gestiti manualmente dall'operatore.
     """
     articoli = NonPossoMettereInA.objects.all()
@@ -361,7 +362,27 @@ def report_non_posso(request):
                     'stato': row[1],
                     'giac_pdv': row[2],
                     'giac_dep': row[3],
+                    'giac_cervinia': 0,
                 }
+
+            # Giacenza Cervinia: interrogata per TUTTI i codici (non solo quelli
+            # assenti da t_ArticoliGiacTutti, che puo' comunque contenere righe
+            # con giacenza di rete a 0) e unita ai dati esistenti.
+            cursor.execute(
+                "EXEC dbo.sp_Check_GiacenzaCervinia_MettereInA @CodartList = %s",
+                [','.join(codici)]
+            )
+            for row in cursor.fetchall():
+                codarticolo, giac_cervinia = row
+                if codarticolo in giacenze:
+                    giacenze[codarticolo]['giac_cervinia'] = giac_cervinia
+                else:
+                    giacenze[codarticolo] = {
+                        'stato': 'CERVINIA',
+                        'giac_pdv': 0,
+                        'giac_dep': 0,
+                        'giac_cervinia': giac_cervinia,
+                    }
 
     # Combina i dati del modello con le giacenze dal DB
     report_data = []
@@ -373,6 +394,7 @@ def report_non_posso(request):
             'stato': giac.get('stato', ''),
             'giac_pdv': giac.get('giac_pdv', 0),
             'giac_dep': giac.get('giac_dep', 0),
+            'giac_cervinia': giac.get('giac_cervinia', 0),
         })
 
     context = {

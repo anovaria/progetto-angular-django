@@ -47,6 +47,7 @@
                 <th>Stato</th>
                 <th>Giacenza PDV</th>
                 <th>Giacenza Deposito</th>
+                <th>Giacenza Cervinia</th>
             </tr>
         </thead>
         <tbody>
@@ -59,10 +60,11 @@
                 {# Evidenzia in rosso le giacenze non nulle (da gestire manualmente) #}
                 <td class="{% if art.giac_pdv != 0 %}negative{% endif %}">{{ art.giac_pdv }}</td>
                 <td class="{% if art.giac_dep != 0 %}negative{% endif %}">{{ art.giac_dep }}</td>
+                <td class="{% if art.giac_cervinia != 0 %}negative{% endif %}">{{ art.giac_cervinia }}</td>
             </tr>
             {% empty %}
             {# Stato vuoto: nessun articolo da gestire manualmente #}
-            <tr><td colspan="5" style="text-align:center; padding:20px;">Nessun articolo con giacenza</td></tr>
+            <tr><td colspan="6" style="text-align:center; padding:20px;">Nessun articolo con giacenza</td></tr>
             {% endfor %}
         </tbody>
     </table>

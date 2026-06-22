@@ -241,18 +241,13 @@ def _update_stato(nomefile, elab, esito):
         cur.execute(sql, [elab, esito, nomefile])
 
 
-def _truncate_export():
-    """Svuota la tabella di appoggio dopo un trasferimento andato a buon fine."""
-    with connections['goldreport'].cursor() as cur:
-        cur.execute("TRUNCATE TABLE goldcursori.dbo.t_exportfoRiodash")
-
-
 def trasferisci_proposta(nr_ord):
     """
     Esegue l'intero trasferimento per la proposta nr_ord (es. 'DSH2606030001').
 
     Sequenza: genera CSV -> (in dry-run si ferma qui) -> SFTP -> Oracle -> SSH ->
-    aggiorna stato -> svuota la tabella di appoggio.
+    aggiorna stato. La tabella di appoggio t_exportfoRiodash non va svuotata qui:
+    la SP la tronca all'inizio del run successivo.
 
     Ritorna la tupla (ok, messaggio):
       - ok = True  con messaggio descrittivo se tutto e' andato a buon fine;
@@ -319,14 +314,12 @@ def trasferisci_proposta(nr_ord):
         _safe_update(nomefile, '-1', 'No')
         return False, "Esecuzione script Gold fallita: %s" % e
 
-    # --- Esito positivo: marca il file come elaborato e svuota la tabella di appoggio ---
+    # --- Esito positivo: marca il file come elaborato ---
+    # Non svuotiamo qui t_exportfoRiodash: la SP OrdineFornitore_Dash fa gia' una
+    # truncate difensiva PRIMA della INSERT (07-*.sql), quindi il run successivo
+    # parte sempre da tabella pulita. Evita di richiedere ad django_user il diritto
+    # ALTER su quella tabella (vedi 10-grant-rio_fornitori_new.sql).
     _safe_update(nomefile, '2', 'Ok')
-    try:
-        _truncate_export()
-    except Exception:
-        # Se la pulizia fallisce non e' grave: la SP svuota comunque la tabella
-        # all'inizio del run successivo.
-        logger.exception("trasferisci_proposta: truncate t_exportfoRiodash fallita %s", nomefile)
 
     return True, "Proposta %s trasferita a Gold (%d righe)." % (nr_ord, n_righe)
 

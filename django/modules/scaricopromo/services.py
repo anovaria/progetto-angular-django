@@ -507,6 +507,8 @@ def valida_mettere_in_a():
     """
 
     non_processabili = []
+    codart_segnati = set()
+
     with get_gold_cursor() as cursor:
         cursor.execute(sql, codart_list)
         rows = cursor.fetchall()
@@ -515,15 +517,42 @@ def valida_mettere_in_a():
             codarticolo, stato, giac_pdv, giac_dep = row
             ccom = codart_ccom_map.get(codarticolo, '')
             NonPossoMettereInA.objects.create(codart=codarticolo, ccom=ccom)
+            codart_segnati.add(codarticolo)
             non_processabili.append({
                 'codart': codarticolo,
                 'ccom': ccom,
                 'stato': stato,
                 'giac_pdv': giac_pdv,
                 'giac_dep': giac_dep,
+                'giac_cervinia': 0,
             })
 
-    # Accoda a T_chOrdine gli articoli senza giacenza
+        # Giacenza specifica del PDV Cervinia (sito Oracle 30001), non coperta
+        # da t_ArticoliGiacTutti: SP ad hoc che interroga Oracle al volo,
+        # solo sui codart richiesti, senza toccare le tabelle ETL.
+        cursor.execute(
+            "EXEC dbo.sp_Check_GiacenzaCervinia_MettereInA @CodartList = %s",
+            [','.join(codart_list)]
+        )
+        rows_cervinia = cursor.fetchall()
+
+        for row in rows_cervinia:
+            codarticolo, giac_cervinia = row
+            if codarticolo in codart_segnati:
+                continue
+            ccom = codart_ccom_map.get(codarticolo, '')
+            NonPossoMettereInA.objects.create(codart=codarticolo, ccom=ccom)
+            codart_segnati.add(codarticolo)
+            non_processabili.append({
+                'codart': codarticolo,
+                'ccom': ccom,
+                'stato': 'CERVINIA',
+                'giac_pdv': 0,
+                'giac_dep': 0,
+                'giac_cervinia': giac_cervinia,
+            })
+
+    # Accoda a T_chOrdine gli articoli senza giacenza (rete e Cervinia)
     accoda_chordine()
 
     return non_processabili
