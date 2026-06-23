@@ -85,6 +85,7 @@ INSTALLED_APPS = [
     'modules.assortimento_abbig',
     'modules.invenduti',
     'modules.master_ordini',
+    'modules.ordini_bloccati',
     'modules.cursori.apps.CursoriConfig',
     'modules.stock_picking.apps.StockPickingConfig',
     'modules.picking_negativi.apps.PickingNegativiConfig',

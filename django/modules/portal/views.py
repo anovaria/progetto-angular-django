@@ -77,6 +77,14 @@ MENU_CONFIG = [
         'app_name': 'master-ordini',
     },
     {
+        'path': '/app/ordini-bloccati/',
+        'label': 'Ordini Bloccati',
+        'icon': 'exclamation-triangle',
+        'desc': 'Ordini fornitore non trasmessi a Gold per errore (contratto, anagrafica, date)',
+        'groups': ['itd','acquisti'],
+        'app_name': 'ordini-bloccati',
+    },
+    {
         'path': '/app/rio-fornitori/',
         'label': 'Riordino Fornitori srviis',
         'icon': 'truck',

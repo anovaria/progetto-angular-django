@@ -34,6 +34,7 @@ urlpatterns = [
     path('app/assortimento-abbig/', include('modules.assortimento_abbig.urls')),
     path('app/invenduti/', include('modules.invenduti.urls')),
     path('app/master-ordini/', include('modules.master_ordini.urls')),
+    path('app/ordini-bloccati/', include('modules.ordini_bloccati.urls')),
     path('app/cursori/', include('modules.cursori.urls', namespace='cursori')),
     path('app/stock-picking/', include('modules.stock_picking.urls')),
     path('app/picking-negativi/', include('modules.picking_negativi.urls')),
