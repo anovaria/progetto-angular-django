@@ -11,8 +11,15 @@
     <div class="col-md-8 col-lg-6">
 
         {% if messaggio %}
-        <div class="alert alert-success d-flex align-items-center gap-2">
-            <i class="bi bi-check-circle-fill"></i>{{ messaggio }}
+        <div class="alert alert-success">
+            <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-check-circle-fill"></i>{{ messaggio }}
+            </div>
+            <hr class="my-2">
+            <div class="small mb-0">
+                <i class="bi bi-info-circle me-1"></i>Proposta d'ordine inviata alla Dashboard. Per
+                non creare doppioni, <strong>non ripetere l'invio</strong> per lo stesso fornitore.
+            </div>
         </div>
         {% endif %}
         {% if errore %}
@@ -70,7 +77,7 @@
                 <i class="bi bi-sliders me-2"></i>Parametri proposta
             </div>
             <div class="card-body">
-                <form method="post" action="{% url 'rio_fornitori_new:esegui' %}">
+                <form method="post" action="{% url 'rio_fornitori_new:esegui' %}" id="form-ordine">
                     {% csrf_token %}
 
                     <div class="row g-3 mb-3">
@@ -113,7 +120,7 @@
                     </div>
 
                     <div class="d-flex gap-2">
-                        <button type="submit" class="btn btn-success btn-lg">
+                        <button type="submit" class="btn btn-success btn-lg" id="btn-crea">
                             <i class="bi bi-play-fill me-2"></i>Crea proposta d'ordine
                         </button>
                         <a href="{% url 'rio_fornitori_new:home' %}" class="btn btn-outline-secondary btn-lg">
@@ -132,6 +139,16 @@
 function togglePerc(val) {
     document.getElementById('box-perc').style.display = (val === '1') ? 'block' : 'none';
 }
+
+// Anti-doppio-invio: alla prima submit disabilita il bottone (con feedback visivo),
+// cosi' un secondo click non lancia una seconda proposta d'ordine. La creazione
+// dell'ordine puo' richiedere qualche secondo (SP + invio a Gold) e senza questo
+// guard un doppio click genererebbe un ordine duplicato.
+document.getElementById('form-ordine').addEventListener('submit', function () {
+    var btn = document.getElementById('btn-crea');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Creazione in corso...';
+});
 </script>
 {% endblock %}
 

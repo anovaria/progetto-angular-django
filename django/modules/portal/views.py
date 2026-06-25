@@ -25,7 +25,7 @@ MENU_CONFIG = [
         'label': 'Assortimento',
         'icon': 'basket',
         'desc': 'Consultazione ed esportazione del catalogo articoli (masterdata)',
-        'groups': ['acquisti', 'itd'],
+        'groups': ['acquisti', 'itd', 'gruppoced'],
         'app_name': 'masterdata',
     },
     {

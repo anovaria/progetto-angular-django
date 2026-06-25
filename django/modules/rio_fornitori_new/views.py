@@ -150,6 +150,11 @@ def esegui(request):
     ok, errore, nr_ord = services.esegui_ordine(ccom, gg_cons, gg_cop, tip_ord, riduzione)
 
     # --- 3. Trasferimento a Gold (CSV/SFTP/Oracle/SSH, o solo CSV in dry-run) ---
+    # I messaggi indicano sempre all'utente SE l'ordine e' arrivato a Gold e se puo'
+    # rilanciare in sicurezza, cosi' da evitare ordini duplicati su Gold:
+    #   - successo            -> proposta inviata, NON ripetere;
+    #   - errore prima del nr -> niente e' arrivato alla Dashboard, si puo' riprovare;
+    #   - trasferimento fallito dopo la creazione -> invio AMBIGUO, non rilanciare.
     messaggio = None
     if ok and nr_ord:
         # La SP ha popolato t_exportfoRiodash: ora il portale genera il CSV e
@@ -159,13 +164,22 @@ def esegui(request):
         if ok_trasf:
             messaggio = f"Proposta {nr_ord} ({ccom} - {descrccom}): {msg_trasf}"
         else:
-            # SP riuscita ma trasferimento no: lo segnaliamo come errore.
+            # SP riuscita ma trasferimento no: l'invio a Gold potrebbe essere
+            # avvenuto solo in parte (es. file gia' caricato), quindi NON va
+            # rilanciato alla cieca.
             ok = False
-            errore = f"Proposta {nr_ord} creata, ma trasferimento a Gold fallito: {msg_trasf}"
+            errore = (f"Proposta {nr_ord} creata, ma il trasferimento alla Dashboard non e' andato "
+                      f"a buon fine: {msg_trasf} Non rilanciare la proposta: contatta ITD per "
+                      f"verificare se e' comunque arrivata alla Dashboard.")
     elif ok and not nr_ord:
         # SP riuscita ma nessun numero ordine = nessun articolo da ordinare.
         ok = False
-        errore = "Nessun articolo da ordinare per questo fornitore."
+        errore = "Nessun articolo da ordinare per questo fornitore. Nessuna proposta inviata alla Dashboard."
+    elif not ok:
+        # La SP non e' arrivata a creare la proposta (es. fornitore non trovato,
+        # conflitto sulle tabelle di lavoro, DB occupato): alla Dashboard non e'
+        # andato nulla, quindi il rilancio e' sicuro.
+        errore = f"{errore} Nessuna proposta e' stata inviata alla Dashboard: puoi riprovare."
 
     # --- 4. Notifica via email (solo se tutto e' andato a buon fine) ---
     if ok:

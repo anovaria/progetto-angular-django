@@ -40,7 +40,7 @@
 {% if rio.dry_run or rio.env == 'test' %}
 <div class="rio-test-banner{% if not rio.dry_run %} rio-live-banner{% endif %}">
     <i class="bi {% if rio.dry_run %}bi-shield-check{% else %}bi-broadcast{% endif %} me-2"></i>
-    {% if rio.env == 'test' %}AMBIENTE DI TEST — {% endif %}{% if rio.dry_run %}modalità DRY-RUN: le proposte NON vengono inviate a Gold (solo CSV){% else %}le proposte d'ordine vengono inviate realmente a Gold{% endif %}
+    {% if rio.env == 'test' %}AMBIENTE DI TEST — {% endif %}{% if rio.dry_run %}modalità DRY-RUN: le proposte NON vengono inviate alla Dashboard (solo CSV){% else %}le proposte d'ordine vengono inviate realmente alla Dashboard{% endif %}
 </div>
 {% endif %}
 <div class="rio-header">

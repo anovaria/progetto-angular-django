@@ -109,11 +109,31 @@ def esegui_ordine(ccom: str, gg_cons: int, gg_cop: int, tip_ord: int,
     # Batch T-SQL: dichiara una variabile, esegue la SP passandola come OUTPUT,
     # poi la "rilegge" con una SELECT finale. E' il modo affidabile per recuperare
     # un parametro OUTPUT tramite pyodbc.
+    #
+    # LOCK APPLICATIVO: la SP usa tabelle scratch CONDIVISE (Db_goldreport..Masterd,
+    # ..t_Ord902) che ricrea a ogni run con DROP + SELECT INTO. Due ordini lanciati
+    # insieme (utenti diversi, oppure un doppio invio) collidono sul SELECT INTO ->
+    # errore 2714 "There is already an object named 'Masterd'". sp_getapplock
+    # serializza l'esecuzione: il secondo run ATTENDE (fino a @LockTimeout) invece di
+    # fallire. La risorsa e' rilasciata sia sul percorso normale sia in CATCH (e
+    # quindi mai lasciata appesa su una connessione poolata), poi si rilancia
+    # l'errore originale perche' Python lo gestisca come prima.
     sql = """
-        DECLARE @out varchar(13);
-        EXEC Db_GoldReport.dbo.OrdineFornitore_Dash
-            @contrcomme=%s, @ggcons=%s, @ggcop=%s,
-            @tipOrd=%s, @perc=%s, @skipExe=1, @nrOrd=@out OUTPUT;
+        DECLARE @out varchar(13), @rc int;
+        EXEC @rc = sp_getapplock @Resource='rio_ordine_fornitore_dash',
+            @LockMode='Exclusive', @LockOwner='Session', @LockTimeout=30000;
+        IF @rc < 0
+            THROW 50001, 'Un altro ordine e'' in corso, riprovare tra qualche secondo.', 1;
+        BEGIN TRY
+            EXEC Db_GoldReport.dbo.OrdineFornitore_Dash
+                @contrcomme=%s, @ggcons=%s, @ggcop=%s,
+                @tipOrd=%s, @perc=%s, @skipExe=1, @nrOrd=@out OUTPUT;
+        END TRY
+        BEGIN CATCH
+            EXEC sp_releaseapplock @Resource='rio_ordine_fornitore_dash', @LockOwner='Session';
+            THROW;
+        END CATCH;
+        EXEC sp_releaseapplock @Resource='rio_ordine_fornitore_dash', @LockOwner='Session';
         SELECT @out AS nrord;
     """
     try:

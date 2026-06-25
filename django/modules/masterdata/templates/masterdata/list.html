@@ -46,6 +46,14 @@
     .pagination-bar .current { background: #2E5090; color: white; border: 1px solid #2E5090; }
     .pagination-bar .disabled { color: #aaa; border: 1px solid #eee; }
     .pagination-info { font-size: 13px; color: #666; }
+    /* Combobox fornitore con ricerca inline */
+    .forn-combo { position: relative; }
+    .forn-combo input[type="text"] { width: 100%; }
+    .forn-dropdown { display: none; position: absolute; top: 100%; left: 0; z-index: 20; background: white; border: 1px solid #ddd; border-radius: 4px; max-height: 240px; overflow-y: auto; min-width: 220px; box-shadow: 0 4px 10px rgba(0,0,0,0.12); margin-top: 2px; }
+    .forn-dropdown.show { display: block; }
+    .forn-option { padding: 6px 12px; font-size: 13px; cursor: pointer; white-space: nowrap; }
+    .forn-option:hover, .forn-option.active { background: #e3f2fd; }
+    .forn-option.forn-all { color: #666; border-bottom: 1px solid #eee; }
 </style>
 {% endblock %}
 
@@ -77,15 +85,19 @@
             </select>
         </div>
 
-        {# Filtro fornitore (CCOM) #}
-        <div class="filter-group">
+        {# Filtro fornitore (CCOM): combobox con ricerca inline lato client sulla lista già caricata #}
+        <div class="filter-group forn-combo">
             <label>Fornitore</label>
-            <select name="fornitore" onchange="this.form.submit()">
-                <option value="">Tutti i fornitori</option>
+            <input type="text" id="fornitore-search" autocomplete="off"
+                   placeholder="Tutti i fornitori"
+                   {% for code, name in filter_options.fornitori %}{% if filters.fornitore == code %}value="{{ name }}"{% endif %}{% endfor %}>
+            <input type="hidden" name="fornitore" id="fornitore-value" value="{{ filters.fornitore|default:'' }}">
+            <div class="forn-dropdown" id="fornitore-dropdown">
+                <div class="forn-option forn-all" data-code="" data-name="">Tutti i fornitori</div>
                 {% for code, name in filter_options.fornitori %}
-                <option value="{{ code }}" {% if filters.fornitore == code %}selected{% endif %}>{{ name }}</option>
+                <div class="forn-option" data-code="{{ code }}" data-name="{{ name }}">{{ name }}</div>
                 {% endfor %}
-            </select>
+            </div>
         </div>
 
         {# Ricerca testuale libera su codice, descrizione, EAN e fornitore #}
@@ -217,4 +229,60 @@
         {% endif %}
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Combobox fornitore: ricerca inline client-side sulle opzioni già renderizzate dal server
+    (function () {
+        const input = document.getElementById('fornitore-search');
+        const hidden = document.getElementById('fornitore-value');
+        const dropdown = document.getElementById('fornitore-dropdown');
+        const options = Array.from(dropdown.querySelectorAll('.forn-option'));
+
+        function filterOptions() {
+            const q = input.value.trim().toLowerCase();
+            let visibleCount = 0;
+            options.forEach(opt => {
+                if (opt.classList.contains('forn-all')) {
+                    opt.style.display = q ? 'none' : '';
+                    return;
+                }
+                const match = !q || opt.dataset.name.toLowerCase().includes(q) || opt.dataset.code.toLowerCase().includes(q);
+                opt.style.display = match ? '' : 'none';
+                if (match) visibleCount++;
+            });
+            dropdown.classList.toggle('show', true);
+        }
+
+        function selectOption(opt) {
+            hidden.value = opt.dataset.code;
+            input.value = opt.dataset.name;
+            dropdown.classList.remove('show');
+            input.form.submit();
+        }
+
+        input.addEventListener('focus', filterOptions);
+        input.addEventListener('keyup', filterOptions);
+
+        dropdown.addEventListener('click', function (e) {
+            const opt = e.target.closest('.forn-option');
+            if (opt) selectOption(opt);
+        });
+
+        // Chiude il dropdown al click fuori dal combobox
+        document.addEventListener('click', function (e) {
+            if (!e.target.closest('.forn-combo')) {
+                dropdown.classList.remove('show');
+            }
+        });
+
+        // Se l'utente svuota il campo senza scegliere un'opzione, resetta il filtro al blur
+        input.addEventListener('blur', function () {
+            setTimeout(() => {
+                if (!input.value.trim()) hidden.value = '';
+            }, 150);
+        });
+    })();
+</script>
 {% endblock %}

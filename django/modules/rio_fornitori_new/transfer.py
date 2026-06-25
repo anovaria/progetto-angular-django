@@ -278,7 +278,7 @@ def trasferisci_proposta(nr_ord):
         logger.info("DRY RUN %s: %d righe, CSV salvato in %s\nAnteprima:\n%s",
                     nomefile, n_righe, path, "\n".join(preview))
         return True, ("DRY RUN: CSV generato (%d righe), salvato in %s. "
-                      "Nessun invio a Gold (SFTP/Oracle/SSH saltati)." % (n_righe, path))
+                      "Nessun invio alla Dashboard (SFTP/Oracle/SSH saltati)." % (n_righe, path))
 
     # --- Passo 1: SFTP del CSV verso Gold ---
     try:
@@ -321,7 +321,7 @@ def trasferisci_proposta(nr_ord):
     # ALTER su quella tabella (vedi 10-grant-rio_fornitori_new.sql).
     _safe_update(nomefile, '2', 'Ok')
 
-    return True, "Proposta %s trasferita a Gold (%d righe)." % (nr_ord, n_righe)
+    return True, "Proposta %s inviata alla Dashboard (%d righe)." % (nr_ord, n_righe)
 
 
 def _safe_update(nomefile, elab, esito):
