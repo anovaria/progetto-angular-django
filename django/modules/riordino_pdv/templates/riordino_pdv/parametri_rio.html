@@ -9,21 +9,147 @@
         <div>
             <h3 class="mb-1"><i class="bi bi-calendar-week"></i> Parametri Rio</h3>
             <div class="text-muted" style="font-size:0.9rem;">
-                Schedulazione settimanale del riordino automatico PDV
+                Riordino automatico PDV — selezione corsie e avvio
             </div>
         </div>
-        <span class="badge bg-secondary" style="font-size:0.85rem;">
-            <i class="bi bi-eye"></i> Sola lettura
-        </span>
     </div>
 
-    <div class="alert alert-info py-2" style="font-size:0.88rem;">
-        Vista in sola lettura. Le azioni dell'originale (Salva, Ripristina,
-        Riordino manuale, Q10) non sono ancora attive.
+    {# ── SEZIONE AVVIA RIORDINO ─────────────────────────────────────────── #}
+    <div class="card mb-4">
+        <div class="card-header d-flex align-items-center gap-2">
+            <i class="bi bi-play-circle"></i>
+            <strong>Avvia Riordino</strong>
+        </div>
+        <div class="card-body">
+            {% if corsie_avvio %}
+            <form id="form-avvio">
+                {% csrf_token %}
+                <p class="text-muted mb-2" style="font-size:0.88rem;">
+                    Seleziona le corsie da includere nel riordino, poi clicca <strong>Avvia</strong>.
+                </p>
+                <div class="row g-2 mb-3">
+                    {% for c in corsie_avvio %}
+                    <div class="col-6 col-sm-4 col-md-3 col-lg-2">
+                        <div class="form-check">
+                            <input class="form-check-input corsia-check" type="checkbox"
+                                   name="corsie" value="{{ c.corsia }}"
+                                   id="c{{ c.corsia }}"
+                                   {% if c.abilitata %}checked{% endif %}>
+                            <label class="form-check-label" for="c{{ c.corsia }}">
+                                <span class="fw-semibold">{{ c.corsia }}</span>
+                                {% if c.descrizione %}
+                                <span class="text-muted" style="font-size:0.8rem;">— {{ c.descrizione }}</span>
+                                {% endif %}
+                            </label>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="d-flex align-items-center gap-3">
+                    <button type="button" class="btn btn-primary"
+                            data-bs-toggle="modal" data-bs-target="#modalConfermaRio">
+                        <i class="bi bi-play-fill"></i> Avvia
+                    </button>
+                </div>
+            </form>
+
+            {# Modale di conferma #}
+            <div class="modal fade" id="modalConfermaRio" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title"><i class="bi bi-exclamation-triangle text-warning"></i> Conferma avvio riordino</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p>Stai per avviare il riordino PDV per le seguenti corsie:</p>
+                            <p id="modale-corsie-sel" class="fw-semibold font-monospace"></p>
+                            <p class="text-muted mb-0" style="font-size:0.88rem;">
+                                L'operazione richiede alcuni minuti. I file CSV saranno generati
+                                ma <strong>non inviati a Gold</strong> finché il trasferimento
+                                non è attivato (dry-run attivo).
+                            </p>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                            <button type="button" class="btn btn-primary"
+                                    id="btn-conferma-rio"
+                                    data-bs-dismiss="modal"
+                                    onclick="avviaRiordino()">
+                                <i class="bi bi-play-fill"></i> Conferma e avvia
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <script>
+            document.getElementById('modalConfermaRio').addEventListener('show.bs.modal', function () {
+                var sel = Array.from(document.querySelectorAll('.corsia-check:checked'))
+                               .map(function(cb) { return cb.value; });
+                document.getElementById('modale-corsie-sel').textContent =
+                    sel.length ? sel.join(', ') : '(nessuna selezionata)';
+            });
+
+            var _rioPoller = null;
+
+            function _setBtnAvvia(enabled) {
+                var btn = document.querySelector('button[data-bs-target="#modalConfermaRio"]');
+                if (!btn) return;
+                btn.disabled = !enabled;
+                btn.title = enabled ? '' : 'Riordino in corso, attendere…';
+            }
+
+            function avviaRiordino() {
+                var form = document.getElementById('form-avvio');
+                var body = new URLSearchParams();
+                body.append('csrfmiddlewaretoken',
+                    form.querySelector('[name=csrfmiddlewaretoken]').value);
+                form.querySelectorAll('input[name="corsie"]:checked').forEach(function(cb) {
+                    body.append('corsie', cb.value);
+                });
+                _setBtnAvvia(false);
+                fetch('{% url "riordino_pdv:avvia" %}', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                    body: body.toString()
+                })
+                .then(function(r) { return r.text(); })
+                .then(function(html) {
+                    document.getElementById('risultato-avvio').innerHTML = html;
+                    _avviaPolling();
+                });
+            }
+
+            function _avviaPolling() {
+                if (_rioPoller) clearInterval(_rioPoller);
+                _rioPoller = setInterval(function() {
+                    fetch('{% url "riordino_pdv:stato" %}')
+                    .then(function(r) { return r.text(); })
+                    .then(function(html) {
+                        document.getElementById('risultato-avvio').innerHTML = html;
+                        if (!document.querySelector('#risultato-avvio [data-polling]')) {
+                            clearInterval(_rioPoller);
+                            _rioPoller = null;
+                            _setBtnAvvia(true);
+                        }
+                    });
+                }, 5000);
+            }
+            </script>
+            {% else %}
+            <div class="text-muted">Nessuna corsia configurata in t_corsiaabilita.</div>
+            {% endif %}
+
+            <div id="risultato-avvio" class="mt-3"></div>
+        </div>
     </div>
+
+    {# ── SCHEDULAZIONE SETTIMANALE (read-only) ────────────────────────── #}
+    <h5 class="mb-2"><i class="bi bi-clock"></i> Schedulazione settimanale</h5>
 
     {% if righe %}
-    <div class="card">
+    <div class="card mb-0">
         <div class="table-responsive">
             <table class="table table-sm table-hover align-middle mb-0">
                 <thead class="table-light">

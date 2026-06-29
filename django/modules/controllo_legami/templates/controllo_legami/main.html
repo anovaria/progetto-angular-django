@@ -1,0 +1,45 @@
+{% extends 'portal/base.html' %}
+{% load controllo_legami_tags %}
+
+{% block extra_css %}
+<style>
+  .cl-container { padding: 20px; }
+  .toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; }
+  .toolbar h5 { color: #1F4E79; margin: 0; }
+  .btn-export { background: #1F4E79; color: #fff; border: none; padding: 7px 16px; border-radius: 5px; cursor: pointer; text-decoration: none; }
+  .btn-export:hover { background: #163a5a; color: #fff; }
+  .totale { font-size: 0.9rem; color: #6c757d; margin-bottom: 10px; }
+  .table-wrapper { overflow: auto; max-height: calc(100vh - 200px); }
+  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  thead th { background: #1F4E79; color: #fff; padding: 8px 10px; text-align: left; white-space: nowrap; position: sticky; top: 0; z-index: 1; }
+  tbody tr:nth-child(even) { background: #f2f6fc; }
+  tbody tr:hover { background: #dce8f5; }
+  tbody td { padding: 6px 10px; border-bottom: 1px solid #dee2e6; white-space: nowrap; }
+</style>
+{% endblock %}
+
+{% block page_content %}
+<div class="cl-container">
+  <div class="toolbar">
+    <h5>Controllo Legami Kit (V_QC110)</h5>
+    <a href="{% url 'controllo_legami_export' %}" class="btn-export">⬇ Export Excel</a>
+  </div>
+  <div class="totale">Totale record: <strong>{{ totale }}</strong></div>
+  {% if not righe %}
+  <p>Nessun legame kit con anomalia al momento.</p>
+  {% else %}
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr>{% for _, label in colonne %}<th>{{ label }}</th>{% endfor %}</tr>
+      </thead>
+      <tbody>
+        {% for riga in righe %}
+        <tr>{% for campo, _ in colonne %}<td>{{ riga|get_item:campo|default:'' }}</td>{% endfor %}</tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</div>
+{% endblock page_content %}

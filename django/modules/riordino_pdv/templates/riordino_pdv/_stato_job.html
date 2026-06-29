@@ -1,0 +1,63 @@
+{% url 'riordino_pdv:stato' as url_stato %}
+{% if errore %}
+
+<div class="alert alert-danger py-2 mb-0">
+    <i class="bi bi-x-circle"></i> <strong>Errore:</strong> {{ errore }}
+</div>
+
+{% elif avviato or stato.running %}
+
+<div data-polling class="d-flex align-items-center gap-2 text-muted py-1">
+    <span class="spinner-border spinner-border-sm text-primary"></span>
+    <span>{% if avviato %}Job avviato, attendere…{% else %}Riordino in corso…{% endif %}</span>
+</div>
+
+{% elif stato.failed %}
+
+<div class="alert alert-danger py-2 mb-0">
+    <i class="bi bi-x-circle"></i> <strong>Job fallito:</strong> {{ stato.messaggio }}
+</div>
+
+{% elif stato.succeeded %}
+
+<div class="alert alert-success py-2 mb-2">
+    <i class="bi bi-check-circle"></i> Riordino completato —
+    <strong>{{ risultati.righe_ordine }}</strong> righe in t_OrdineGiorno,
+    <strong>{{ risultati.files|length }}</strong> file generati.
+</div>
+
+{% if risultati.files %}
+<div class="table-responsive mb-2">
+    <table class="table table-sm table-bordered align-middle mb-0" style="font-size:0.85rem;">
+        <thead class="table-light">
+            <tr>
+                <th>Corsia</th><th>File</th><th class="text-end">Righe</th><th>Percorso</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for f in risultati.files %}
+            <tr>
+                <td>{{ f.corsia }}</td>
+                <td class="font-monospace">{{ f.nome }}</td>
+                <td class="text-end">{{ f.righe }}</td>
+                <td class="text-muted" style="font-size:0.8rem;">{{ f.path }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+{% if trasferimento %}
+    {% if trasferimento.ok %}
+    <div class="alert alert-info py-2 mb-0" style="font-size:0.85rem;">
+        <i class="bi bi-cloud-upload"></i> {{ trasferimento.msg }}
+    </div>
+    {% else %}
+    <div class="alert alert-warning py-2 mb-0" style="font-size:0.85rem;">
+        <i class="bi bi-exclamation-triangle"></i> Trasferimento: {{ trasferimento.msg }}
+    </div>
+    {% endif %}
+{% endif %}
+
+{% endif %}

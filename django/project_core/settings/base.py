@@ -86,6 +86,14 @@ INSTALLED_APPS = [
     'modules.invenduti',
     'modules.master_ordini',
     'modules.ordini_bloccati',
+    'modules.art_stato_ord_aperta',
+    'modules.promo_doppie',
+    'modules.promo_doppie_domani',
+    'modules.giac_negative',
+    'modules.art_no_ean',
+    'modules.stesso_prezzo',
+    'modules.prezzo_promo_alto',
+    'modules.controllo_legami',
     'modules.cursori.apps.CursoriConfig',
     'modules.stock_picking.apps.StockPickingConfig',
     'modules.picking_negativi.apps.PickingNegativiConfig',
@@ -285,6 +293,25 @@ RIO_DASH_CSV_ENCODING = 'utf-8'
 RIO_DASH_DRY_RUN = os.environ.get('RIO_DASH_DRY_RUN', '1').strip().lower() not in ('0', 'false', 'no')
 # Cartella dove salvare il CSV in dry-run (default: logs del progetto)
 RIO_DASH_DRY_RUN_DIR = os.environ.get('RIO_DASH_DRY_RUN_DIR', str(PROJECT_ROOT / 'logs'))
+
+# =========================================================================
+#  RIO PDV (srviisnew) - trasferimento ordini CSV a Gold via Python
+#  Sostituisce TrasfFileRio.exe. SFTP/SSH/Oracle stessi endpoint di rioDash.
+#  PASSWORD condivise con RIO_DASH_*; solo la SP Oracle cambia (SIL_RIO).
+# =========================================================================
+RIO_PDV_SFTP_HOST   = os.environ.get('RIO_PDV_SFTP_HOST',   '172.17.10.41')
+RIO_PDV_SFTP_PORT   = int(os.environ.get('RIO_PDV_SFTP_PORT', '22'))
+RIO_PDV_SFTP_USER   = os.environ.get('RIO_PDV_SFTP_USER',   'glpcenadm')
+RIO_PDV_SFTP_PASS   = os.environ.get('RIO_PDV_SFTP_PASS',   os.environ.get('RIO_DASH_SFTP_PASS', ''))
+RIO_PDV_SSH_CMD     = os.environ.get('RIO_PDV_SSH_CMD',     '/gold/glp/central/shell/./gc_xls_xlsord.sh')
+
+RIO_PDV_ORACLE_DSN  = os.environ.get('RIO_PDV_ORACLE_DSN',  'Srvoracle.groscidac.local:1521/GOLDPROD')
+RIO_PDV_ORACLE_USER = os.environ.get('RIO_PDV_ORACLE_USER', 'GOLDCEN')
+RIO_PDV_ORACLE_PASS = os.environ.get('RIO_PDV_ORACLE_PASS', os.environ.get('RIO_DASH_ORACLE_PASS', ''))
+RIO_PDV_ORACLE_PROC = os.environ.get('RIO_PDV_ORACLE_PROC', 'SIL_RIO')
+
+# DRY RUN: non fa SFTP/Oracle/SSH e non aggiorna t_fileRio. Default attivo.
+RIO_PDV_DRY_RUN = os.environ.get('RIO_PDV_DRY_RUN', '1').strip().lower() not in ('0', 'false', 'no')
 
 DATABASE_ROUTERS = [
     'project_core.routers.GoldReportRouter',

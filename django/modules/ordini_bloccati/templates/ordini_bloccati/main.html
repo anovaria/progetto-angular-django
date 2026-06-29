@@ -36,7 +36,8 @@
     margin-bottom: 10px;
   }
   .table-wrapper {
-    overflow-x: auto;
+    overflow: auto;
+    max-height: calc(100vh - 200px);
   }
   table {
     width: 100%;
@@ -51,6 +52,7 @@
     white-space: nowrap;
     position: sticky;
     top: 0;
+    z-index: 1;
   }
   tbody tr:nth-child(even) {
     background: #f2f6fc;
