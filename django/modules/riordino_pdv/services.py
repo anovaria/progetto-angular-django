@@ -1,10 +1,7 @@
 """
 services.py — accesso dati per Riordino PDV (Parametri Rio).
 
-Legge t_corsiaabilita1 su GoldCursori srviis via linked server per la
-griglia schedulazione (read-only). Dopo il cutover: rimuovere _POS_DB.
-
-corsie_per_avvio(), avvia_job(), stato_job() operano su srviisnew locale.
+Tutte le query operano su GoldCursori srviisnew locale.
 
 GRANT richiesti su GoldCursori (srviisnew) per django_user:
   GRANT SELECT ON dbo.t_corsiaabilita   TO django_user;
@@ -19,15 +16,12 @@ from django.db import connections
 
 logger = logging.getLogger(__name__)
 
-_POS_DB  = '[172.17.10.51].goldcursori.dbo'
-_JOB     = 'Riordino PDV'
+_JOB = 'Riordino PDV'
 
 
 def schedule() -> list[dict]:
-    """
-    Schedulazione settimanale (griglia read-only, da t_corsiaabilita1 su srviis).
-    """
-    sql = f"""
+    """Schedulazione settimanale (griglia read-only, da t_corsiaabilita1 su srviisnew)."""
+    sql = """
         SELECT Corsia,
                note3 AS Descrizione,
                CASE WHEN note = 'Ordine3'   THEN 'Min --> Max'
@@ -37,7 +31,7 @@ def schedule() -> list[dict]:
                CASE WHEN matt_pom = 'M' THEN 'Mattino'
                     WHEN matt_pom = 'P' THEN 'Pome' END AS Matt_Pom,
                Lun, Mar, Mer, Gio, Ven, Sab, Dom
-        FROM {_POS_DB}.t_corsiaabilita1
+        FROM goldcursori.dbo.t_corsiaabilita1
         WHERE note3 IS NOT NULL
         ORDER BY CONVERT(int, Corsia), matt_pom ASC
     """

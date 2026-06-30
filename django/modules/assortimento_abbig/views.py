@@ -112,7 +112,17 @@ def _esegui_query(rep, codforn=None, ccom=None, linea=None, tcol=None):
     """
     campi = ', '.join(campo for campo, _ in COLONNE)
     where, params = _where_filtri(rep, codforn, ccom, linea, tcol)
-    sql = f"SELECT {campi} FROM v_abbigliamento{where} ORDER BY DESCR_LINEA, CCOM, CODART"
+    # La view ha piu righe per articolo (un EAN per riga): teniamo una sola
+    # riga per CODART preferendo l'EAN principale (EANPRINC=1). ROW_NUMBER
+    # gestisce anche gli articoli senza EAN principale o con righe identiche,
+    # evitando di scartarli o di duplicarli nello staging/stampa.
+    sql = (
+        f"SELECT {campi} FROM ("
+        f"SELECT {campi}, ROW_NUMBER() OVER ("
+        f"PARTITION BY CODART ORDER BY EANPRINC DESC) AS rn "
+        f"FROM v_abbigliamento{where}) t WHERE rn = 1 "
+        f"ORDER BY DESCR_LINEA, CCOM, CODART"
+    )
     return _query_goldreport(sql, params)
 
 
