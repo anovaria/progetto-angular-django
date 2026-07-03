@@ -81,9 +81,10 @@ def _build_csv():
     """
     Legge t_exportfoRiodash e costruisce il contenuto del CSV.
 
-    Ritorna una tupla (csv_bytes, numero_righe_dati):
+    Ritorna una tupla (csv_bytes, rows):
       - csv_bytes: il file gia' codificato, pronto da inviare/salvare;
-      - numero_righe_dati: quante righe di prodotto contiene (esclusa l'intestazione).
+      - rows: la lista delle righe dati (tuple nell'ordine di EXPORT_COLUMNS), usata
+              sia per contarle sia per mostrare l'anteprima della proposta all'utente.
 
     Formato: prima riga di intestazione con i nomi colonna, poi una riga per articolo;
     campi separati da RIO_DASH_CSV_SEP, fine riga RIO_DASH_CSV_NEWLINE, codifica
@@ -106,7 +107,7 @@ def _build_csv():
 
     # Unisce tutto con il terminatore di riga e aggiunge una newline finale.
     text = newline.join(lines) + newline
-    return text.encode(encoding), len(rows)
+    return text.encode(encoding), rows
 
 
 def _sftp_upload(csv_bytes, remote_filename):
@@ -241,7 +242,7 @@ def _update_stato(nomefile, elab, esito):
         cur.execute(sql, [elab, esito, nomefile])
 
 
-def trasferisci_proposta(nr_ord):
+def trasferisci_proposta(nr_ord, dry_run=None):
     """
     Esegue l'intero trasferimento per la proposta nr_ord (es. 'DSH2606030001').
 
@@ -249,36 +250,52 @@ def trasferisci_proposta(nr_ord):
     aggiorna stato. La tabella di appoggio t_exportfoRiodash non va svuotata qui:
     la SP la tronca all'inizio del run successivo.
 
-    Ritorna la tupla (ok, messaggio):
+    Ritorna la tupla (ok, messaggio, csv_bytes, rows):
       - ok = True  con messaggio descrittivo se tutto e' andato a buon fine;
       - ok = False con messaggio d'errore alla prima fase fallita (e in quel caso
-        marca il file con elab='-1'/'No').
+        marca il file con elab='-1'/'No');
+      - csv_bytes/rows: il file generato e le sue righe (per anteprima/download),
+        valorizzati appena il CSV e' costruito; None se non si e' arrivati a generarlo.
+
+    dry_run: se None (default) vale il setting globale RIO_DASH_DRY_RUN (comportamento
+    del flusso manuale); se True/False forza la modalita'. Lo usa il riordino
+    automatico (management command rio_auto), che ha un proprio interruttore
+    RIO_AUTO_DRY_RUN indipendente da quello del manuale.
     """
     # Il nome file segue la convenzione storica: <numero ordine>.csv
     nomefile = "%s.csv" % nr_ord
 
     # --- Generazione del CSV (comune a dry-run e trasferimento reale) ---
     try:
-        csv_bytes, n_righe = _build_csv()
+        csv_bytes, rows = _build_csv()
     except Exception as e:
         logger.exception("trasferisci_proposta: errore generazione CSV %s", nomefile)
-        return False, "Errore generazione CSV: %s" % e
+        return False, "Errore generazione CSV: %s" % e, None, None
+
+    n_righe = len(rows)
 
     # Nessuna riga = nessun articolo da ordinare: non c'e' niente da inviare.
     if n_righe == 0:
         logger.info("trasferisci_proposta: nessuna riga in t_exportfoRiodash per %s", nomefile)
-        return False, "Nessun articolo da ordinare (proposta vuota)."
+        return False, "Nessun articolo da ordinare (proposta vuota).", None, None
 
-    # --- DRY RUN: salva il CSV e si ferma, senza toccare Gold ne' lo stato sul DB ---
-    if _cfg('RIO_DASH_DRY_RUN', True):
-        path = _save_dryrun(nomefile, csv_bytes)
+    # Salva SEMPRE una copia locale del CSV generato (dry-run e reale): la tabella
+    # t_exportfoRiodash viene svuotata al run successivo, quindi il file va conservato
+    # ora per permettere all'utente di rivederlo/scaricarlo dalla schermata di esito.
+    _save_output(nomefile, csv_bytes)
+
+    # --- DRY RUN: si ferma qui, senza toccare Gold ne' lo stato sul DB ---
+    # Un dry_run esplicito (passato dal riordino automatico) ha la precedenza; se None
+    # si ricade sul setting globale RIO_DASH_DRY_RUN (comportamento del flusso manuale).
+    if dry_run is None:
+        dry_run = _cfg('RIO_DASH_DRY_RUN', True)
+    if dry_run:
         encoding = _cfg('RIO_DASH_CSV_ENCODING', 'utf-8')
         # Logga le prime 10 righe per un controllo rapido del formato.
         preview = csv_bytes.decode(encoding, errors='replace').splitlines()[:10]
-        logger.info("DRY RUN %s: %d righe, CSV salvato in %s\nAnteprima:\n%s",
-                    nomefile, n_righe, path, "\n".join(preview))
-        return True, ("DRY RUN: CSV generato (%d righe), salvato in %s. "
-                      "Nessun invio alla Dashboard (SFTP/Oracle/SSH saltati)." % (n_righe, path))
+        logger.info("DRY RUN %s: %d righe\nAnteprima:\n%s", nomefile, n_righe, "\n".join(preview))
+        return True, ("DRY RUN: CSV generato (%d righe). "
+                      "Nessun invio alla Dashboard (SFTP/Oracle/SSH saltati)." % n_righe), csv_bytes, rows
 
     # --- Passo 1: SFTP del CSV verso Gold ---
     try:
@@ -286,7 +303,7 @@ def trasferisci_proposta(nr_ord):
     except Exception as e:
         logger.exception("trasferisci_proposta: SFTP fallito %s", nomefile)
         _safe_update(nomefile, '-1', 'No')
-        return False, "Trasferimento SFTP fallito: %s" % e
+        return False, "Trasferimento SFTP fallito: %s" % e, csv_bytes, rows
 
     # --- Passo 2: import lato Oracle (sil_rioDash) ---
     # L'esito si giudica come faceva il vecchio exe: riuscito se la chiamata non
@@ -300,11 +317,11 @@ def trasferisci_proposta(nr_ord):
         if stato in (0, 1):
             logger.error("sil_rioDash: import fallito %s (Stato=%s): %s", nomefile, stato, msg)
             _safe_update(nomefile, '-1', 'No')
-            return False, ("Import Oracle fallito (Stato=%s): %s" % (stato, (msg or '').strip()))
+            return False, ("Import Oracle fallito (Stato=%s): %s" % (stato, (msg or '').strip())), csv_bytes, rows
     except Exception as e:
         logger.exception("trasferisci_proposta: sil_rioDash fallito %s", nomefile)
         _safe_update(nomefile, '-1', 'No')
-        return False, "Chiamata Oracle fallita: %s" % e
+        return False, "Chiamata Oracle fallita: %s" % e, csv_bytes, rows
 
     # --- Passo 3: esecuzione dello script di import finale via SSH ---
     try:
@@ -312,7 +329,7 @@ def trasferisci_proposta(nr_ord):
     except Exception as e:
         logger.exception("trasferisci_proposta: SSH fallito %s", nomefile)
         _safe_update(nomefile, '-1', 'No')
-        return False, "Esecuzione script Gold fallita: %s" % e
+        return False, "Esecuzione script Gold fallita: %s" % e, csv_bytes, rows
 
     # --- Esito positivo: marca il file come elaborato ---
     # Non svuotiamo qui t_exportfoRiodash: la SP OrdineFornitore_Dash fa gia' una
@@ -321,7 +338,7 @@ def trasferisci_proposta(nr_ord):
     # ALTER su quella tabella (vedi 10-grant-rio_fornitori_new.sql).
     _safe_update(nomefile, '2', 'Ok')
 
-    return True, "Proposta %s inviata alla Dashboard (%d righe)." % (nr_ord, n_righe)
+    return True, "Proposta %s inviata alla Dashboard (%d righe)." % (nr_ord, n_righe), csv_bytes, rows
 
 
 def _safe_update(nomefile, elab, esito):
@@ -335,19 +352,37 @@ def _safe_update(nomefile, elab, esito):
         logger.exception("Impossibile aggiornare t_fileRiodash per %s", nomefile)
 
 
-def _save_dryrun(nomefile, csv_bytes):
+def _save_output(nomefile, csv_bytes):
     """
-    Salva il CSV generato in dry-run nella cartella RIO_DASH_DRY_RUN_DIR.
-    Ritorna il percorso del file salvato, oppure '' se il salvataggio fallisce.
+    Salva una copia locale del CSV generato nella cartella RIO_DASH_DRY_RUN_DIR, col
+    nome <nomefile> (es. DSH2607010001.csv). Serve a dare all'utente la possibilita' di
+    rivedere/scaricare il file dalla schermata di esito (vedi views.scarica_csv), dato
+    che t_exportfoRiodash viene svuotata al run successivo. Vale in dry-run e in reale.
+    Ritorna il percorso salvato, oppure '' se il salvataggio fallisce.
     """
     import os
     d = _cfg('RIO_DASH_DRY_RUN_DIR', '')
     try:
         os.makedirs(d, exist_ok=True)
-        path = os.path.join(d, "dryrun_%s" % nomefile)
+        path = os.path.join(d, nomefile)
         with open(path, 'wb') as f:
             f.write(csv_bytes)
         return path
     except Exception:
-        logger.exception("DRY RUN: impossibile salvare il CSV per %s", nomefile)
+        logger.exception("Impossibile salvare la copia CSV per %s", nomefile)
         return ''
+
+
+def leggi_csv_salvato(nr_ord):
+    """
+    Rilegge dal disco la copia CSV salvata da _save_output per nr_ord.
+    Ritorna i byte del file, oppure None se non presente/leggibile.
+    Usata dalla vista di download (views.scarica_csv).
+    """
+    import os
+    d = _cfg('RIO_DASH_DRY_RUN_DIR', '')
+    try:
+        with open(os.path.join(d, "%s.csv" % nr_ord), 'rb') as f:
+            return f.read()
+    except Exception:
+        return None

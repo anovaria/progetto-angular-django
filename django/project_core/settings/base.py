@@ -295,6 +295,26 @@ RIO_DASH_DRY_RUN = os.environ.get('RIO_DASH_DRY_RUN', '1').strip().lower() not i
 RIO_DASH_DRY_RUN_DIR = os.environ.get('RIO_DASH_DRY_RUN_DIR', str(PROJECT_ROOT / 'logs'))
 
 # =========================================================================
+#  RIO FORNITORI AUTOMATICO (management command rio_auto)
+#  Migrazione dei 7 task legacy di srviis (Task Scheduler + sqlcmd +
+#  OrdineFornitore_04_dash + trasffilerioDash.exe) nel flusso Python del
+#  portale (decisione Carlo, 02/07/2026). Schedulato da Windows Task Scheduler
+#  su Srv-Dev1 (dove gira il portale), un task per cadenza -> `manage.py rio_auto`.
+# =========================================================================
+# DRY RUN INDIPENDENTE da RIO_DASH_DRY_RUN: cosi' l'automatico si puo' pilotare in
+# simulazione mentre il riordino manuale e' gia' in reale (e viceversa). Default
+# attivo (sicuro): per l'invio reale impostare RIO_AUTO_DRY_RUN=0 in env, oppure
+# passare --no-dry-run al comando (che ha la precedenza sul setting).
+RIO_AUTO_DRY_RUN = os.environ.get('RIO_AUTO_DRY_RUN', '1').strip().lower() not in ('0', 'false', 'no')
+# Lista di default dei fornitori (CCOM) se non si passa --ccom. Di norma vuota:
+# ogni task di Task Scheduler passa i propri codici via --ccom.
+RIO_AUTO_CCOM = [c.strip() for c in os.environ.get('RIO_AUTO_CCOM', '').split(',') if c.strip()]
+# Destinatari della mail di riepilogo del riordino automatico (sostituiscono il
+# 'silve@' del legacy). Piu' indirizzi separati da virgola.
+RIO_AUTO_MAIL_TO = [e.strip() for e in os.environ.get(
+    'RIO_AUTO_MAIL_TO', 'alessandro.novaria@groscidac.it').split(',') if e.strip()]
+
+# =========================================================================
 #  RIO PDV (srviisnew) - trasferimento ordini CSV a Gold via Python
 #  Sostituisce TrasfFileRio.exe. SFTP/SSH/Oracle stessi endpoint di rioDash.
 #  PASSWORD condivise con RIO_DASH_*; solo la SP Oracle cambia (SIL_RIO).

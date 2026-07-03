@@ -11,6 +11,7 @@ Il codice fornitore selezionato viene tenuto in sessione tra una pagina e l'altr
 """
 import logging
 from django.core.mail import send_mail
+from django.http import HttpResponse
 from django.shortcuts import render, redirect
 from django.views.decorators.http import require_POST
 from . import services
@@ -22,6 +23,14 @@ logger = logging.getLogger(__name__)
 # vecchia app rio_fornitori che gira in parallelo).
 _SESSION_CCOM = 'rio_fornitori_new_ccom'
 _SESSION_DESCR = 'rio_fornitori_new_descr'
+# Numero dell'ultima proposta generata: serve alla vista di download del CSV.
+_SESSION_CSV_NR = 'rio_fornitori_new_csv_nr'
+
+# Indici delle colonne utili per l'anteprima, dentro le righe di transfer.EXPORT_COLUMNS.
+_COL_CODART = 5
+_COL_VL = 6
+_COL_DATACONS = 9
+_COL_QTA = 10
 
 
 def home(request):
@@ -156,11 +165,22 @@ def esegui(request):
     #   - errore prima del nr -> niente e' arrivato alla Dashboard, si puo' riprovare;
     #   - trasferimento fallito dopo la creazione -> invio AMBIGUO, non rilanciare.
     messaggio = None
+    proposta_righe = None   # righe da mostrare in anteprima nella schermata di esito
+    csv_scaricabile = False
     if ok and nr_ord:
         # La SP ha popolato t_exportfoRiodash: ora il portale genera il CSV e
         # (se non in dry-run) fa SFTP + sil_rioDash + SSH verso Gold, al posto
         # del vecchio trasffileriodash.exe.
-        ok_trasf, msg_trasf = transfer.trasferisci_proposta(nr_ord)
+        ok_trasf, msg_trasf, csv_bytes, csv_rows = transfer.trasferisci_proposta(nr_ord)
+        # Se il CSV e' stato generato (anche se il trasferimento e' poi fallito),
+        # prepara l'anteprima e rende disponibile il download del file.
+        if csv_rows:
+            proposta_righe = [{
+                'codart': r[_COL_CODART], 'vl': r[_COL_VL],
+                'data': r[_COL_DATACONS], 'qta': r[_COL_QTA],
+            } for r in csv_rows]
+            request.session[_SESSION_CSV_NR] = nr_ord
+            csv_scaricabile = True
         if ok_trasf:
             messaggio = f"Proposta {nr_ord} ({ccom} - {descrccom}): {msg_trasf}"
         else:
@@ -205,5 +225,26 @@ def esegui(request):
         'gg_cop_default': gg_cop,
         'messaggio': messaggio,
         'errore': errore if not ok else None,
+        'proposta_righe': proposta_righe,
+        'csv_scaricabile': csv_scaricabile,
     }
     return render(request, 'rio_fornitori_new/ordine.html', ctx)
+
+
+def scarica_csv(request):
+    """
+    Scarica il CSV dell'ultima proposta generata in questa sessione (lo stesso file
+    inviato/da inviare alla Dashboard). Il numero ordine e' preso dalla sessione, non
+    dall'utente, cosi' non c'e' rischio di path traversal.
+    """
+    nr_ord = request.session.get(_SESSION_CSV_NR)
+    if not nr_ord:
+        return redirect('rio_fornitori_new:home')
+
+    data = transfer.leggi_csv_salvato(nr_ord)
+    if data is None:
+        return HttpResponse("File non piu' disponibile.", status=404)
+
+    response = HttpResponse(data, content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="%s.csv"' % nr_ord
+    return response

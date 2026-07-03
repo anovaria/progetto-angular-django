@@ -15,16 +15,60 @@
             <div class="d-flex align-items-center gap-2">
                 <i class="bi bi-check-circle-fill"></i>{{ messaggio }}
             </div>
+            {# In dry-run non si invia nulla: la nota sotto compare solo con invio reale #}
+            {% if not rio.dry_run %}
             <hr class="my-2">
             <div class="small mb-0">
                 <i class="bi bi-info-circle me-1"></i>Proposta d'ordine inviata alla Dashboard. Per
                 non creare doppioni, <strong>non ripetere l'invio</strong> per lo stesso fornitore.
             </div>
+            {% endif %}
         </div>
         {% endif %}
         {% if errore %}
         <div class="alert alert-danger d-flex align-items-center gap-2">
             <i class="bi bi-exclamation-triangle-fill"></i>{{ errore }}
+        </div>
+        {% endif %}
+
+        {# Anteprima del file generato (righe della proposta) + download del CSV #}
+        {% if proposta_righe %}
+        <div class="card shadow-sm mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span class="fw-semibold">
+                    <i class="bi bi-file-earmark-spreadsheet me-2"></i>File generato
+                    <span class="text-muted">({{ proposta_righe|length }} righe)</span>
+                </span>
+                {% if csv_scaricabile %}
+                <a href="{% url 'rio_fornitori_new:scarica_csv' %}" class="btn btn-outline-primary btn-sm">
+                    <i class="bi bi-download me-1"></i>Scarica CSV
+                </a>
+                {% endif %}
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive" style="max-height:340px; overflow:auto;">
+                    <table class="table table-sm table-striped mb-0">
+                        <thead class="table-light" style="position:sticky; top:0;">
+                            <tr>
+                                <th>Cod. articolo</th>
+                                <th>VL</th>
+                                <th class="text-end">Qta</th>
+                                <th>Consegna</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for r in proposta_righe %}
+                            <tr>
+                                <td>{{ r.codart }}</td>
+                                <td>{{ r.vl }}</td>
+                                <td class="text-end">{{ r.qta }}</td>
+                                <td>{{ r.data }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
         {% endif %}
 
