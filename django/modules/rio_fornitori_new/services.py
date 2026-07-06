@@ -40,7 +40,7 @@ def leggi_config_fornitore(ccom: str) -> dict | None:
     sql = """
         SELECT TOP 1
             ggconsegna, ggCopertura, Alg,
-            Ul_Ordine, numord, note, email, email1, email2, email3
+            Ul_Ordine, numord, note, email, email1, email2, email3, DESCRCCOM
         FROM goldcursori.dbo.t_masterfornrio
         WHERE CCOM = %s
     """
@@ -64,6 +64,7 @@ def leggi_config_fornitore(ccom: str) -> dict | None:
         'numord': row[4],
         'note': row[5] or '',
         'emails_fornitore': emails,
+        'descrccom': str(row[10]).strip() if row[10] else '',
     }
 
 
@@ -154,3 +155,46 @@ def esegui_ordine(ccom: str, gg_cons: int, gg_cop: int, tip_ord: int,
         logger.exception("esegui_ordine: errore SP ccom=%s", ccom)
         return False, str(e), None
     return True, "", nr_ord
+
+
+def conta_ordini_aperti(ccom: str) -> tuple[bool, int, str]:
+    """
+    Conta gli ordini APERTI su Gold (Oracle GOLDPROD) per il contratto <ccom>: testate
+    cdeentcde in stato ECDETAT='5' (in attesa di ricevimento) con data ordine ECDDCOM
+    tra sysdate-30 e sysdate+10.
+
+    Replica la "guardia" del task legacy di Onesti Group, che NON riordina se c'e' gia'
+    un ordine in corso per il fornitore: quel task gira OGNI GIORNO e senza la guardia
+    accumulerebbe ordini doppi finche' il precedente non viene ricevuto.
+
+    La conta gira via openquery sul linked server GOLDPROD (lo stesso usato dalla SP di
+    riordino e da sp_Create_t_OrdiniGenerale). Dentro openquery il parametro non e'
+    passabile come bind, quindi <ccom> viene VALIDATO come numerico e concatenato nella
+    stringa Oracle (evita ogni iniezione).
+
+    Ritorna (ok, n_aperti, errore):
+      - ok=True,  n_aperti>=0, errore=''         -> conta riuscita;
+      - ok=False, n_aperti=0,  errore=<descr>    -> conta fallita: il chiamante NON deve
+        procedere alla cieca ne' saltare in silenzio, ma segnalarlo (meglio un ordine in
+        meno con avviso che un doppione o un salto muto).
+    """
+    if not str(ccom).isdigit():
+        return False, 0, "CCOM non numerico: %r" % ccom
+
+    # Stringa Oracle come literal dentro openquery: gli apici Oracle vanno RADDOPPIATI.
+    oracle = (
+        "select count(*) c from cdeentcde "
+        "where ECDETAT in (''5'') "
+        "and ECDDCOM between trunc(sysdate-30) and trunc(sysdate+10) "
+        "and PKFOUCCOM.GET_NUMCONTRAT(0,ECDCCIN) = ''%s''" % ccom
+    )
+    sql = "SELECT c FROM openquery(GOLDPROD, '%s')" % oracle
+    try:
+        with connections['goldreport'].cursor() as cur:
+            cur.execute(sql)
+            row = cur.fetchone()
+            n = int(row[0]) if row and row[0] is not None else 0
+    except Exception as e:
+        logger.exception("conta_ordini_aperti: errore ccom=%s", ccom)
+        return False, 0, str(e)
+    return True, n, ""

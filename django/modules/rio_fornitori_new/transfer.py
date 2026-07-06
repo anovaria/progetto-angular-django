@@ -46,6 +46,12 @@ from django.db import connections
 
 logger = logging.getLogger(__name__)
 
+# Messaggio restituito quando la SP ha creato l'ordine ma la proposta e' vuota
+# (0 righe in t_exportfoRiodash): NON e' un errore di trasferimento, e' "nessun
+# articolo da ordinare". Esposto come costante cosi' i chiamanti (es. rio_auto)
+# possono distinguerlo da un fallimento vero senza confrontare stringhe magiche.
+MSG_PROPOSTA_VUOTA = "Nessun articolo da ordinare (proposta vuota)."
+
 # Colonne esportate, NELL'ORDINE atteso dal loader Oracle.
 # E' lo stesso elenco/ordine dell'intestazione che generava il vecchio bcp.
 EXPORT_COLUMNS = [
@@ -277,7 +283,7 @@ def trasferisci_proposta(nr_ord, dry_run=None):
     # Nessuna riga = nessun articolo da ordinare: non c'e' niente da inviare.
     if n_righe == 0:
         logger.info("trasferisci_proposta: nessuna riga in t_exportfoRiodash per %s", nomefile)
-        return False, "Nessun articolo da ordinare (proposta vuota).", None, None
+        return False, MSG_PROPOSTA_VUOTA, None, None
 
     # Salva SEMPRE una copia locale del CSV generato (dry-run e reale): la tabella
     # t_exportfoRiodash viene svuotata al run successivo, quindi il file va conservato
