@@ -59,6 +59,11 @@ REM    set RIO_DASH_SFTP_PASS=<password_sftp>
 REM    set RIO_DASH_ORACLE_PASS=<password_oracle>
 REM ----------------------------------------------------------------------------
 
+REM Destinatario mail di riepilogo: silve@ (legacy) e' una casella morta. In attesa
+REM di un destinatario dedicato per questo fornitore, si usa la casella tecnico@
+REM (sostituisce il default RIO_AUTO_MAIL_TO di test = alessandro.novaria@).
+set RIO_AUTO_MAIL_TO=tecnico@groscidac.it
+
 REM Parametri allineati allo script legacy del task srviis per Valpi Alimentare:
 REM   OrdineFornitore_04_dash @contrcomme=805387 @ggcons=1 @ggcop=7 @tipOrd=0 @perc=50
 REM Con @tipOrd=0 il @perc=50 e' ININFLUENTE (la SP usa Qtaord grezzo, non Qtaord1),
