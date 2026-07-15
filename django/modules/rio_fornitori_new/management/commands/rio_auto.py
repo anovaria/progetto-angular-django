@@ -2,17 +2,30 @@ r"""
 Management command: riordino fornitori AUTOMATICO.
 
 Migra i 7 task legacy di srviis (Windows Task Scheduler -> sqlcmd ->
-OrdineFornitore_04_dash @mandaMail=1 -> trasffilerioDash.exe) nel flusso Python
-del portale, come deciso con Carlo il 02/07/2026.
+OrdineFornitore_04_dash @dove='Central' @mandaMail=1 -> trasffilerio.exe) nel
+flusso Python del portale, come deciso con Carlo il 02/07/2026.
 
-Per ogni fornitore in --ccom esegue lo STESSO ciclo del riordino manuale, ma senza
-interazione utente:
+IMPORTANTE (corretto il 15/07/2026): il legacy usa il canale CENTRAL, non Dash.
+Letto il sorgente completo di OrdineFornitore_04_dash: @dove='Central' scrive su
+t_exportfoRio/t_fileRio e lancia trasffilerio.exe (lo STESSO exe di RIOQ10, non
+trasffilerioDash.exe), che chiama la SP Oracle SIL_Rio. SIL_Rio fa Fase 1 e Fase
+2 nella stessa chiamata (Stato=3 = ordine reale gia' scritto in CDEENTCDE): niente
+tappa Dashboard annullabile lato Oracle, l'ordine e' gia' reale e si
+valida/annulla direttamente in Gold - esattamente il comportamento storico da
+riprodurre (vedi --canale sotto, default 'central').
 
-    services.esegui_ordine(ccom, ...)       # SP OrdineFornitore_Dash @skipExe=1
-        -> transfer.trasferisci_proposta()   # CSV + SFTP + sil_rioDash + SSH (Python)
+Il calcolo della proposta (giacenze/rotazione/QTAMAX) resta IDENTICO e passa
+sempre da OrdineFornitore_Dash (nessuna duplicazione della logica di calcolo,
+gia' validata in produzione); cambia solo il secondo export verso Gold:
+
+    services.esegui_ordine(ccom, ...)         # SP OrdineFornitore_Dash @skipExe=1
+        -> services.costruisci_export_central() # ri-esporta in t_exportfoRio/t_fileRio
+                                                 # (numfo/sito reali da Oracle, nuovo nr RFO)
+        -> transfer.trasferisci_proposta_central() # CSV + SFTP + SIL_Rio (Python)
 
 NON usa xp_cmdshell ne' l'exe legacy: il trasferimento a Gold e' in puro Python
-(transfer.py, gia' validato in produzione dal riordino manuale).
+(transfer.py, gia' validato in produzione dal riordino manuale per il canale Dash;
+le funzioni *_central sono nuove, in dry-run per validazione).
 
 Va schedulato da Windows Task Scheduler su Srv-Dev1 (dove gira il portale e il venv
 con paramiko/oracledb), un task per cadenza. Esempi di riga di comando:
@@ -99,6 +112,17 @@ class Command(BaseCommand):
             help="Percentuale di riduzione (@perc = 100 - riduzione, solo se tip-ord=1). Default 0.",
         )
         parser.add_argument(
+            '--canale',
+            choices=['central', 'dash'],
+            default='central',
+            help="Canale di consegna a Gold. 'central' (default): riproduce il "
+                 "comportamento storico dei 7 fornitori automatici legacy "
+                 "(@dove='Central' del vecchio OrdineFornitore_04_dash) -> ordine "
+                 "REALE creato subito in Gold (CDEENTCDE), validabile/annullabile "
+                 "li', via la SP Oracle SIL_Rio. 'dash': usa lo stesso canale del "
+                 "riordino manuale (Dashboard Gold, TST_*_DASH) - solo per confronto/test.",
+        )
+        parser.add_argument(
             '--salta-se-ordine-aperto',
             action='store_true',
             help="Guardia anti-doppione: prima di riordinare conta gli ordini gia' aperti "
@@ -128,6 +152,7 @@ class Command(BaseCommand):
 
         tip_ord = options.get('tip_ord', 0)
         riduzione = options.get('riduzione', 0)
+        canale = options.get('canale', 'central')
         salta_se_aperto = options.get('salta_se_ordine_aperto', False)
         # Override espliciti dei giorni (per replicare i valori hardcoded nei task
         # legacy di srviis). Se None si usano i valori di t_masterfornrio.
@@ -143,9 +168,10 @@ class Command(BaseCommand):
             gg_cop_ovr if gg_cop_ovr is not None else 'da t_masterfornrio',
             tip_ord, riduzione))
         self.stdout.write("Modalita': %s" % ('DRY RUN (nessun invio a Gold)' if dry_run else 'REALE (invio a Gold)'))
+        self.stdout.write("Canale: %s" % canale)
         self.stdout.write('-' * 64)
-        logger.info("rio_auto avviato: ccom=%s dry_run=%s gg_cons=%s gg_cop=%s tip_ord=%s riduzione=%s",
-                    ccoms, dry_run, gg_cons_ovr, gg_cop_ovr, tip_ord, riduzione)
+        logger.info("rio_auto avviato: ccom=%s dry_run=%s canale=%s gg_cons=%s gg_cop=%s tip_ord=%s riduzione=%s",
+                    ccoms, dry_run, canale, gg_cons_ovr, gg_cop_ovr, tip_ord, riduzione)
 
         # --- Elaborazione fornitore per fornitore -----------------------------
         # Un fallimento su un fornitore NON deve fermare gli altri: si raccoglie
@@ -153,7 +179,7 @@ class Command(BaseCommand):
         esiti = []  # lista di dict: {ccom, descr, stato, dettaglio}
         for ccom in ccoms:
             esiti.append(self._elabora_fornitore(
-                ccom, tip_ord, riduzione, dry_run, gg_cons_ovr, gg_cop_ovr, salta_se_aperto))
+                ccom, tip_ord, riduzione, dry_run, gg_cons_ovr, gg_cop_ovr, salta_se_aperto, canale))
 
         # --- Riepilogo, notifica ed esito -------------------------------------
         ok = [e for e in esiti if e['stato'] == 'ok']
@@ -176,7 +202,8 @@ class Command(BaseCommand):
     # ------------------------------------------------------------------ helper
 
     def _elabora_fornitore(self, ccom, tip_ord, riduzione, dry_run,
-                           gg_cons_ovr=None, gg_cop_ovr=None, salta_se_aperto=False):
+                           gg_cons_ovr=None, gg_cop_ovr=None, salta_se_aperto=False,
+                           canale='central'):
         """
         Esegue il ciclo completo per un singolo fornitore e ritorna un dict di esito:
           stato = 'ok'      -> proposta creata e trasferita (o CSV generato in dry-run)
@@ -188,6 +215,9 @@ class Command(BaseCommand):
         gg_cons_ovr / gg_cop_ovr: se valorizzati, sovrascrivono i giorni letti da
         t_masterfornrio (servono a replicare i valori hardcoded nei task legacy).
         salta_se_aperto: se True, applica la guardia anti-doppione prima della SP.
+        canale: 'central' (default, comportamento storico dei 7 automatici legacy:
+        ordine reale diretto in Gold via SIL_Rio) oppure 'dash' (Dashboard Gold,
+        come il riordino manuale - solo per confronto/test).
         """
         descr = ''
         try:
@@ -232,7 +262,23 @@ class Command(BaseCommand):
             # 2) Trasferimento a Gold (o solo CSV in dry-run)
             # Teniamo csv_bytes/rows: il CSV va allegato alla mail di riepilogo (chi
             # riceve vede la proposta completa senza accedere al server).
-            ok_t, msg_t, csv_bytes, rows = transfer.trasferisci_proposta(nr_ord, dry_run=dry_run)
+            if canale == 'central':
+                # Canale storico dei 7 automatici legacy: la proposta e' gia'
+                # calcolata (t_exportfoRiodash, passo 1 sopra); qui si ricostruisce
+                # solo il SECONDO export verso le tabelle Central
+                # (t_exportfoRio/t_fileRio) con numfo/sito reali da Oracle, un nuovo
+                # numero RFO, e si invia via SIL_Rio (ordine reale diretto, niente
+                # Dashboard). Vedi services.costruisci_export_central.
+                ok_c, err_c, nr_ord_central, _n = services.costruisci_export_central(ccom, config.get('alg'))
+                if not ok_c:
+                    self.stdout.write(self.style.ERROR("  [%s] export Central fallito: %s" % (ccom, err_c)))
+                    return {'ccom': ccom, 'descr': descr, 'stato': 'errore',
+                            'dettaglio': 'Export canale Central fallito: %s' % err_c,
+                            'nr_ord': nr_ord}
+                nr_ord = nr_ord_central
+                ok_t, msg_t, csv_bytes, rows = transfer.trasferisci_proposta_central(nr_ord, dry_run=dry_run)
+            else:
+                ok_t, msg_t, csv_bytes, rows = transfer.trasferisci_proposta(nr_ord, dry_run=dry_run)
             n_righe = len(rows) if rows else 0
             if ok_t:
                 self.stdout.write(self.style.SUCCESS("  [%s] %s: %s" % (ccom, nr_ord, msg_t)))

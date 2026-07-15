@@ -177,12 +177,6 @@
             <div class="hdr-actions">
                 <a href="{% url 'piano_promo:index' %}" class="btn-app btn-back"><i class="bi bi-arrow-left"></i> Elenco</a>
                 <a href="{% url 'piano_promo:export' sessione.pk %}" class="btn-app btn-xls"><i class="bi bi-file-earmark-excel"></i> Excel</a>
-                {# Pulsanti di gestione visibili solo agli editor #}
-                {% if editor %}
-                <button class="btn-app btn-add" data-bs-toggle="modal" data-bs-target="#modalAggiungi">
-                    <i class="bi bi-plus-circle"></i> Aggiungi articoli
-                </button>
-                {# Form per aggiornare la lista: riesegue la query salvata e aggiorna le giacenze #}
                 <form method="post" action="{% url 'piano_promo:aggiorna_lista' sessione.pk %}" style="display:inline;"
                       onsubmit="return confirm('Aggiornare la lista con i dati attuali del Piano Gold?\nLe giacenze verranno aggiornate, gli stati e le note resteranno invariati.');">
                     {% csrf_token %}
@@ -190,6 +184,11 @@
                         <i class="bi bi-arrow-clockwise"></i> Aggiorna lista
                     </button>
                 </form>
+                {# Pulsanti di gestione visibili solo agli editor #}
+                {% if editor %}
+                <button class="btn-app btn-add" data-bs-toggle="modal" data-bs-target="#modalAggiungi">
+                    <i class="bi bi-plus-circle"></i> Aggiungi articoli
+                </button>
                 {# Form per eliminare l'intera sessione (con conferma) #}
                 <form method="post" action="{% url 'piano_promo:elimina' sessione.pk %}" style="display:inline;"
                       onsubmit="return confirm('Eliminare la sessione? L\'operazione è irreversibile.');">

@@ -176,6 +176,7 @@ LOGGING = {
     },
     'loggers': {
         'PIL': {'handlers': ['file', 'console'], 'level': 'WARNING', 'propagate': False},
+        'paramiko': {'handlers': ['file', 'console'], 'level': 'WARNING', 'propagate': False},
     },
     'root': {'handlers': ['file', 'console'], 'level': 'DEBUG'},
 }
@@ -313,6 +314,20 @@ RIO_AUTO_CCOM = [c.strip() for c in os.environ.get('RIO_AUTO_CCOM', '').split(',
 # 'silve@' del legacy). Piu' indirizzi separati da virgola.
 RIO_AUTO_MAIL_TO = [e.strip() for e in os.environ.get(
     'RIO_AUTO_MAIL_TO', 'alessandro.novaria@groscidac.it').split(',') if e.strip()]
+
+# =========================================================================
+#  RIO FORNITORI - canale CENTRAL (i 7 fornitori automatici legacy)
+#  Sostituisce trasffilerio.exe (lo stesso exe usato da RIOQ10). Stesso
+#  host/credenziali SFTP e Oracle di RIO_DASH_* (stesso server Gold): cambia
+#  solo la SP Oracle (SIL_Rio invece di sil_rioDash) e le tabelle SQL Server
+#  di appoggio (t_exportfoRio/t_fileRio invece di *dash*). Decisione:
+#  riprodurre il comportamento storico dei 7 fornitori automatici (ordine
+#  reale diretto in Gold, validato/annullato li', non in Dashboard).
+# =========================================================================
+RIO_CENTRAL_ORACLE_DSN  = os.environ.get('RIO_CENTRAL_ORACLE_DSN',  RIO_DASH_ORACLE_DSN)
+RIO_CENTRAL_ORACLE_USER = os.environ.get('RIO_CENTRAL_ORACLE_USER', RIO_DASH_ORACLE_USER)
+RIO_CENTRAL_ORACLE_PASS = os.environ.get('RIO_CENTRAL_ORACLE_PASS', RIO_DASH_ORACLE_PASS)
+RIO_CENTRAL_ORACLE_PROC = os.environ.get('RIO_CENTRAL_ORACLE_PROC', 'SIL_Rio')
 
 # =========================================================================
 #  RIO PDV (srviisnew) - trasferimento ordini CSV a Gold via Python

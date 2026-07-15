@@ -157,6 +157,164 @@ def esegui_ordine(ccom: str, gg_cons: int, gg_cop: int, tip_ord: int,
     return True, "", nr_ord
 
 
+def genera_numord_central() -> str:
+    """
+    Genera il numero ordine per il canale Central, con lo STESSO schema del
+    vecchio OrdineFornitore_04_dash (@dove='Central'):
+        'RFO' + convert(varchar(6),getdate(),12) + NEXT VALUE FOR seqord
+
+    Usa la stessa sequence condivisa Db_GoldReport.dbo.seqord del legacy (gia'
+    protetta dal job notturno di reset, vedi overflow seqord in memoria/quadro):
+    non introduce un nuovo rischio di overflow, ne condivide semplicemente
+    l'esistente.
+    """
+    sql = (
+        "SELECT 'RFO' + convert(varchar(6),getdate(),12) "
+        "+ CAST(NEXT VALUE FOR Db_GoldReport.dbo.seqord as varchar(4))"
+    )
+    with connections['goldreport'].cursor() as cur:
+        cur.execute(sql)
+        row = cur.fetchone()
+    return str(row[0]).strip()
+
+
+def recupera_dati_oracle_central(ccom: str) -> dict:
+    """
+    Interroga Oracle GOLDPROD (openquery, stessa query del vecchio t_Pord) per
+    ottenere, per ogni articolo del fornitore, il codice fornitore Oracle
+    (numfo) e il sito reale (sito). Il canale Dash NON porta questi due valori
+    (li sostituisce con placeholder fissi '1'), quindi per il canale Central
+    vanno recuperati a parte.
+
+    Ritorna un dict {codart: {'numfo': str, 'sito': str}}.
+    Solleva ValueError se ccom non e' numerico (evita iniezione nella stringa
+    Oracle: dentro openquery il parametro non e' bindabile, stesso vincolo
+    gia' presente in conta_ordini_aperti).
+    """
+    if not str(ccom).isdigit():
+        raise ValueError("CCOM non numerico: %r" % ccom)
+
+    oracle = (
+        "select artcexr codart, pkfoudgene.get_cnuf(0,aracfin) codForn, arasite sito "
+        "from artrac, artuc "
+        "where artcinr = aracinr "
+        "and trunc(sysdate) between araddeb and aradfin "
+        "and PKFOUCCOM.GET_NUMCONTRAT(0,ARACCIN) not in (''901'') "
+        "and PKFOUCCOM.GET_NUMCONTRAT(0,ARACCIN) = ''%s''" % ccom
+    )
+    sql = "SELECT codart, codForn, sito FROM openquery(GOLDPROD, '%s')" % oracle
+    with connections['goldreport'].cursor() as cur:
+        cur.execute(sql)
+        rows = cur.fetchall()
+    return {
+        str(r[0]).strip(): {'numfo': str(r[1]).strip(), 'sito': str(r[2]).strip()}
+        for r in rows
+    }
+
+
+def costruisci_export_central(ccom: str, algo: str) -> tuple[bool, str, str | None, int]:
+    """
+    Costruisce la proposta per il canale Central a partire da quanto GIA'
+    calcolato da OrdineFornitore_Dash in t_exportfoRiodash (stesso calcolo,
+    stesso run: esegui_ordine() va chiamato PRIMA di questa funzione, per lo
+    stesso ccom). Non tocca la SP: nessuna riscrittura della logica gia'
+    validata, solo un secondo export in Python verso le tabelle legacy
+    'Central' (t_exportfoRio/t_fileRio), come faceva il vecchio
+    OrdineFornitore_04_dash quando @dove='Central'.
+
+    Passi:
+      1. Legge le righe (codarticolo, qta, dtaConsegna) da t_exportfoRiodash.
+      2. Recupera numfo/sito reali da Oracle (recupera_dati_oracle_central).
+      3. Recupera vlacq per articolo da Db_goldreport..Masterd (tabella scratch
+         lasciata da OrdineFornitore_Dash, ricreata solo al run SUCCESSIVO):
+         nel legacy e' il campo 'gest' dell'export Central.
+      4. Genera un nuovo numero ordine RFO (genera_numord_central) e un numrig
+         per riga (NEXT VALUE FOR seqordrig, come il legacy).
+      5. Inserisce in goldcursori.dbo.t_exportfoRio e registra il file in
+         goldcursori.dbo.t_fileRio (stesso schema di t_fileRiodash).
+
+    Ritorna (ok, errore, nr_ord_central, n_righe):
+      - ok=True, nr_ord_central=<'RFO...'>, n_righe>0 se tutto e' andato a buon fine;
+      - ok=False, errore=<descrizione>, nr_ord_central=None altrimenti (inclusi
+        i casi "nessuna riga" o "dati Oracle mancanti per uno o piu' articoli").
+    """
+    try:
+        with connections['goldreport'].cursor() as cur:
+            cur.execute(
+                "SELECT TRIM(codarticolo), TRIM(qta), TRIM(dtaConsegna), TRIM(vl) "
+                "FROM goldcursori.dbo.t_exportfoRiodash"
+            )
+            righe_dash = cur.fetchall()
+    except Exception as e:
+        logger.exception("costruisci_export_central: errore lettura t_exportfoRiodash ccom=%s", ccom)
+        return False, "Errore lettura proposta calcolata: %s" % e, None, 0
+
+    if not righe_dash:
+        return False, "Nessun articolo da ordinare (proposta vuota).", None, 0
+
+    try:
+        oracle_data = recupera_dati_oracle_central(ccom)
+    except Exception as e:
+        logger.exception("costruisci_export_central: errore Oracle ccom=%s", ccom)
+        return False, "Errore recupero dati Oracle (numfo/sito): %s" % e, None, 0
+
+    try:
+        with connections['goldreport'].cursor() as cur:
+            cur.execute("SELECT codart, vlacq FROM Db_goldreport..Masterd")
+            vlacq_map = {str(r[0]).strip(): r[1] for r in cur.fetchall()}
+    except Exception as e:
+        logger.exception("costruisci_export_central: errore lettura Masterd ccom=%s", ccom)
+        return False, "Errore recupero vlacq (Masterd): %s" % e, None, 0
+
+    nr_ord = genera_numord_central()
+    oggi = None  # valorizzato dalla SP stessa lato SQL (dt_ord = getdate())
+
+    mancanti = []
+    da_inserire = []  # tuple (codart, qta, dt_cons, vl, numfo, sito, gest)
+    for codart, qta, dt_cons, vl in righe_dash:
+        codart = str(codart).strip()
+        info = oracle_data.get(codart)
+        if not info:
+            mancanti.append(codart)
+            continue
+        gest = vlacq_map.get(codart, '1')
+        da_inserire.append((codart, qta, dt_cons, vl, info['numfo'], info['sito'], gest))
+
+    if mancanti:
+        logger.warning(
+            "costruisci_export_central: %d articoli senza numfo/sito Oracle per ccom=%s: %s",
+            len(mancanti), ccom, mancanti[:20])
+
+    if not da_inserire:
+        return False, "Nessun articolo con dati Oracle completi (numfo/sito mancanti per tutti).", None, 0
+
+    try:
+        with connections['goldreport'].cursor() as cur:
+            for codart, qta, dt_cons, vl, numfo, sito, gest in da_inserire:
+                cur.execute(
+                    "INSERT INTO goldcursori.dbo.t_exportfoRio "
+                    "(numord, numrig, numfo, c, ccom, codart, vl, sito, "
+                    " dt_ord, dt_cons, qta, gest, przacq, iva, a978, stato) "
+                    "SELECT %s, CAST(NEXT VALUE FOR Db_GoldReport.dbo.seqordrig AS varchar(4)), "
+                    "%s, '1', %s, %s, %s, %s, "
+                    "CONVERT(varchar(12), getdate(), 103), %s, %s, %s, '0', '0', '978', '3'",
+                    [nr_ord, numfo, ccom, codart, vl, sito, dt_cons, qta, gest]
+                )
+            cur.execute(
+                "INSERT INTO goldcursori.dbo.t_fileRio "
+                "(Data, NomeFile, pOrigine, pDestinaz, Corsia, Lato, Elab, note1, note2) "
+                "VALUES (FORMAT(getdate(), 'dd/MM/yyyy'), %s, %s, "
+                "'/gold/glp/central/gaia/RECEIVED/', %s, 'fo', '0', "
+                "CONVERT(varchar, getdate(), 8), '1')",
+                [nr_ord + '.csv', 'C:\\C3\\riordino\\Riofo\\' + (algo or '') + '\\', algo or '']
+            )
+    except Exception as e:
+        logger.exception("costruisci_export_central: errore INSERT export ccom=%s", ccom)
+        return False, "Errore scrittura export Central: %s" % e, None, 0
+
+    return True, "", nr_ord, len(da_inserire)
+
+
 def conta_ordini_aperti(ccom: str) -> tuple[bool, int, str]:
     """
     Conta gli ordini APERTI su Gold (Oracle GOLDPROD) per il contratto <ccom>: testate

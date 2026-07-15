@@ -73,6 +73,23 @@ _SELECT_EXPORT = """
     FROM goldcursori.dbo.t_exportfoRiodash
 """
 
+# --- Canale CENTRAL (7 fornitori automatici legacy: @dove='Central') -------
+# Colonne/query per goldcursori.dbo.t_exportfoRio, popolata da
+# services.costruisci_export_central(). Stesso elenco/ordine del vecchio bcp
+# del ramo Central della SP legacy OrdineFornitore_04_dash.
+EXPORT_COLUMNS_CENTRAL = [
+    'numOrdine', 'prRiga', 'cnuf', 'filiera', 'ccom', 'codart', 'Vl', 'sito',
+    'dataord', 'datacons', 'qta', 'mis', 'listino', 'iva', '978', 'statordine',
+]
+
+_SELECT_EXPORT_CENTRAL = """
+    SELECT DISTINCT
+        numord, numrig, numfo, c, ccom, codart, vl, sito,
+        dt_ord, dt_cons, qta, gest, przacq, iva, a978, stato
+    FROM goldcursori.dbo.t_exportfoRio
+    WHERE numord = %s
+"""
+
 
 class TransferError(Exception):
     """Errore in una delle fasi di trasferimento verso Gold (configurazione mancante, ecc.)."""
@@ -200,6 +217,156 @@ def _oracle_sil_riodash(nomefile):
         return (int(sv) if sv is not None else None), (ferr.getvalue() or '')
     finally:
         conn.close()
+
+
+def _build_csv_central(nr_ord):
+    """
+    Legge t_exportfoRio (righe del canale Central, filtrate su nr_ord appena
+    inserito da services.costruisci_export_central) e costruisce il CSV nello
+    stesso formato del vecchio bcp del ramo @dove='Central'.
+
+    Ritorna (csv_bytes, rows), stesso significato di _build_csv.
+    """
+    sep = _cfg('RIO_DASH_CSV_SEP', ';')
+    newline = _cfg('RIO_DASH_CSV_NEWLINE', '\r\n')
+    encoding = _cfg('RIO_DASH_CSV_ENCODING', 'utf-8')
+
+    with connections['goldreport'].cursor() as cur:
+        cur.execute(_SELECT_EXPORT_CENTRAL, [nr_ord])
+        rows = cur.fetchall()
+
+    lines = [sep.join(EXPORT_COLUMNS_CENTRAL)]
+    for row in rows:
+        lines.append(sep.join('' if v is None else str(v).strip() for v in row))
+
+    text = newline.join(lines) + newline
+    return text.encode(encoding), rows
+
+
+def _oracle_sil_rio(nomefile):
+    """
+    Chiama la stored procedure Oracle SIL_Rio su GOLDPROD (canale Central).
+    Sostituisce la parte ODP.NET del vecchio trasffilerio.exe (lo stesso exe
+    usato da RIOQ10).
+
+    Firma reale (letta dal sorgente PL/SQL): SIL_Rio(NomeFile IN VARCHAR2,
+    Stato OUT NUMBER, P_F_ERR OUT VARCHAR2).
+
+    A differenza di sil_rioDash, SIL_Rio fa Fase 1 E Fase 2 nella STESSA
+    chiamata (TSK_XLSORD.TSP_GESFLU poi, se FaseImport=2, TSK_XLSORD.TSP_ELAFLU
+    con COMMIT): l'ordine reale in CDEENTCDE/CDEDETCDE viene scritto qui, non
+    da uno script SSH successivo.
+        Stato = -1  timeout (coda occupata da un altro file, riprovare)
+               =  0  errore inizializzazione (ERRORE1)
+               =  1  errore Fase 1 (ERRORE2)
+               =  2  errore Fase 2 (ERRORE3): Fase 1 ok, Fase 2 fallita
+               =  3  Fase 2 completata: ordine reale creato (successo pieno)
+    P_F_ERR e' diagnostico (valorizzato anche nei rami di successo), mai da
+    usare per decidere l'esito.
+
+    Ritorna la tupla (stato, messaggio).
+    """
+    import oracledb  # import lazy: vedi nota in cima al modulo
+
+    dsn = _cfg('RIO_CENTRAL_ORACLE_DSN', _cfg('RIO_DASH_ORACLE_DSN'))
+    user = _cfg('RIO_CENTRAL_ORACLE_USER', _cfg('RIO_DASH_ORACLE_USER'))
+    password = _cfg('RIO_CENTRAL_ORACLE_PASS', _cfg('RIO_DASH_ORACLE_PASS'))
+    proc = _cfg('RIO_CENTRAL_ORACLE_PROC', 'SIL_Rio')
+
+    if not password:
+        raise TransferError("RIO_CENTRAL_ORACLE_PASS/RIO_DASH_ORACLE_PASS non configurata.")
+
+    conn = oracledb.connect(user=user, password=password, dsn=dsn)
+    try:
+        cur = conn.cursor()
+        stato = cur.var(oracledb.NUMBER)
+        ferr = cur.var(oracledb.STRING)
+        cur.callproc(proc, [nomefile, stato, ferr])
+        conn.commit()
+        sv = stato.getvalue()
+        return (int(sv) if sv is not None else None), (ferr.getvalue() or '')
+    finally:
+        conn.close()
+
+
+def _update_stato_central(nomefile, elab, esito):
+    """Aggiorna lo stato del file nella tabella di tracciamento t_fileRio (canale Central)."""
+    sql = """
+        UPDATE goldcursori.dbo.t_fileRio
+        SET elab=%s, EsitoImport=%s
+        WHERE NomeFile=%s
+    """
+    with connections['goldreport'].cursor() as cur:
+        cur.execute(sql, [elab, esito, nomefile])
+
+
+def _safe_update_central(nomefile, elab, esito):
+    try:
+        _update_stato_central(nomefile, elab, esito)
+    except Exception:
+        logger.exception("Impossibile aggiornare t_fileRio per %s", nomefile)
+
+
+def trasferisci_proposta_central(nr_ord, dry_run=None):
+    """
+    Trasferisce a Gold, canale CENTRAL, la proposta gia' costruita da
+    services.costruisci_export_central() in t_exportfoRio/t_fileRio (che a sua
+    volta riusa il calcolo gia' fatto da OrdineFornitore_Dash in
+    t_exportfoRiodash: nessuna riscrittura della logica di calcolo).
+
+    Sequenza: genera CSV -> (dry-run si ferma qui) -> SFTP -> Oracle SIL_Rio
+    (Fase 1+2 nella stessa chiamata, niente SSH separato) -> aggiorna stato in
+    t_fileRio.
+
+    Ritorna (ok, messaggio, csv_bytes, rows), stesso significato di
+    trasferisci_proposta.
+    """
+    nomefile = "%s.csv" % nr_ord
+
+    try:
+        csv_bytes, rows = _build_csv_central(nr_ord)
+    except Exception as e:
+        logger.exception("trasferisci_proposta_central: errore generazione CSV %s", nomefile)
+        return False, "Errore generazione CSV: %s" % e, None, None
+
+    n_righe = len(rows)
+    if n_righe == 0:
+        logger.info("trasferisci_proposta_central: nessuna riga in t_exportfoRio per %s", nomefile)
+        return False, MSG_PROPOSTA_VUOTA, None, None
+
+    _save_output(nomefile, csv_bytes)
+
+    if dry_run is None:
+        dry_run = _cfg('RIO_AUTO_DRY_RUN', True)
+    if dry_run:
+        encoding = _cfg('RIO_DASH_CSV_ENCODING', 'utf-8')
+        preview = csv_bytes.decode(encoding, errors='replace').splitlines()[:10]
+        logger.info("DRY RUN %s: %d righe\nAnteprima:\n%s", nomefile, n_righe, "\n".join(preview))
+        return True, ("DRY RUN: CSV generato (%d righe). "
+                      "Nessun invio a Gold (SFTP/Oracle saltati)." % n_righe), csv_bytes, rows
+
+    try:
+        _sftp_upload(csv_bytes, nomefile)
+    except Exception as e:
+        logger.exception("trasferisci_proposta_central: SFTP fallito %s", nomefile)
+        _safe_update_central(nomefile, '-1', 'No')
+        return False, "Trasferimento SFTP fallito: %s" % e, csv_bytes, rows
+
+    try:
+        stato, msg = _oracle_sil_rio(nomefile)
+        logger.info("SIL_Rio %s: Stato=%s, P_F_ERR=%s", nomefile, stato, msg)
+        if stato != 3:
+            logger.error("SIL_Rio: import non completato %s (Stato=%s): %s", nomefile, stato, msg)
+            _safe_update_central(nomefile, '-1', 'No')
+            return False, ("Import Oracle non completato (Stato=%s): %s" % (stato, (msg or '').strip())), csv_bytes, rows
+    except Exception as e:
+        logger.exception("trasferisci_proposta_central: SIL_Rio fallito %s", nomefile)
+        _safe_update_central(nomefile, '-1', 'No')
+        return False, "Chiamata Oracle fallita: %s" % e, csv_bytes, rows
+
+    _safe_update_central(nomefile, '2', 'Ok')
+
+    return True, "Ordine %s creato in Gold (%d righe)." % (nr_ord, n_righe), csv_bytes, rows
 
 
 def _ssh_run_import():

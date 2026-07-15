@@ -21,8 +21,12 @@ REM  la SP sp_Create_t_OrdiniGenerale gira gia' da sola ~ogni ora (driver ETL),
 REM  indipendente dal riordino. Il refresh inline del legacy scriveva su srviis ed
 REM  e' ridondante per il portale.
 REM
+REM  CANALE: --canale central riproduce il comportamento storico di questo task
+REM  legacy (@dove='Central' -> ordine reale diretto in Gold via SIL_Rio, non
+REM  Dashboard). Vedi rio_auto.py per i dettagli.
+REM
 REM  DRY-RUN: la SP calcola la proposta e genera il CSV, viene mandata la mail di
-REM  riepilogo, ma NON si invia nulla a Gold (SFTP/sil_rioDash/SSH saltati).
+REM  riepilogo, ma NON si invia nulla a Gold (SFTP/Oracle saltati).
 REM
 REM  NB: la SP OrdineFornitore_Dash gira davvero anche in dry-run (consuma seqord,
 REM  aggiorna t_masterfornrio su srviisnew). Nessun effetto su srviis (server DB
@@ -56,6 +60,13 @@ REM  ATTENZIONE: NON committare password reali in questo file tracciato. Compila
 REM  la copia deployata su Srv-Dev1, con ACL ristrette, oppure usare variabili di
 REM  sistema. Recuperare i valori dal servizio: nssm get Djangoportaltest AppEnvironmentExtra
 REM
+REM  Cartella di salvataggio copia CSV: stesso posto del vecchio flusso legacy
+REM  (bcp + trasffilerioDash.exe scrivevano in C:\C3\riordino\riofo\ su srviisnew),
+REM  sottocartella dedicata per non mischiare coi file dell'exe. Richiede che
+REM  l'account del task (adminalessandro) abbia Change sulla share \\srviisnew\riordino
+REM  (share-level, verificato 14/07/2026 - vedi anche SRV-DEV1$ per il servizio NSSM).
+set RIO_DASH_DRY_RUN_DIR=\\srviisnew\riordino\riofo\portale\
+REM
 REM  Necessarie SEMPRE (connessione a srviisnew):
 REM    set DB_GOLD_NAME=Db_GoldReport
 REM    set DB_GOLD_USER=<django_user>
@@ -77,7 +88,7 @@ REM Con @tipOrd=1 il @perc=50 CONTA (la SP usa Qtaord1): --tip-ord 1 --riduzione
 REM -> services.esegui_ordine calcola @perc = 100 - riduzione = 50.
 REM --salta-se-ordine-aperto: guardia anti-doppione (Onesti gira giornaliero).
 REM Per il CUTOVER reale: cambiare --dry-run in --no-dry-run.
-venv\Scripts\python.exe manage.py rio_auto --ccom 803534 --gg-cons 7 --gg-cop 14 --tip-ord 1 --riduzione 50 --salta-se-ordine-aperto --dry-run
+venv\Scripts\python.exe manage.py rio_auto --ccom 803534 --gg-cons 7 --gg-cop 14 --tip-ord 1 --riduzione 50 --salta-se-ordine-aperto --canale central --dry-run
 
 REM Propaga il codice di uscita del comando a Task Scheduler (0 = ok, !=0 = errori).
 exit /b %ERRORLEVEL%

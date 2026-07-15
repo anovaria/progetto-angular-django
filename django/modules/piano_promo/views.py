@@ -661,11 +661,11 @@ def aggiorna_lista(request, pk):
     Riesegue la query salvata nella sessione e aggiorna le giacenze
     di tutte le righe presenti. Le righe nuove vengono aggiunte;
     gli stati e le note delle righe esistenti restano invariati.
-    Accessibile solo agli editor.
+    Accessibile a tutti gli utenti autenticati: non modifica stati né note,
+    quindi anche il reparto può rinfrescare i dati.
     """
-    if not _is_editor(request):
-        messages.error(request, 'Permesso negato.')
-        return redirect('piano_promo:index')
+    if not _is_logged(request):
+        return redirect('/portal/')
 
     sessione = get_object_or_404(PromoSessione, pk=pk)
     # Ricostruisce i parametri dalla query salvata nella sessione
