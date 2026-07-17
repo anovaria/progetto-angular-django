@@ -5,7 +5,9 @@ Replica la logica VBA di M_esporta e delle query Access.
 import csv
 import io
 import os
+import re
 from datetime import datetime, timedelta
+from pathlib import Path
 from django.db import connection, connections
 from django.conf import settings
 
@@ -30,6 +32,59 @@ EXPORT_PATH = getattr(
 def get_timestamp():
     """Formato timestamp come in VBA: ddmmyy_hhmmss"""
     return datetime.now().strftime('%d%m%y_%H%M%S')
+
+
+def archivia_csv_export(content, filename):
+    """
+    Salva una copia del CSV esportato verso Gold in logs/promo_export_archive/,
+    per poterlo confrontare in seguito con quanto effettivamente importato.
+    logs/ è escluso dal deploy (robocopy /XD in deploy-prod.ps1), quindi l'archivio
+    sopravvive ai deploy successivi. Best-effort: un errore qui non deve mai
+    interrompere l'export verso Gold.
+    """
+    try:
+        archive_dir = Path(settings.LOG_DIR) / 'promo_export_archive'
+        archive_dir.mkdir(parents=True, exist_ok=True)
+        (archive_dir / filename).write_bytes(content)
+    except Exception:
+        pass
+
+
+_RE_NOME_ARCHIVIO = re.compile(
+    r'^(?:[A-Z]+_)?(\d{2})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})_(Promo|CondAcq)\.csv$'
+)
+
+
+def trova_file_archiviati(dataexport_str):
+    """
+    Cerca in logs/promo_export_archive/ i CSV generati nella stessa sessione
+    di export (stesso giorno e stesso minuto di DATAEXPORT, che in
+    PerExportStorico ha precisione al minuto mentre il nome file arriva
+    dai secondi successivi). Restituisce una lista di nomi file, best-effort.
+    """
+    try:
+        target = datetime.strptime(dataexport_str, '%d/%m/%Y %H:%M')
+    except (ValueError, TypeError):
+        return []
+
+    archive_dir = Path(settings.LOG_DIR) / 'promo_export_archive'
+    if not archive_dir.is_dir():
+        return []
+
+    trovati = []
+    for f in archive_dir.iterdir():
+        m = _RE_NOME_ARCHIVIO.match(f.name)
+        if not m:
+            continue
+        gg, mm, aa, hh, mi, ss, _tipo = m.groups()
+        try:
+            file_dt = datetime.strptime(f'{gg}{mm}{aa} {hh}{mi}', '%d%m%y %H%M')
+        except ValueError:
+            continue
+        if file_dt == target:
+            trovati.append(f.name)
+
+    return sorted(trovati)
 
 
 def env_prefix():
@@ -770,6 +825,10 @@ def esporta_promo_completo(username=''):
     if tot_condacq > 0:
         PerExport.objects.all().update(SelezionePromozione='')
         risultato['files'].append(esporta_condacq_csv())
+
+    # 5b. Archivia una copia di ogni CSV generato (best-effort)
+    for content, filename in risultato['files']:
+        archivia_csv_export(content, filename)
 
     # 6. Svuota t_perExport
     PerExport.objects.all().delete()

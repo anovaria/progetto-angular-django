@@ -9,6 +9,7 @@ urlpatterns = [
     path('', views.dashboard, name='dashboard'),
     path('attributi/', views.attributi, name='attributi'),
     path('storico/', views.storico, name='storico'),
+    path('storico/scarica/<str:filename>/', views.scarica_file_archiviato, name='scarica_file_archiviato'),
 
     # Gestione "Mettere in X"
     path('mettere/<str:stato>/', views.mettere_in, name='mettere_in'),

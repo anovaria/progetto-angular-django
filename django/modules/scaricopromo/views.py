@@ -27,7 +27,7 @@ from .services import (
     conta_metterein, conta_export,
     valida_mettere_in_a, elabora_attributi, esporta_promo_completo,
     verifica_codart, verifica_ccom, carica_articoli_da_ccom,
-    get_descrizioni_bulk,
+    get_descrizioni_bulk, trova_file_archiviati,
 )
 from modules.caricopromo_reparto.services import get_ccom_list
 
@@ -92,6 +92,7 @@ def storico(request):
                 'tot': len(articoli),
                 'articoli': articoli,
                 'inseritori': inseritori,
+                'file_archiviati': trova_file_archiviati(s['DATAEXPORT']),
             })
 
     context = {
@@ -101,6 +102,26 @@ def storico(request):
         'tot_sessioni': len(sessioni),
     }
     return render(request, 'scaricopromo/storico.html', context)
+
+
+def scarica_file_archiviato(request, filename):
+    """
+    Serve un CSV precedentemente archiviato in logs/promo_export_archive/
+    (vedi archivia_csv_export in services.py), linkato dallo storico.
+    """
+    from django.conf import settings
+    from django.http import FileResponse, Http404
+    from pathlib import Path
+    from .services import _RE_NOME_ARCHIVIO
+
+    if not _RE_NOME_ARCHIVIO.match(filename):
+        raise Http404
+
+    filepath = Path(settings.LOG_DIR) / 'promo_export_archive' / filename
+    if not filepath.is_file():
+        raise Http404
+
+    return FileResponse(filepath.open('rb'), as_attachment=True, filename=filename)
 
 
 def attributi(request):
