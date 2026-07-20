@@ -1,0 +1,193 @@
+{% extends 'portal/base.html' %}
+
+{% block extra_js %}
+<script>
+/* Placeholder della textarea per ogni tipo di ricerca —
+   cambia quando l'utente clicca un tab */
+const placeholders = {
+    'gold': 'Incolla i codici Gold, uno per riga',
+    'ean': 'Incolla gli EAN, uno per riga',
+    'fornitore': 'Incolla i codici articolo fornitore, uno per riga'
+};
+
+/* Gestisce il click su un tab:
+   il form invierà il tipo scelto tramite il campo hidden */
+function setTab(tipo) {
+    // 1. scrive il tipo nel campo hidden — la view lo legge da request.POST
+    document.getElementById('tipo-ricerca').value = tipo;
+    // 2. aggiorna il placeholder della textarea in base al tipo
+    document.getElementById('codici').placeholder = placeholders[tipo];
+    // 3. evidenzia il tab cliccato — toglie 'active' a tutti, lo mette a quello giusto
+    document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+    event.target.classList.add('active');
+}
+</script>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Contenitore centrato — stessa larghezza delle altre app del portale */
+    .container { max-width: 1400px; margin: 15px auto; padding: 0 15px; }
+
+    /* Sezioni bianche con ombra — stile standard del portale */
+    .section {
+        background: white; border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        margin-bottom: 15px; padding: 15px 20px;
+    }
+    /* Titolo di sezione — viola del tema portale */
+    .section-title {
+        font-size: 1em; font-weight: 600; margin-bottom: 12px;
+        color: #6c3483; border-bottom: 2px solid #8e44ad; padding-bottom: 6px;
+    }
+
+    /* Textarea codici — monospace per allineare i codici incollati */
+    textarea {
+        width: 100%; max-width: 400px;
+        padding: 8px 10px; border: 1px solid #ccc; border-radius: 4px;
+        font-family: monospace; font-size: 0.9em;
+    }
+    textarea:focus { border-color: #8e44ad; outline: none; }
+
+    /* Bottone azione principale */
+    .btn {
+        padding: 8px 16px; border: none; border-radius: 5px;
+        font-size: 0.85em; font-weight: 500; cursor: pointer;
+        background: #8e44ad; color: white;
+    }
+    .btn:hover { background: #6c3483; }
+
+    /* Tabella risultati: scroll orizzontale e verticale,
+       intestazione sticky che resta visibile durante lo scroll */
+    .table-wrap { overflow-x: auto; max-height: 500px; overflow-y: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.85em; }
+    th {
+        background: #6c3483; color: white; padding: 7px 8px;
+        text-align: left; position: sticky; top: 0; white-space: nowrap;
+    }
+    td { padding: 5px 8px; border-bottom: 1px solid #eee; }
+    /* Righe alternate + evidenziazione al passaggio del mouse */
+    tr:hover td { background: #f4ecf7; }
+    tr:nth-child(even) td { background: #fafbfc; }
+    tr:nth-child(even):hover td { background: #f4ecf7; }
+
+    /* Sezione codici non trovati — rosso per attirare l'attenzione */
+    .warning-title { color: #e74c3c; margin-bottom: 8px; }
+    .warning-table th { background: #e74c3c; }
+
+    /* Tab di selezione tipo ricerca — attivo in viola, inattivi in grigio */
+    .tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+    .tab {
+        padding: 8px 16px; border: 1px solid #ccc; border-radius: 5px 5px 0 0;
+        background: #f0f0f0; cursor: pointer; font-size: 0.85em;
+    }
+    .tab.active {
+        background: #8e44ad; color: white; border-color: #8e44ad; font-weight: 600;
+    }
+</style>
+{% endblock %}
+
+{% block page_content %}
+<div class="container">
+
+    <!-- SEZIONE 1: form di ricerca con i tre tab -->
+    <div class="section">
+        <!-- I tab: quello corrispondente a {{ tipo }} (dalla view) parte evidenziato,
+             così dopo una ricerca il tab scelto resta attivo -->
+        <div class="tabs">
+            <button type="button" class="tab {% if tipo == 'gold' %}active{% endif %}" onclick="setTab('gold')">Cod. Gold</button>
+            <button type="button" class="tab {% if tipo == 'ean' %}active{% endif %}" onclick="setTab('ean')">EAN</button>
+            <button type="button" class="tab {% if tipo == 'fornitore' %}active{% endif %}" onclick="setTab('fornitore')">Cod. Art. Fornitore</button>
+        </div>
+
+        <form method="post">
+            {% csrf_token %}
+            <!-- Campo nascosto valorizzato dai tab via setTab() —
+                 è così che la view sa quale campo filtrare -->
+            <input type="hidden" name="tipo_ricerca" id="tipo-ricerca" value="{{ tipo }}">
+            <!-- name="codici" corrisponde a request.POST.get("codici") nella view -->
+            <textarea name="codici" id="codici" rows="10" placeholder="Incolla i codici Gold, uno per riga"></textarea>
+            <br><br>
+            <button type="submit" class="btn">Cerca</button>
+            <!-- Pulisci: torna alla pagina in GET — la view svuota anche la sessione -->
+            <a href="{% url 'ricerca_gold_main' %}" class="btn" style="background:#95a5a6;">Pulisci</a>
+        </form>
+    </div>
+
+    <!-- SEZIONE 2: risultati — mostrata solo dopo una ricerca.
+         "is not None" distingue prima visita (None) da ricerca senza risultati (lista vuota) -->
+    {% if risultati is not None %}
+    <div class="section">
+        <!-- |length = conteggio righe trovate -->
+        <div class="section-title">Risultati ({{ risultati|length }})</div>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Cod. Art. Fornitore</th>
+                        <th>Cod. Art. Gold</th>
+                        <th>Cod. Fornitore</th>
+                        <th>Descrizione</th>
+                        <th>Fornitore</th>
+                        <th>CCOM</th>
+                        <th>Descr. CCOM</th>
+                        <th>EAN</th>
+                        <th>Stato</th>
+                        <th>IVA</th>
+                        <th>Prezzo Acq.</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Ogni r è un oggetto MasterdataAll —
+                         l'ordine dei td deve corrispondere ai th sopra -->
+                    {% for r in risultati %}
+                    <tr>
+                        <td>{{ r.codartfo }}</td>
+                        <td>{{ r.codart }}</td>
+                        <td>{{ r.codforn }}</td>
+                        <td>{{ r.descrart }}</td>
+                        <td>{{ r.descforn }}</td>
+                        <td>{{ r.ccom }}</td>
+                        <td>{{ r.descrccom }}</td>
+                        <td>{{ r.ean }}</td>
+                        <td>{{ r.stato }}</td>
+                        <td>{{ r.iva }}</td>
+                        <td>{{ r.pracq }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <!-- Export: link in GET — la view rilegge codici e tipo dalla sessione -->
+        <a href="{% url 'ricerca_gold_export' %}" class="btn">📥 Esporta Excel</a>
+    </div>
+    {% endif %}
+
+    <!-- SEZIONE 3: codici cercati ma non presenti in Gold —
+         sostituisce il "CODICE NON PRESENTE" del vecchio Excel -->
+    {% if non_trovati %}
+    <div class="section">
+        <div class="section-title warning-title">⚠ Codici non presenti in Gold ({{ non_trovati|length }})</div>
+        <div class="table-wrap">
+            <table class="warning-table">
+                <thead>
+                    <tr>
+                        <th>Cod. Art.</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- non_trovati è una lista di stringhe, non di oggetti:
+                         quindi {{ r }} diretto, senza .campo -->
+                    {% for r in non_trovati %}
+                    <tr>
+                        <td>{{ r }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}

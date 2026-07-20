@@ -103,6 +103,7 @@ INSTALLED_APPS = [
     'modules.ricette.apps.RicetteConfig',
     'modules.scarti_gettati.apps.ScartiGettatiConfig',
     'modules.riordino_pdv.apps.RiordinoPdvConfig',
+    'modules.ricerca_gold',
 ]
 
 # Middleware (Nessun cambiamento)

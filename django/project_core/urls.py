@@ -52,4 +52,5 @@ urlpatterns = [
     path('app/parametri-rio/', include('modules.riordino_pdv.urls', namespace='riordino_pdv')),
     path('app/ricette/',       include('modules.ricette.urls', namespace='ricette')),
     path('app/scarti-gettati/', include('modules.scarti_gettati.urls')),
+    path('app/ricerca_gold/', include('modules.ricerca_gold.urls')),
 ]

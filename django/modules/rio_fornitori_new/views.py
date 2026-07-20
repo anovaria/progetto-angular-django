@@ -205,8 +205,8 @@ def esegui(request):
     if ok:
         try:
             send_mail(
-                subject=f"[Riordino Fornitori] Ordine lanciato da portale per CCOM {ccom}",
-                message=f"Ordine lanciato da portale per CCOM {ccom} - {descrccom}.\n\nUtente: {(request.portal_user or {}).get('username', 'sconosciuto')}\nParametri: gg consegna={gg_cons}, gg copertura={gg_cop}.",
+                subject=f"[Riordino Fornitori] Ordine {nr_ord} lanciato da portale per CCOM {ccom}",
+                message=f"Ordine {nr_ord} lanciato da portale per CCOM {ccom} - {descrccom}.\n\nUtente: {(request.portal_user or {}).get('username', 'sconosciuto')}\nParametri: gg consegna={gg_cons}, gg copertura={gg_cop}.",
                 from_email=None,
                 recipient_list=['alessandro.novaria@groscidac.it'],
                 fail_silently=False,

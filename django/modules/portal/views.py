@@ -333,6 +333,14 @@ MENU_CONFIG = [
         'groups': ['itd'],
     },
     {
+        'path': '/app/ricerca_gold/',
+        'label': 'Ricerca EAN / Cod. Gold / Cod. Fornitore',
+        'icon': 'search',
+        'desc': 'Sostituisce il file Excel Ricerca_Ean_CodGold_CodFor',
+        'groups': ['gruppoced', 'itd'],
+        'app_name': 'ricerca_gold',
+    },
+    {
         'path': '/admin/',
         'label': 'Django Admin',
         'icon': 'shield-lock',

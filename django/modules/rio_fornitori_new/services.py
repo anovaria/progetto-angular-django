@@ -224,10 +224,17 @@ def costruisci_export_central(ccom: str, algo: str) -> tuple[bool, str, str | No
 
     Passi:
       1. Legge le righe (codarticolo, qta, dtaConsegna) da t_exportfoRiodash.
+         ATTENZIONE UNITA' DI MISURA: la SP popola la scratch Dash in PEZZI
+         (qta = OrdColli * qtaminacq quando qtaminacq > 1), ma il canale
+         Central ordina in COLLI/unita' d'acquisto (OrdColli, come il legacy:
+         qta 3 con gest=41 = 3 cartoni). Qui si inverte la moltiplicazione
+         dividendo per Masterd.qtaminacq (scoperto col diff Onesti 18/07/2026:
+         qta portale = legacy * qtaminacq, identiche per qtaminacq=1).
       2. Recupera numfo/sito reali da Oracle (recupera_dati_oracle_central).
-      3. Recupera vlacq per articolo da Db_goldreport..Masterd (tabella scratch
-         lasciata da OrdineFornitore_Dash, ricreata solo al run SUCCESSIVO):
-         nel legacy e' il campo 'gest' dell'export Central.
+      3. Recupera vlacq e qtaminacq per articolo da Db_goldreport..Masterd
+         (tabella scratch lasciata da OrdineFornitore_Dash, ricreata solo al
+         run SUCCESSIVO): nel legacy vlacq e' il campo 'gest' dell'export
+         Central; qtaminacq serve alla riconversione pezzi -> colli.
       4. Genera un nuovo numero ordine RFO (genera_numord_central) e un numrig
          per riga (NEXT VALUE FOR seqordrig, come il legacy).
       5. Inserisce in goldcursori.dbo.t_exportfoRio e registra il file in
@@ -260,11 +267,13 @@ def costruisci_export_central(ccom: str, algo: str) -> tuple[bool, str, str | No
 
     try:
         with connections['goldreport'].cursor() as cur:
-            cur.execute("SELECT codart, vlacq FROM Db_goldreport..Masterd")
-            vlacq_map = {str(r[0]).strip(): r[1] for r in cur.fetchall()}
+            cur.execute("SELECT codart, vlacq, qtaminacq FROM Db_goldreport..Masterd")
+            rows = cur.fetchall()
+            vlacq_map = {str(r[0]).strip(): r[1] for r in rows}
+            qtaminacq_map = {str(r[0]).strip(): r[2] for r in rows}
     except Exception as e:
         logger.exception("costruisci_export_central: errore lettura Masterd ccom=%s", ccom)
-        return False, "Errore recupero vlacq (Masterd): %s" % e, None, 0
+        return False, "Errore recupero vlacq/qtaminacq (Masterd): %s" % e, None, 0
 
     nr_ord = genera_numord_central()
     oggi = None  # valorizzato dalla SP stessa lato SQL (dt_ord = getdate())
@@ -278,6 +287,17 @@ def costruisci_export_central(ccom: str, algo: str) -> tuple[bool, str, str | No
             mancanti.append(codart)
             continue
         gest = vlacq_map.get(codart, '1')
+        # Riconversione pezzi -> colli: inverso esatto della moltiplicazione
+        # fatta dalla SP nell'INSERT della scratch Dash (stesso run, stessa
+        # Masterd, quindi la divisione e' sempre esatta).
+        qmin = qtaminacq_map.get(codart)
+        if qmin and int(qmin) > 1:
+            qta_pz = int(str(qta).strip())
+            if qta_pz % int(qmin):
+                logger.warning(
+                    "costruisci_export_central: qta %s non divisibile per qtaminacq %s "
+                    "per codart=%s ccom=%s (resto ignorato)", qta_pz, qmin, codart, ccom)
+            qta = str(qta_pz // int(qmin))
         da_inserire.append((codart, qta, dt_cons, vl, info['numfo'], info['sito'], gest))
 
     if mancanti:
