@@ -321,7 +321,7 @@ def chiudi_attri(stato, extra_where=''):
     Legge da 'Mettere in X' + SARGC e popola ChiudiAttri.
     """
     rows = query_sargc_for_metterein(stato, extra_where=extra_where)
-    
+
     objs = []
     for row in rows:
         codart, cod, st, alpha, dtaini, dtach = row
@@ -335,10 +335,10 @@ def chiudi_attri(stato, extra_where=''):
             DtaIniz=dtaini or '',
             DTACH=dtach or '',
         ))
-    
+
     if objs:
         ChiudiAttri.objects.bulk_create(objs)
-    
+
     return len(objs)
 
 

@@ -14,6 +14,7 @@ class MasterdataAll(models.Model):
     iva = models.CharField(max_length=10, db_column='IVA')
     ean = models.CharField(max_length=20, db_column='EAN')
     pracq = models.DecimalField(max_digits=10, decimal_places=2, db_column='PRACQ')
+    przvend = models.DecimalField(max_digits=10, decimal_places=2, db_column='PRZ_VEND')
 
     class Meta:
         managed = False

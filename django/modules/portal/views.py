@@ -49,7 +49,7 @@ MENU_CONFIG = [
         'label': 'PLU',
         'icon': 'upc-scan',
         'desc': 'Gestione e stampa dei codici PLU per le bilance',
-        'groups': ['acquisti', 'freschi', 'itd'],
+        'groups': ['acquisti', 'freschi', 'itd' ,'gruppoced'],
         'app_name': 'plu',
     },
     {
@@ -57,7 +57,7 @@ MENU_CONFIG = [
         'label': 'Offerte Future',
         'icon': 'tag',
         'desc': 'Consultazione ed esportazione delle offerte promozionali future',
-        'groups': ['comunicazione', 'itd'],
+        'groups': ['comunicazione', 'itd', 'gruppoced'],
         'app_name': 'stampaoffertefuture',
     },
     {

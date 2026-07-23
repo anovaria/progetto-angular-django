@@ -271,6 +271,15 @@ class Command(BaseCommand):
                 # Dashboard). Vedi services.costruisci_export_central.
                 ok_c, err_c, nr_ord_central, _n = services.costruisci_export_central(ccom, config.get('alg'))
                 if not ok_c:
+                    # Come sul canale Dash (msg_t == MSG_PROPOSTA_VUOTA piu' sotto):
+                    # se al momento del secondo export la proposta e' vuota, non e'
+                    # un errore ma "nessun articolo da ordinare" (es. tipOrd=1 sotto
+                    # soglia, o legacy stesso giorno con "l'ordine non ha record").
+                    if err_c == transfer.MSG_PROPOSTA_VUOTA:
+                        self.stdout.write("  [%s] nessun articolo da ordinare" % ccom)
+                        return {'ccom': ccom, 'descr': descr, 'stato': 'vuoto',
+                                'dettaglio': 'Nessun articolo da ordinare.',
+                                'nr_ord': nr_ord}
                     self.stdout.write(self.style.ERROR("  [%s] export Central fallito: %s" % (ccom, err_c)))
                     return {'ccom': ccom, 'descr': descr, 'stato': 'errore',
                             'dettaglio': 'Export canale Central fallito: %s' % err_c,

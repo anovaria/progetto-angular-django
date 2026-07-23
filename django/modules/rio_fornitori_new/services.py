@@ -9,6 +9,8 @@ rio_fornitori continua a puntare al vecchio srviis.
 import logging
 from django.db import connections
 
+from modules.rio_fornitori_new.transfer import MSG_PROPOSTA_VUOTA
+
 logger = logging.getLogger(__name__)
 
 
@@ -257,7 +259,7 @@ def costruisci_export_central(ccom: str, algo: str) -> tuple[bool, str, str | No
         return False, "Errore lettura proposta calcolata: %s" % e, None, 0
 
     if not righe_dash:
-        return False, "Nessun articolo da ordinare (proposta vuota).", None, 0
+        return False, MSG_PROPOSTA_VUOTA, None, 0
 
     try:
         oracle_data = recupera_dati_oracle_central(ccom)

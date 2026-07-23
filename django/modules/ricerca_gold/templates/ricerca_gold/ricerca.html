@@ -71,9 +71,9 @@ function setTab(tipo) {
     tr:nth-child(even) td { background: #fafbfc; }
     tr:nth-child(even):hover td { background: #f4ecf7; }
 
-    /* Sezione codici non trovati — rosso per attirare l'attenzione */
-    .warning-title { color: #e74c3c; margin-bottom: 8px; }
-    .warning-table th { background: #e74c3c; }
+    /* Righe dei codici non trovati: rosse, vincono su hover e righe alternate */
+    .riga-errore td { background: #fdecea !important; color: #c0392b; font-weight: 600; }
+
 
     /* Tab di selezione tipo ricerca — attivo in viola, inattivi in grigio */
     .tabs { display: flex; gap: 6px; margin-bottom: 12px; }
@@ -111,15 +111,16 @@ function setTab(tipo) {
             <button type="submit" class="btn">Cerca</button>
             <!-- Pulisci: torna alla pagina in GET — la view svuota anche la sessione -->
             <a href="{% url 'ricerca_gold_main' %}" class="btn" style="background:#95a5a6;">Pulisci</a>
+            <!-- Export: link in GET — la view rilegge codici e tipo dalla sessione -->
+            {% if righe is not None %}
+                <a href="{% url 'ricerca_gold_export' %}" class="btn">📥 Esporta Excel</a>
+            {% endif %}
         </form>
     </div>
 
-    <!-- SEZIONE 2: risultati — mostrata solo dopo una ricerca.
-         "is not None" distingue prima visita (None) da ricerca senza risultati (lista vuota) -->
-    {% if risultati is not None %}
+    {% if righe is not None %}
     <div class="section">
-        <!-- |length = conteggio righe trovate -->
-        <div class="section-title">Risultati ({{ risultati|length }})</div>
+        <div class="section-title">Risultati ({{ righe|length }})</div>
         <div class="table-wrap">
             <table>
                 <thead>
@@ -135,59 +136,77 @@ function setTab(tipo) {
                         <th>Stato</th>
                         <th>IVA</th>
                         <th>Prezzo Acq.</th>
+                        <th>Prezzo Vend.</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <!-- Ogni r è un oggetto MasterdataAll —
-                         l'ordine dei td deve corrispondere ai th sopra -->
-                    {% for r in risultati %}
-                    <tr>
-                        <td>{{ r.codartfo }}</td>
-                        <td>{{ r.codart }}</td>
-                        <td>{{ r.codforn }}</td>
-                        <td>{{ r.descrart }}</td>
-                        <td>{{ r.descforn }}</td>
-                        <td>{{ r.ccom }}</td>
-                        <td>{{ r.descrccom }}</td>
-                        <td>{{ r.ean }}</td>
-                        <td>{{ r.stato }}</td>
-                        <td>{{ r.iva }}</td>
-                        <td>{{ r.pracq }}</td>
+                    <!-- Righe nell'ordine di incollaggio: trovate normali,
+                        non trovate in rosso con il codice cercato -->
+                    {% for riga in righe %}
+                    <tr {% if not riga.trovato %}class="riga-errore"{% endif %}>
+                        {% if riga.trovato %}
+                            <td>{{ riga.art.codartfo }}</td>
+                            <td>{{ riga.art.codart }}</td>
+                            <td>{{ riga.art.codforn }}</td>
+                            <td>{{ riga.art.descrart }}</td>
+                            <td>{{ riga.art.descforn }}</td>
+                            <td>{{ riga.art.ccom }}</td>
+                            <td>{{ riga.art.descrccom }}</td>
+                            <td>{{ riga.art.ean }}</td>
+                            <td>{{ riga.art.stato }}</td>
+                            <td>{{ riga.art.iva }}</td>
+                            <td>{{ riga.art.pracq|floatformat:2 }}</td>
+                            <td>{{ riga.art.przvend|floatformat:2 }}</td>
+                        {% else %}
+                            {# Codice non trovato: 12 celle, il codice va nella colonna del campo cercato #}
+                            <td>{% if tipo == "fornitore" %}{{ riga.codice }}{% endif %}</td>
+                            <td>{% if tipo == "gold" %}{{ riga.codice }}{% endif %}</td>
+                            <td></td>
+                            <td>NON PRESENTE IN GOLD</td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td>{% if tipo == "ean" %}{{ riga.codice }}{% endif %}</td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                        {% endif %}
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
-        <!-- Export: link in GET — la view rilegge codici e tipo dalla sessione -->
-        <a href="{% url 'ricerca_gold_export' %}" class="btn">📥 Esporta Excel</a>
     </div>
     {% endif %}
 
-    <!-- SEZIONE 3: codici cercati ma non presenti in Gold —
-         sostituisce il "CODICE NON PRESENTE" del vecchio Excel -->
     {% if non_trovati %}
     <div class="section">
-        <div class="section-title warning-title">⚠ Codici non presenti in Gold ({{ non_trovati|length }})</div>
+        <div class="section-title warning-title">
+            {% if tipo == "ean" %}
+                ⚠ EAN non presenti in Gold (possibili nuovi articoli da inserire)
+            {% elif tipo == "gold" %}
+                ⚠ Codici Gold non presenti
+            {% else %}
+                ⚠ Codici articolo fornitore non presenti in Gold
+            {% endif %}
+            ({{ non_trovati|length }})
+        </div>
         <div class="table-wrap">
             <table class="warning-table">
                 <thead>
                     <tr>
-                        <th>Cod. Art.</th>
+                        <th>{% if tipo == "ean" %}EAN{% elif tipo == "gold" %}Cod. Art. Gold{% else %}Cod. Art. Fornitore{% endif %}</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <!-- non_trovati è una lista di stringhe, non di oggetti:
-                         quindi {{ r }} diretto, senza .campo -->
                     {% for r in non_trovati %}
-                    <tr>
-                        <td>{{ r }}</td>
-                    </tr>
+                    <tr><td>{{ r }}</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
     </div>
     {% endif %}
-
 </div>
 {% endblock %}
