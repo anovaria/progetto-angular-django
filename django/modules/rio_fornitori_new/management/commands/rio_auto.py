@@ -343,6 +343,7 @@ class Command(BaseCommand):
         (gli ordini potrebbero essere gia' stati inviati a Gold).
         """
         destinatari = list(getattr(settings, 'RIO_AUTO_MAIL_TO', []) or [])
+        cc = list(getattr(settings, 'RIO_AUTO_MAIL_CC', []) or [])
         if not destinatari:
             logger.warning("rio_auto: RIO_AUTO_MAIL_TO vuoto, nessuna mail di riepilogo inviata.")
             return
@@ -373,7 +374,7 @@ class Command(BaseCommand):
             subject = "%s[Riordino Fornitori Auto] %d ordini, %d errori (%s)" % (
                 prefisso, len(ok), len(falliti), stato)
         try:
-            email = EmailMessage(subject=subject, body=riepilogo, from_email=None, to=destinatari)
+            email = EmailMessage(subject=subject, body=riepilogo, from_email=None, to=destinatari, cc=cc)
             # Allega il CSV di ogni fornitore che ne ha generato uno (proposte ok e
             # anche trasferimenti falliti, utili alla diagnosi). Nome file = <nrord>.csv.
             n_allegati = 0
@@ -384,8 +385,9 @@ class Command(BaseCommand):
                     email.attach(nomefile, csv_bytes, 'text/csv')
                     n_allegati += 1
             email.send(fail_silently=False)
-            self.stdout.write("Mail di riepilogo inviata a: %s (%d allegati)" % (
-                ', '.join(destinatari), n_allegati))
+            cc_msg = (" cc: %s" % ', '.join(cc)) if cc else ""
+            self.stdout.write("Mail di riepilogo inviata a: %s%s (%d allegati)" % (
+                ', '.join(destinatari), cc_msg, n_allegati))
         except Exception:
             logger.exception("rio_auto: invio mail di riepilogo fallito")
             self.stdout.write(self.style.ERROR("Invio mail di riepilogo fallito (vedi log)."))

@@ -4,7 +4,8 @@ from django.db import connections
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment
 
-# V_promodoppieArt: articoli che compaiono in due promozioni sovrapposte
+from modules.bidone.views import carica_annotazioni
+
 COLONNE = [
     ('DTAAGGIO',  'Data Agg.'),
     ('ARTICOLO',  'Cod. Art.'),
@@ -18,6 +19,8 @@ COLONNE = [
     ('DINI2',     'Data Inizio 2'),
     ('DFIN2',     'Data Fine 2'),
 ]
+
+APP_NAME = 'promo_doppie'
 
 
 def _esegui_query():
@@ -35,14 +38,30 @@ def _esegui_query():
     return rows
 
 
+def _build_key(r):
+    return f"{r.get('ARTICOLO', '')}|{r.get('PROMO1', '')}|{r.get('PROMO2', '')}"
+
+
+def _merge_annotazioni(righe, annotazioni):
+    for r in righe:
+        key = _build_key(r)
+        ann = annotazioni.get(key, {})
+        r['record_key']  = key
+        r['ann_gestito'] = ann.get('gestito', False)
+        r['ann_nota']    = ann.get('nota', '')
+        r['ann_utente']  = ann.get('utente', '')
+        r['ann_data']    = ann.get('aggiornato_il')
+
+
 def main(request):
     righe = _esegui_query()
-    ctx = {
-        'colonne': COLONNE,
-        'righe': righe,
-        'totale': len(righe),
-    }
-    return render(request, 'promo_doppie/main.html', ctx)
+    _merge_annotazioni(righe, carica_annotazioni(APP_NAME))
+    return render(request, 'promo_doppie/main.html', {
+        'colonne':  COLONNE,
+        'righe':    righe,
+        'totale':   len(righe),
+        'app_name': APP_NAME,
+    })
 
 
 def export_excel(request):

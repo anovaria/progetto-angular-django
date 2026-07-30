@@ -94,6 +94,7 @@ INSTALLED_APPS = [
     'modules.stesso_prezzo',
     'modules.prezzo_promo_alto',
     'modules.controllo_legami',
+    'modules.bidone',
     'modules.cursori.apps.CursoriConfig',
     'modules.stock_picking.apps.StockPickingConfig',
     'modules.picking_negativi.apps.PickingNegativiConfig',
@@ -315,6 +316,10 @@ RIO_AUTO_CCOM = [c.strip() for c in os.environ.get('RIO_AUTO_CCOM', '').split(',
 # 'silve@' del legacy). Piu' indirizzi separati da virgola.
 RIO_AUTO_MAIL_TO = [e.strip() for e in os.environ.get(
     'RIO_AUTO_MAIL_TO', 'alessandro.novaria@groscidac.it').split(',') if e.strip()]
+# Destinatari SEMPRE in copia (es. IT: tecnico@), separati da RIO_AUTO_MAIL_TO
+# cosi' compaiono in Cc e non mischiati al destinatario principale. Default vuoto.
+RIO_AUTO_MAIL_CC = [e.strip() for e in os.environ.get(
+    'RIO_AUTO_MAIL_CC', '').split(',') if e.strip()]
 
 # =========================================================================
 #  RIO FORNITORI - canale CENTRAL (i 7 fornitori automatici legacy)

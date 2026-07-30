@@ -73,7 +73,9 @@ REM   OrdineFornitore_04_dash @ggcons=3 @ggcop=7 @tipOrd=0 @perc=50
 REM (@perc e @ggcop sono ininfluenti con @tipOrd=0 / fornitore esistente; si passano
 REM  comunque per fedelta'. @ggcons=3 invece conta: fissa la data consegna a +3 gg.)
 REM Per il CUTOVER reale: cambiare --dry-run in --no-dry-run.
-venv\Scripts\python.exe manage.py rio_auto --ccom 807764,807765 --gg-cons 3 --gg-cop 7 --canale central --dry-run
+set RIO_AUTO_MAIL_TO=matteo.boccarella@groscidac.it
+set RIO_AUTO_MAIL_CC=tecnico@groscidac.it
+venv\Scripts\python.exe manage.py rio_auto --ccom 807764,807765 --gg-cons 3 --gg-cop 7 --canale central --no-dry-run
 
 REM Propaga il codice di uscita del comando a Task Scheduler (0 = ok, !=0 = errori).
 exit /b %ERRORLEVEL%

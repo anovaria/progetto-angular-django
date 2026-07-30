@@ -43,6 +43,7 @@ urlpatterns = [
     path('app/stesso-prezzo/', include('modules.stesso_prezzo.urls')),
     path('app/prezzo-promo-alto/', include('modules.prezzo_promo_alto.urls')),
     path('app/controllo-legami/', include('modules.controllo_legami.urls')),
+    path('app/bidone/', include('modules.bidone.urls', namespace='bidone')),
     path('app/cursori/', include('modules.cursori.urls', namespace='cursori')),
     path('app/stock-picking/', include('modules.stock_picking.urls')),
     path('app/picking-negativi/', include('modules.picking_negativi.urls')),

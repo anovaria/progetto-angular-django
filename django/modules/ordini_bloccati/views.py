@@ -20,7 +20,8 @@ from django.db import connections
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment
 
-# Mappa dei campi della query alle etichette colonna per visualizzazione ed export
+from modules.bidone.views import carica_annotazioni
+
 COLONNE = [
     ('DTAAGGIO',         'Data Agg.'),
     ('DTAORD',           'Data Ordine'),
@@ -37,13 +38,10 @@ COLONNE = [
     ('Errore',           'Errore'),
 ]
 
+APP_NAME = 'ordini_bloccati'
+
 
 def _esegui_query():
-    """
-    Estrae gli ordini bloccati da t_CD_DettaglioOrdiniBloccati arricchiti
-    con la descrizione articolo, i pezzi per cartone e la descrizione CCOM
-    da t_masterData. Restituisce una lista di dizionari (un dict per riga).
-    """
     sql = """
         SELECT
             d.DTAAGGIO, d.DTAORD,
@@ -64,19 +62,33 @@ def _esegui_query():
     return rows
 
 
+def _build_key(r):
+    return f"{r.get('NrOrdine', '')}|{r.get('Articolo', '')}"
+
+
+def _merge_annotazioni(righe, annotazioni):
+    for r in righe:
+        key = _build_key(r)
+        ann = annotazioni.get(key, {})
+        r['record_key']    = key
+        r['ann_gestito']   = ann.get('gestito', False)
+        r['ann_nota']      = ann.get('nota', '')
+        r['ann_utente']    = ann.get('utente', '')
+        r['ann_data']      = ann.get('aggiornato_il')
+
+
 def main(request):
-    """Pagina principale: tabella con tutti gli ordini bloccati correnti."""
     righe = _esegui_query()
-    ctx = {
-        'colonne': COLONNE,
-        'righe': righe,
-        'totale': len(righe),
-    }
-    return render(request, 'ordini_bloccati/main.html', ctx)
+    _merge_annotazioni(righe, carica_annotazioni(APP_NAME))
+    return render(request, 'ordini_bloccati/main.html', {
+        'colonne':   COLONNE,
+        'righe':     righe,
+        'totale':    len(righe),
+        'app_name':  APP_NAME,
+    })
 
 
 def export_excel(request):
-    """Esporta gli ordini bloccati in un file Excel (.xlsx)."""
     righe = _esegui_query()
 
     wb = openpyxl.Workbook()

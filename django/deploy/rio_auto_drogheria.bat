@@ -72,17 +72,15 @@ REM    set RIO_DASH_SFTP_PASS=<password_sftp>
 REM    set RIO_DASH_ORACLE_PASS=<password_oracle>
 REM ----------------------------------------------------------------------------
 
-REM Destinatario mail di riepilogo: silve@ (legacy) e' una casella morta. In attesa
-REM di un destinatario dedicato per questo fornitore, si usa la casella tecnico@
-REM (sostituisce il default RIO_AUTO_MAIL_TO di test = alessandro.novaria@).
-set RIO_AUTO_MAIL_TO=tecnico@groscidac.it
+set RIO_AUTO_MAIL_TO=matteo.boccarella@groscidac.it
+set RIO_AUTO_MAIL_CC=tecnico@groscidac.it
 
 REM Parametri allineati allo script legacy del task srviis per Drogheria Alimenti:
 REM   OrdineFornitore_04_dash @contrcomme=804804 @ggcons=7 @ggcop=7 @tipOrd=0 @perc=50
 REM Con @tipOrd=0 il @perc=50 e' ININFLUENTE (la SP usa Qtaord grezzo, non Qtaord1),
 REM quindi NON si passano --tip-ord/--riduzione (default 0).
 REM Per il CUTOVER reale: cambiare --dry-run in --no-dry-run.
-venv\Scripts\python.exe manage.py rio_auto --ccom 804804 --gg-cons 7 --gg-cop 7 --canale central --dry-run
+venv\Scripts\python.exe manage.py rio_auto --ccom 804804 --gg-cons 7 --gg-cop 7 --canale central --no-dry-run
 
 REM Propaga il codice di uscita del comando a Task Scheduler (0 = ok, !=0 = errori).
 exit /b %ERRORLEVEL%

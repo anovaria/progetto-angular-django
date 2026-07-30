@@ -24,69 +24,6 @@ function setTab(tipo) {
 </script>
 {% endblock %}
 
-{% block extra_css %}
-<style>
-    /* Contenitore centrato — stessa larghezza delle altre app del portale */
-    .container { max-width: 1400px; margin: 15px auto; padding: 0 15px; }
-
-    /* Sezioni bianche con ombra — stile standard del portale */
-    .section {
-        background: white; border-radius: 8px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        margin-bottom: 15px; padding: 15px 20px;
-    }
-    /* Titolo di sezione — viola del tema portale */
-    .section-title {
-        font-size: 1em; font-weight: 600; margin-bottom: 12px;
-        color: #6c3483; border-bottom: 2px solid #8e44ad; padding-bottom: 6px;
-    }
-
-    /* Textarea codici — monospace per allineare i codici incollati */
-    textarea {
-        width: 100%; max-width: 400px;
-        padding: 8px 10px; border: 1px solid #ccc; border-radius: 4px;
-        font-family: monospace; font-size: 0.9em;
-    }
-    textarea:focus { border-color: #8e44ad; outline: none; }
-
-    /* Bottone azione principale */
-    .btn {
-        padding: 8px 16px; border: none; border-radius: 5px;
-        font-size: 0.85em; font-weight: 500; cursor: pointer;
-        background: #8e44ad; color: white;
-    }
-    .btn:hover { background: #6c3483; }
-
-    /* Tabella risultati: scroll orizzontale e verticale,
-       intestazione sticky che resta visibile durante lo scroll */
-    .table-wrap { overflow-x: auto; max-height: 500px; overflow-y: auto; }
-    table { width: 100%; border-collapse: collapse; font-size: 0.85em; }
-    th {
-        background: #6c3483; color: white; padding: 7px 8px;
-        text-align: left; position: sticky; top: 0; white-space: nowrap;
-    }
-    td { padding: 5px 8px; border-bottom: 1px solid #eee; }
-    /* Righe alternate + evidenziazione al passaggio del mouse */
-    tr:hover td { background: #f4ecf7; }
-    tr:nth-child(even) td { background: #fafbfc; }
-    tr:nth-child(even):hover td { background: #f4ecf7; }
-
-    /* Righe dei codici non trovati: rosse, vincono su hover e righe alternate */
-    .riga-errore td { background: #fdecea !important; color: #c0392b; font-weight: 600; }
-
-
-    /* Tab di selezione tipo ricerca — attivo in viola, inattivi in grigio */
-    .tabs { display: flex; gap: 6px; margin-bottom: 12px; }
-    .tab {
-        padding: 8px 16px; border: 1px solid #ccc; border-radius: 5px 5px 0 0;
-        background: #f0f0f0; cursor: pointer; font-size: 0.85em;
-    }
-    .tab.active {
-        background: #8e44ad; color: white; border-color: #8e44ad; font-weight: 600;
-    }
-</style>
-{% endblock %}
-
 {% block page_content %}
 <div class="container">
 
@@ -209,4 +146,66 @@ function setTab(tipo) {
     </div>
     {% endif %}
 </div>
+{% endblock %}
+{% block extra_css %}
+<style>
+    /* Contenitore centrato — stessa larghezza delle altre app del portale */
+    .container { max-width: 1400px; margin: 15px auto; padding: 0 15px; }
+
+    /* Sezioni bianche con ombra — stile standard del portale */
+    .section {
+        background: white; border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        margin-bottom: 15px; padding: 15px 20px;
+    }
+    /* Titolo di sezione — viola del tema portale */
+    .section-title {
+        font-size: 1em; font-weight: 600; margin-bottom: 12px;
+        color: #6c3483; border-bottom: 2px solid #8e44ad; padding-bottom: 6px;
+    }
+
+    /* Textarea codici — monospace per allineare i codici incollati */
+    textarea {
+        width: 100%; max-width: 400px;
+        padding: 8px 10px; border: 1px solid #ccc; border-radius: 4px;
+        font-family: monospace; font-size: 0.9em;
+    }
+    textarea:focus { border-color: #8e44ad; outline: none; }
+
+    /* Bottone azione principale */
+    .btn {
+        padding: 8px 16px; border: none; border-radius: 5px;
+        font-size: 0.85em; font-weight: 500; cursor: pointer;
+        background: #8e44ad; color: white;
+    }
+    .btn:hover { background: #6c3483; }
+
+    /* Tabella risultati: scroll orizzontale e verticale,
+       intestazione sticky che resta visibile durante lo scroll */
+    .table-wrap { overflow-x: auto; max-height: 500px; overflow-y: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.85em; }
+    th {
+        background: #6c3483; color: white; padding: 7px 8px;
+        text-align: left; position: sticky; top: 0; white-space: nowrap;
+    }
+    td { padding: 5px 8px; border-bottom: 1px solid #eee; }
+    /* Righe alternate + evidenziazione al passaggio del mouse */
+    tr:hover td { background: #f4ecf7; }
+    tr:nth-child(even) td { background: #fafbfc; }
+    tr:nth-child(even):hover td { background: #f4ecf7; }
+
+    /* Righe dei codici non trovati: rosse, vincono su hover e righe alternate */
+    .riga-errore td { background: #fdecea !important; color: #c0392b; font-weight: 600; }
+
+
+    /* Tab di selezione tipo ricerca — attivo in viola, inattivi in grigio */
+    .tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+    .tab {
+        padding: 8px 16px; border: 1px solid #ccc; border-radius: 5px 5px 0 0;
+        background: #f0f0f0; cursor: pointer; font-size: 0.85em;
+    }
+    .tab.active {
+        background: #8e44ad; color: white; border-color: #8e44ad; font-weight: 600;
+    }
+</style>
 {% endblock %}

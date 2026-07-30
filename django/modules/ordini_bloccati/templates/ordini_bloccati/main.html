@@ -1,77 +1,40 @@
 {% extends 'portal/base.html' %}
-{# Descrizione del template: Tabella degli ordini fornitore bloccati (mancata trasmissione Gold -> fornitore), con export Excel. #}
 {% load ordini_bloccati_tags %}
 
 {% block extra_css %}
 <style>
-  .ob-container {
-    padding: 20px;
-  }
-  .toolbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 15px;
-  }
-  .toolbar h5 {
-    color: #1F4E79;
-    margin: 0;
-  }
-  .btn-export {
-    background: #1F4E79;
-    color: #fff;
-    border: none;
-    padding: 7px 16px;
-    border-radius: 5px;
-    cursor: pointer;
-    text-decoration: none;
-  }
-  .btn-export:hover {
-    background: #163a5a;
-    color: #fff;
-  }
-  .totale {
-    font-size: 0.9rem;
-    color: #6c757d;
-    margin-bottom: 10px;
-  }
-  .table-wrapper {
-    overflow: auto;
-    max-height: calc(100vh - 200px);
-  }
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.85rem;
-  }
-  thead th {
-    background: #1F4E79;
-    color: #fff;
-    padding: 8px 10px;
-    text-align: left;
-    white-space: nowrap;
-    position: sticky;
-    top: 0;
-    z-index: 1;
-  }
-  tbody tr:nth-child(even) {
-    background: #f2f6fc;
-  }
-  tbody tr:hover {
-    background: #dce8f5;
-  }
-  tbody td {
-    padding: 6px 10px;
-    border-bottom: 1px solid #dee2e6;
-    white-space: nowrap;
-  }
+  .ob-container { padding: 20px; }
+  .toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; }
+  .toolbar h5 { color: #1F4E79; margin: 0; }
+  .btn-export { background: #1F4E79; color: #fff; border: none; padding: 7px 16px; border-radius: 5px; cursor: pointer; text-decoration: none; }
+  .btn-export:hover { background: #163a5a; color: #fff; }
+  .totale { font-size: 0.9rem; color: #6c757d; margin-bottom: 10px; }
+  .table-wrapper { overflow: auto; max-height: calc(100vh - 200px); }
+  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  thead th { background: #1F4E79; color: #fff; padding: 8px 10px; text-align: left; white-space: nowrap; position: sticky; top: 0; z-index: 1; }
+  tbody tr:nth-child(even) { background: #f2f6fc; }
+  tbody tr:hover { background: #dce8f5; }
+  tbody td { padding: 6px 10px; border-bottom: 1px solid #dee2e6; white-space: nowrap; }
+
+  /* annotazioni */
+  .annot-cell { min-width: 180px; white-space: normal !important; vertical-align: top; }
+  .annot-box { display: flex; flex-direction: column; gap: 3px; font-size: 0.78rem; }
+  .annot-chk-label { display: flex; align-items: center; gap: 4px; margin: 0; cursor: pointer; font-weight: 500; }
+  .ac-nota { width: 100%; border: 1px solid #dee2e6; border-radius: 3px; padding: 2px 5px; font-size: 0.75rem; }
+  .annot-save { background: #1F4E79; color: #fff; border: none; padding: 2px 8px; border-radius: 3px; cursor: pointer; font-size: 0.75rem; align-self: flex-start; margin-top: 2px; }
+  .annot-save:hover { background: #163a5a; }
+  .annot-meta { color: #6c757d; font-size: 0.7rem; font-style: italic; }
+  .row-annotata > td { background: #fffbe6 !important; }
+  .row-gestita { opacity: 0.6; }
+  .row-gestita > td { background: #b7e4c7 !important; }
+  .row-gestita > td:first-child { border-left: 3px solid #198754; }
 </style>
 {% endblock %}
 
 {% block page_content %}
 <div class="ob-container">
+  <form id="csrf-holder" style="display:none">{% csrf_token %}</form>
 
-  {# Sezione: Toolbar con titolo e pulsante export Excel #}
   <div class="toolbar">
     <h5>Ordini Bloccati</h5>
     <a href="{% url 'ordini_bloccati_export' %}" class="btn-export">⬇ Export Excel</a>
@@ -86,17 +49,27 @@
     <table>
       <thead>
         <tr>
-          {% for _, label in colonne %}
-          <th>{{ label }}</th>
-          {% endfor %}
+          {% for _, label in colonne %}<th>{{ label }}</th>{% endfor %}
+          <th>Annotazione</th>
         </tr>
       </thead>
       <tbody>
         {% for riga in righe %}
-        <tr>
-          {% for campo, _ in colonne %}
-          <td>{{ riga|get_item:campo|default:'' }}</td>
-          {% endfor %}
+        <tr {% if riga|get_item:'ann_gestito' %}class="row-gestita"{% elif riga|get_item:'ann_utente' %}class="row-annotata"{% endif %}>
+          {% for campo, _ in colonne %}<td>{{ riga|get_item:campo|default:'' }}</td>{% endfor %}
+          <td class="annot-cell">
+            <div class="annot-box" data-app="{{ app_name }}" data-key="{{ riga|get_item:'record_key' }}">
+              <label class="annot-chk-label">
+                <input type="checkbox" class="ac-chk" {% if riga|get_item:'ann_gestito' %}checked{% endif %}>
+                Gestito
+              </label>
+              <input type="text" class="ac-nota" value="{{ riga|get_item:'ann_nota'|default:'' }}" placeholder="nota…">
+              <button class="annot-save" type="button">Salva</button>
+              {% if riga|get_item:'ann_utente' %}
+              <div class="annot-meta">{{ riga|get_item:'ann_utente' }}, {{ riga|get_item:'ann_data'|date:"d/m H:i" }}</div>
+              {% endif %}
+            </div>
+          </td>
         </tr>
         {% endfor %}
       </tbody>
@@ -104,4 +77,43 @@
   </div>
   {% endif %}
 </div>
+
+<script>
+(function() {
+  var ANNOTA_URL = '{% url "bidone:annota" %}';
+  var CSRF = document.getElementById('csrf-holder').querySelector('[name=csrfmiddlewaretoken]').value;
+
+  document.querySelectorAll('.annot-save').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var box = btn.closest('.annot-box');
+      var gestito = box.querySelector('.ac-chk').checked ? '1' : '0';
+      var nota    = box.querySelector('.ac-nota').value;
+      btn.disabled = true; btn.textContent = '…';
+      fetch(ANNOTA_URL, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: new URLSearchParams({
+          csrfmiddlewaretoken: CSRF,
+          app_name:   box.dataset.app,
+          record_key: box.dataset.key,
+          gestito:    gestito,
+          nota:       nota,
+        }).toString()
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        if (d.ok) {
+          btn.textContent = '✓';
+          setTimeout(function() { btn.textContent = 'Salva'; btn.disabled = false; }, 1200);
+          var tr = btn.closest('tr');
+          tr.classList.remove('row-gestita', 'row-annotata');
+          if (gestito === '1') tr.classList.add('row-gestita');
+          else if (nota.trim()) tr.classList.add('row-annotata');
+        } else { btn.textContent = '!'; btn.disabled = false; }
+      })
+      .catch(function() { btn.textContent = '!'; btn.disabled = false; });
+    });
+  });
+})();
+</script>
 {% endblock page_content %}

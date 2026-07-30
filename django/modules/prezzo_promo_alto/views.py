@@ -4,7 +4,8 @@ from django.db import connections
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment
 
-# t_ArtPrezzopromoalto: articoli in promo con prezzo offerta SUPERIORE al prezzo di vendita
+from modules.bidone.views import carica_annotazioni
+
 COLONNE = [
     ('DTAAGGIO',  'Data Agg.'),
     ('OPLCEXOPR', 'Cod. Promo'),
@@ -15,6 +16,8 @@ COLONNE = [
     ('PRZ_OFF',   'Prezzo Offerta'),
     ('PRZ_VEND',  'Prezzo Vendita'),
 ]
+
+APP_NAME = 'prezzo_promo_alto'
 
 
 def _esegui_query():
@@ -33,14 +36,30 @@ def _esegui_query():
     return rows
 
 
+def _build_key(r):
+    return f"{r.get('OPLCEXOPR', '')}|{r.get('ARVCEXR', '')}"
+
+
+def _merge_annotazioni(righe, annotazioni):
+    for r in righe:
+        key = _build_key(r)
+        ann = annotazioni.get(key, {})
+        r['record_key']  = key
+        r['ann_gestito'] = ann.get('gestito', False)
+        r['ann_nota']    = ann.get('nota', '')
+        r['ann_utente']  = ann.get('utente', '')
+        r['ann_data']    = ann.get('aggiornato_il')
+
+
 def main(request):
     righe = _esegui_query()
-    ctx = {
-        'colonne': COLONNE,
-        'righe': righe,
-        'totale': len(righe),
-    }
-    return render(request, 'prezzo_promo_alto/main.html', ctx)
+    _merge_annotazioni(righe, carica_annotazioni(APP_NAME))
+    return render(request, 'prezzo_promo_alto/main.html', {
+        'colonne':  COLONNE,
+        'righe':    righe,
+        'totale':   len(righe),
+        'app_name': APP_NAME,
+    })
 
 
 def export_excel(request):
