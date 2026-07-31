@@ -660,6 +660,12 @@ def copia_slot(request):
     Riceve un payload JSON con la lista dei giorni di destinazione e i dati
     dello slot sorgente (fornitore, hostess, agenzia, note). Gli orari non
     vengono copiati per evitare sovrascritture involontarie.
+
+    Se lo slot richiesto è già occupato da un'altra hostess in un giorno di
+    destinazione, la promozione viene salvata automaticamente nel primo slot
+    libero disponibile di quel giorno, invece di sovrascrivere i dati
+    esistenti. Se in un giorno non c'è nessuno slot libero, quel giorno viene
+    saltato e riportato tra i 'saltati'.
     """
     import json
     data = json.loads(request.body)
@@ -669,21 +675,52 @@ def copia_slot(request):
     if not giorni:
         return JsonResponse({'success': False, 'error': 'Nessun giorno selezionato'})
 
-    slot = int(presenza_data.get('slot'))
+    slot_richiesto = int(presenza_data.get('slot'))
     hostess_id = presenza_data.get('hostess_id')
     agenzia_id = presenza_data.get('agenzia_id')
     # Risolve gli FK una sola volta prima del ciclo per efficienza
     hostess = Hostess.objects.filter(pk=hostess_id).first() if hostess_id else None
     agenzia = Agenzia.objects.filter(pk=agenzia_id).first() if agenzia_id else None
 
+    # Cache del numero di slot per periodo, per evitare query ripetute sullo stesso giorno
+    num_slots_cache = {}
+
+    def num_slots_giorno(giorno):
+        if giorno not in num_slots_cache:
+            periodo_giorno = Periodo.objects.filter(
+                data_inizio__lte=giorno, data_fine__gte=giorno
+            ).first()
+            num_slots_cache[giorno] = min(periodo_giorno.num_hostess or 12, 13) if periodo_giorno else 12
+        return num_slots_cache[giorno]
+
     saved = 0
+    dettagli = []  # slot effettivamente usato per ogni giorno salvato (per il riepilogo lato client)
+    saltati = []   # giorni senza nessuno slot libero
+
     for giorno_str in giorni:
         try:
             giorno = datetime.strptime(giorno_str, '%Y-%m-%d').date()
         except ValueError:
             continue  # Salta date malformate senza interrompere il ciclo
+
+        # Slot già occupati da una hostess in questo giorno
+        occupati = set(
+            PresenzaHostess.objects.filter(giorno=giorno, hostess__isnull=False)
+            .values_list('slot', flat=True)
+        )
+
+        slot_da_usare = slot_richiesto
+        if slot_richiesto in occupati:
+            # Slot principale occupato: cerca il primo slot libero del giorno
+            num_slots = num_slots_giorno(giorno)
+            slot_libero = next((s for s in range(1, num_slots + 1) if s not in occupati), None)
+            if slot_libero is None:
+                saltati.append(giorno_str)
+                continue  # Nessuno slot libero disponibile: il giorno viene saltato
+            slot_da_usare = slot_libero
+
         presenza, _ = PresenzaHostess.objects.get_or_create(
-            giorno=giorno, slot=slot, defaults={'tipo': 'STD'}
+            giorno=giorno, slot=slot_da_usare, defaults={'tipo': 'STD'}
         )
         presenza.fornitore_id = presenza_data.get('fornitore_id') or None
         presenza.nota_fornitore = presenza_data.get('nota_fornitore', '') or ''
@@ -692,8 +729,13 @@ def copia_slot(request):
         presenza.nota = presenza_data.get('varie', '') or ''
         presenza.save()
         saved += 1
+        dettagli.append({
+            'giorno': giorno_str,
+            'slot': slot_da_usare,
+            'spostato': slot_da_usare != slot_richiesto,
+        })
 
-    return JsonResponse({'success': True, 'saved': saved})
+    return JsonResponse({'success': True, 'saved': saved, 'dettagli': dettagli, 'saltati': saltati})
 
 
 @require_http_methods(["POST"])

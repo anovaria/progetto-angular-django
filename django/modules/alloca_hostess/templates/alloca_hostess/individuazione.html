@@ -361,7 +361,7 @@
                 <button type="button" class="btn btn-outline-secondary btn-sm" onclick="selezionaTuttiGiorni(true)">Tutti</button>
                 <button type="button" class="btn btn-outline-secondary btn-sm" onclick="selezionaTuttiGiorni(false)">Nessuno</button>
             </div>
-            {# Box informativo: avvisa se i giorni selezionati hanno già dati (sovrascrittura) #}
+            {# Box informativo: avvisa se in alcuni giorni selezionati lo slot è già occupato #}
             <div class="modal-copy-info" id="modal-copy-info">
                 Verranno copiati: fornitore, nota, hostess, agenzia, varie. Gli orari NON vengono copiati.
             </div>
@@ -459,7 +459,7 @@ function aggiornaContatore() {
     var infoBox = document.getElementById('modal-copy-info');
     if (hasOverwrite) {
         infoBox.className = 'modal-copy-info warn';
-        infoBox.textContent = '⚠ Alcuni giorni hanno già dati: verranno sovrascritti. Gli orari NON vengono copiati.';
+        infoBox.textContent = '⚠ In alcuni giorni lo slot ' + slotDaCopire + ' è già occupato: la promozione verrà inserita automaticamente nel primo slot libero di quel giorno. Gli orari NON vengono copiati.';
     } else {
         infoBox.className = 'modal-copy-info';
         infoBox.textContent = 'Verranno copiati: fornitore, nota, hostess, agenzia, varie. Gli orari NON vengono copiati.';
@@ -692,20 +692,45 @@ function salvaTutto() {
         pendingCopies = [];
         aggiornaPendingBadge();
 
+        // Accumula gli esiti di tutte le copie per il riepilogo finale
+        var spostati = [];  // giorni salvati in uno slot diverso da quello richiesto
+        var saltati = [];   // giorni senza nessuno slot libero
+
         return copies.reduce(function(chain, copia) {
             return chain.then(function() {
                 return fetch("{% url 'alloca_hostess:copia_slot' %}", {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
                     body: JSON.stringify({ giorni: copia.giorni, presenza: copia.presenza })
-                }).then(function(r) { return r.json(); });
+                }).then(function(r) { return r.json(); })
+                .then(function(esito) {
+                    (esito.dettagli || []).forEach(function(d) {
+                        if (d.spostato) spostati.push(d.giorno + ' → slot ' + d.slot);
+                    });
+                    (esito.saltati || []).forEach(function(g) { saltati.push(g); });
+                });
             });
-        }, Promise.resolve());
+        }, Promise.resolve()).then(function() {
+            return { spostati: spostati, saltati: saltati };
+        });
     })
-    .then(function() {
+    .then(function(riepilogo) {
         // Tutte le operazioni riuscite: feedback visivo e ricarica pagina
         btn.innerHTML = '<i class="bi bi-check" style="vertical-align: middle;"></i> Salvato!';
         btn.classList.replace('btn-primary', 'btn-success');
+
+        // Se alcune copie sono state spostate su un altro slot o saltate, avvisa l'utente
+        if (riepilogo && (riepilogo.spostati.length || riepilogo.saltati.length)) {
+            var msg = '';
+            if (riepilogo.spostati.length) {
+                msg += 'Slot occupato: alcune copie sono state inserite nel primo slot libero disponibile:\n' + riepilogo.spostati.join('\n') + '\n\n';
+            }
+            if (riepilogo.saltati.length) {
+                msg += 'Giorni saltati (nessuno slot libero disponibile):\n' + riepilogo.saltati.join('\n');
+            }
+            alert(msg);
+        }
+
         setTimeout(function() { location.reload(); }, 1000);
     })
     .catch(function(err) {
