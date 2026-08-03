@@ -5,7 +5,7 @@ from .models import MasterdataAll
 from openpyxl.styles import Font, PatternFill
 
 
-def _costruisci_righe(codiciclean, tipo):
+def _costruisci_righe(codiciclean, tipo, solo_principale=False):
     """Esegue la ricerca su Gold e ricostruisce le righe NELL'ORDINE
     in cui l'utente ha incollato i codici.
 
@@ -13,9 +13,15 @@ def _costruisci_righe(codiciclean, tipo):
       {"codice": <codice cercato>, "trovato": True/False, "art": <MasterdataAll o None>}
 
     Un codice può produrre più righe (stesso codice fornitore usato da
-    fornitori diversi): in quel caso le righe compaiono tutte, consecutive,
-    nella posizione del codice. Un codice non trovato produce una riga
-    "vuota" con trovato=False, che schermo ed export evidenziano in rosso.
+    fornitori diversi, oppure un articolo con più EAN): in quel caso le
+    righe compaiono tutte, consecutive, nella posizione del codice. Un
+    codice non trovato produce una riga "vuota" con trovato=False, che
+    schermo ed export evidenziano in rosso.
+
+    solo_principale: se True, tiene solo la riga con ETICEAN=1 (l'EAN
+    principale dell'articolo, come il filtro "solo EAN principale" di
+    Assortimento Abbig). Non ha senso applicarlo alla ricerca per EAN,
+    dove il codice cercato è già l'EAN esatto di quella riga.
 
     Usata sia da ricerca che da export_excel: un solo posto dove
     correggere, nessun rischio che schermo e file differiscano.
@@ -31,6 +37,8 @@ def _costruisci_righe(codiciclean, tipo):
     # Filtro dinamico: {"codart__in": [...]} — **filtro lo spacchetta
     # come argomento nominato della query
     filtro = {campo + "__in": codiciclean}
+    if solo_principale and tipo != "ean":
+        filtro["eticean"] = 1
 
     # Query sul DB Gold (read-only) — .using() forza il database goldreport
     risultati_db = MasterdataAll.objects.using('goldreport').filter(**filtro)
@@ -68,6 +76,9 @@ def ricerca(request):
     # Default "gold" — serve anche al template per evidenziare il tab attivo
     tipo = "gold"
 
+    # Default: checkbox non spuntato (mostra tutti gli EAN dell'articolo)
+    solo_principale = False
+
     if request.method == "POST":
         # Tipo di ricerca dal campo hidden valorizzato dai tab (gold/ean/fornitore)
         tipo = request.POST.get("tipo_ricerca", "gold")
@@ -75,6 +86,7 @@ def ricerca(request):
         codici = request.POST.get("codici", "")
         # Pulizia: spezza per riga, toglie gli spazi, scarta le righe vuote
         codiciclean = [c.strip() for c in codici.split("\n") if c.strip()]
+        solo_principale = bool(request.POST.get("solo_principale"))
 
         # Gli EAN in tabella sono a 13 cifre: padding con zeri iniziali
         # (es. "80703853" -> "0000080703853")
@@ -82,21 +94,24 @@ def ricerca(request):
             codiciclean = [c.zfill(13) for c in codiciclean]
 
         # Costruzione righe nell'ordine di incollaggio (logica condivisa con l'export)
-        righe = _costruisci_righe(codiciclean, tipo)
+        righe = _costruisci_righe(codiciclean, tipo, solo_principale)
 
         # Salva in sessione per l'export Excel (che arriva in GET, senza form).
-        # Si salvano solo codici e tipo: l'export ricostruisce le righe
+        # Si salvano solo codici, tipo e flag: l'export ricostruisce le righe
         # con la stessa funzione (gli oggetti modello non sono serializzabili).
         request.session['ricerca_gold_codici'] = codiciclean
         request.session['ricerca_gold_tipo'] = tipo
+        request.session['ricerca_gold_solo_principale'] = solo_principale
     else:
         # GET = prima visita o "Pulisci": svuota la sessione della ricerca
         request.session.pop('ricerca_gold_codici', None)
         request.session.pop('ricerca_gold_tipo', None)
+        request.session.pop('ricerca_gold_solo_principale', None)
 
     return render(request, "ricerca_gold/ricerca.html", {
         "righe": righe,
         "tipo": tipo,
+        "solo_principale": solo_principale,
     })
 
 
@@ -111,9 +126,10 @@ def export_excel(request):
     # Codici già puliti (e già paddati se EAN) dalla view ricerca
     codiciclean = request.session.get('ricerca_gold_codici', [])
     tipo = request.session.get('ricerca_gold_tipo', 'gold')
+    solo_principale = request.session.get('ricerca_gold_solo_principale', False)
 
     # Stesse righe della schermata — logica condivisa
-    righe = _costruisci_righe(codiciclean, tipo)
+    righe = _costruisci_righe(codiciclean, tipo, solo_principale)
 
     # In quale colonna scrivere il codice non trovato: quella del campo cercato
     # (1=Cod.Art.Fornitore, 2=Cod.Gold, 8=EAN — segue l'ordine delle intestazioni)

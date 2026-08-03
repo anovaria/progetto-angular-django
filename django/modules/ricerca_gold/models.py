@@ -13,6 +13,9 @@ class MasterdataAll(models.Model):
     stato = models.CharField(max_length=5, db_column='STATO')
     iva = models.CharField(max_length=10, db_column='IVA')
     ean = models.CharField(max_length=20, db_column='EAN')
+    # Flag EAN principale dell'articolo (un solo ETICEAN=1 per CODART):
+    # equivalente di EANPRINC usato dalle altre view Gold (v_abbigliamento, v_AllArticolo).
+    eticean = models.IntegerField(db_column='ETICEAN', null=True, blank=True)
     pracq = models.DecimalField(max_digits=10, decimal_places=2, db_column='PRACQ')
     przvend = models.DecimalField(max_digits=10, decimal_places=2, db_column='PRZ_VEND')
 

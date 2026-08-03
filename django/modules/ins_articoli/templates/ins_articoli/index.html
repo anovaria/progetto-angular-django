@@ -1,0 +1,211 @@
+{% extends 'portal/base.html' %}
+
+{% block extra_css %}
+<style>
+    /* Contenitore centrato — stessa larghezza delle altre app del portale */
+    .container { max-width: 1400px; margin: 15px auto; padding: 0 15px; }
+
+    /* Sezioni bianche con ombra — stile standard del portale */
+    .section {
+        background: white; border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        margin-bottom: 15px; padding: 15px 20px;
+    }
+    .section-title {
+        font-size: 1em; font-weight: 600; margin-bottom: 12px;
+        color: #6c3483; border-bottom: 2px solid #8e44ad; padding-bottom: 6px;
+    }
+
+    /* Campi di testata: etichetta sopra, input sotto */
+    .form-group { display: flex; flex-direction: column; gap: 4px; }
+    .form-group label { font-size: 0.8em; font-weight: 600; color: #555; }
+    .form-group input {
+        padding: 7px 10px; border: 1px solid #ccc; border-radius: 4px;
+        font-size: 0.9em; min-width: 160px;
+    }
+    .form-group input:focus { border-color: #8e44ad; outline: none; }
+
+    /* Textarea articoli — monospace per allineare le colonne incollate */
+    textarea {
+        width: 100%; padding: 8px 10px; border: 1px solid #ccc;
+        border-radius: 4px; font-family: monospace; font-size: 0.9em;
+    }
+    textarea:focus { border-color: #8e44ad; outline: none; }
+
+    /* Bottoni */
+    .btn {
+        padding: 8px 16px; border: none; border-radius: 5px;
+        font-size: 0.85em; font-weight: 500; cursor: pointer;
+        background: #8e44ad; color: white; text-decoration: none;
+        display: inline-block;
+    }
+    .btn:hover { background: #6c3483; }
+
+    /* Tabella anteprima con intestazione fissa durante lo scroll */
+    .table-wrap { overflow-x: auto; max-height: 450px; overflow-y: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.85em; }
+    th {
+        background: #6c3483; color: white; padding: 7px 8px;
+        text-align: left; position: sticky; top: 0; white-space: nowrap;
+    }
+    td { padding: 5px 8px; border-bottom: 1px solid #eee; }
+    tr:hover td { background: #f4ecf7; }
+    tr:nth-child(even) td { background: #fafbfc; }
+    tr:nth-child(even):hover td { background: #f4ecf7; }
+
+    /* Sezione errori bloccanti */
+    .errore-title { color: #c0392b; border-bottom-color: #e74c3c; }
+</style>
+{% endblock %}
+
+{% block page_content %}
+<div class="container">
+
+    <!-- ================================================================
+         SEZIONE 1 — Input: dati comuni all'infornata + articoli
+         ================================================================ -->
+    <div class="section">
+        <div class="section-title">Creazione anagrafica articoli</div>
+
+        <form method="post">
+            {% csrf_token %}
+
+            <!-- I tre campi uguali per tutti gli articoli dell'infornata.
+                 value="{{ testata.x }}" li ripopola dopo il Genera, così
+                 l'utente non li riscrive a ogni caricamento. -->
+            <div style="display:flex; gap:16px; flex-wrap:wrap; margin-bottom:14px;">
+                <div class="form-group">
+                    <label>Struttura merceologica</label>
+                    <input type="text" name="struttura" value="{{ testata.struttura }}" required>
+                </div>
+                <div class="form-group">
+                    <label>Codice fornitore</label>
+                    <input type="text" name="fornitore" value="{{ testata.fornitore }}" required>
+                </div>
+                <div class="form-group">
+                    <label>Contratto commerciale</label>
+                    <input type="text" name="ccom" value="{{ testata.ccom }}" required>
+                </div>
+            </div>
+
+            <!-- Istruzioni: l'utente non deve sapere del TAB, deve solo
+                 sapere che seleziona sei colonne in Excel e incolla -->
+            <p style="font-size:0.85em; color:#666; margin-bottom:6px;">
+                Seleziona in Excel <strong>sei colonne</strong> nell'ordine
+                <em>barcode · descrizione · costo lordo · prezzo vendita ·
+                referenza fornitore · codice Gold</em> e incollale qui sotto.
+            </p>
+
+            <!-- name="dati" corrisponde a request.POST.get("dati") nella view.
+                 &#9; nel placeholder è il carattere TAB: mostra l'esempio
+                 con le colonne separate come arrivano da Excel -->
+            <textarea name="dati" rows="12"
+                placeholder="4006874&#9;Mercedes-AMG GT4&#9;2,85&#9;5,5&#9;10111800000&#9;337206"></textarea>
+
+            <br><br>
+            <button type="submit" class="btn">Genera</button>
+            <!-- Pulisci: torna in GET, la view svuota la sessione -->
+            <a href="{% url 'ins_art_main' %}" class="btn" style="background:#95a5a6;">Pulisci</a>
+        </form>
+    </div>
+
+    <!-- ================================================================
+         SEZIONE 2 — Errori bloccanti: se compare, non c'è anteprima
+                     né bottone di download (la view non ha generato nulla)
+         ================================================================ -->
+    {% if troppo_lunghe %}
+    <div class="section">
+        <div class="section-title errore-title">
+            ⚠ Descrizioni troppo lunghe — correggile prima di generare
+        </div>
+        <p style="font-size:0.85em; color:#666;">
+            Gold accetta descrizioni di massimo 50 caratteri.
+        </p>
+        <ul>
+            <!-- Ogni t è un dizionario {riga, descrizione, lunghezza}:
+                 il numero di riga serve a trovare subito quale correggere -->
+            {% for t in troppo_lunghe %}
+            <li>
+                Riga {{ t.riga }} — {{ t.lunghezza }} caratteri:
+                <strong>{{ t.descrizione }}</strong>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+    {% if barcode_rotti %}
+    <div class="section">
+        <div class="section-title errore-title">
+            ⚠ Barcode non validi — correggili prima di generare
+        </div>
+        <p style="font-size:0.85em; color:#666;">
+            Excel ha convertito questi codici in notazione scientifica e il valore
+            originale è perso. In Excel formatta la colonna barcode come
+            <strong>Testo</strong> prima di incollare i codici, poi riprova.
+        </p>
+        <ul>
+            {% for b in barcode_rotti %}
+            <li>Riga {{ b.riga }}: <strong>{{ b.barcode }}</strong></li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+    <!-- ================================================================
+         SEZIONE 3 — Anteprima: mostra solo le colonne inserite dall'utente,
+                     non tutte e 80 (sarebbero illeggibili)
+         ================================================================ -->
+    {% if righe %}
+    <div class="section">
+        <div class="section-title">
+            Anteprima ({{ righe|length }} articoli — il CSV avrà 80 colonne)
+        </div>
+
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Barcode</th>
+                        <th>Descrizione</th>
+                        <th>Descr. cassa (20)</th>
+                        <th>Costo</th>
+                        <th>Prezzo vend.</th>
+                        <th>Referenza forn.</th>
+                        <th>Cod. Gold</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Ciclo sugli articoli parsati, non sulle righe generate:
+                         qui interessano i dati inseriti, non le 80 celle -->
+                    {% for a in articoli %}
+                    <tr>
+                        <!-- forloop.counter = numero di giro del ciclo, parte da 1 -->
+                        <td>{{ forloop.counter }}</td>
+                        <td>{{ a.barcode }}</td>
+                        <td>{{ a.descrizione }}</td>
+                        <!-- slice:":20" mostra come verrà troncata per la cassa -->
+                        <td>{{ a.descrizione|slice:":20" }}</td>
+                        <td>{{ a.costo }}</td>
+                        <td>{{ a.prezzo }}</td>
+                        <td>{{ a.referenza }}</td>
+                        <td>{{ a.codgold }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Regalo: il codice ATTRIBUTO ACQ (contratto + "01") che serve
+             all'utente per il successivo file attributi, già pronto -->
+        <p style="margin-top:12px; font-size:0.9em;">
+            Codice <strong>ATTRIBUTO ACQ</strong> per il file attributi:
+            <code style="background:#f4ecf7; padding:3px 8px; border-radius:3px;">{{ testata.ccom }}01</code>
+        </p>
+
+        <!-- Download: link in GET, la view rilegge le righe dalla sessione -->
+        <a href="{% url 'ins_art_download' %}" class="btn">📥 Scarica CSV</a>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}

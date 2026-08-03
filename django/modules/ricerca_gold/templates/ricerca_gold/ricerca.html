@@ -20,6 +20,16 @@ function setTab(tipo) {
     // 3. evidenzia il tab cliccato — toglie 'active' a tutti, lo mette a quello giusto
     document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
     event.target.classList.add('active');
+    // 4. il filtro "Solo EAN principale" non ha senso sulla ricerca per EAN
+    //    (il codice cercato è già l'EAN esatto di quella riga): lo nasconde
+    //    e toglie la spunta per non mandarlo in POST senza che l'utente lo veda
+    const solo = document.getElementById('solo-principale-wrap');
+    if (tipo === 'ean') {
+        solo.style.display = 'none';
+        solo.querySelector('input').checked = false;
+    } else {
+        solo.style.display = '';
+    }
 }
 </script>
 {% endblock %}
@@ -44,7 +54,15 @@ function setTab(tipo) {
             <input type="hidden" name="tipo_ricerca" id="tipo-ricerca" value="{{ tipo }}">
             <!-- name="codici" corrisponde a request.POST.get("codici") nella view -->
             <textarea name="codici" id="codici" rows="10" placeholder="Incolla i codici Gold, uno per riga"></textarea>
-            <br><br>
+            <br>
+            <!-- Filtro come in Assortimento Abbig: tiene solo la riga con l'EAN
+                 principale dell'articolo (ETICEAN=1) invece di tutte le righe EAN.
+                 Non ha effetto sulla ricerca per EAN (il codice cercato è già l'EAN esatto). -->
+            <label id="solo-principale-wrap" style="display:{% if tipo == 'ean' %}none{% else %}inline-flex{% endif %}; align-items:center; gap:6px; margin:8px 0; font-size:0.85em; cursor:pointer;">
+                <input type="checkbox" name="solo_principale" value="1" {% if solo_principale %}checked{% endif %}>
+                Solo EAN principale
+            </label>
+            <br>
             <button type="submit" class="btn">Cerca</button>
             <!-- Pulisci: torna alla pagina in GET — la view svuota anche la sessione -->
             <a href="{% url 'ricerca_gold_main' %}" class="btn" style="background:#95a5a6;">Pulisci</a>

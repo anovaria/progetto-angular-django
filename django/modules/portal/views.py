@@ -312,6 +312,22 @@ MENU_CONFIG = [
         'app_name': 'scarti-gettati',
     },
     {
+        'path': '/app/ricerca_gold/',
+        'label': 'Ricerca EAN / Cod. Gold / Cod. Fornitore',
+        'icon': 'search',
+        'desc': 'Sostituisce il file Excel Ricerca_Ean_CodGold_CodFor',
+        'groups': ['gruppoced', 'itd'],
+        'app_name': 'ricerca_gold',
+    },
+    {
+        'path': '/app/ins_articoli/',
+        'label': 'Ins. Art. 10001',
+        'icon': 'search',
+        'desc': 'Sostituisce il file Excel Inser_Articoli_10001',
+        'groups': ['gruppoced', 'itd'],
+        'app_name': 'Ins. Art. 10001',
+    },    
+    {
         'path': '/portal/utenti-online/',
         'label': 'Utenti Online',
         'icon': 'people',
@@ -331,14 +347,6 @@ MENU_CONFIG = [
         'icon': 'shield-check',
         'desc': 'Assegnazione dei permessi individuali alle app del portale',
         'groups': ['itd'],
-    },
-    {
-        'path': '/app/ricerca_gold/',
-        'label': 'Ricerca EAN / Cod. Gold / Cod. Fornitore',
-        'icon': 'search',
-        'desc': 'Sostituisce il file Excel Ricerca_Ean_CodGold_CodFor',
-        'groups': ['gruppoced', 'itd'],
-        'app_name': 'ricerca_gold',
     },
     {
         'path': '/admin/',

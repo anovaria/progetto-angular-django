@@ -137,6 +137,11 @@ class ActiveUserMiddleware:
 
     def _should_skip(self, path):
         """Ignora percorsi che non rappresentano navigazione utente reale."""
+        # '/' e' solo un redirect a /portal/ (project_core/urls.py): se lo si
+        # registra, la richiesta reale che segue subito dopo viene spesso
+        # scartata dal throttle e last_path resta bloccato su "/".
+        if path == '/':
+            return True
         skip_prefixes = (
             '/static/',
             '/media/',

@@ -51,7 +51,8 @@ urlpatterns = [
     path('app/rio-fornitori/', include('modules.rio_fornitori.urls', namespace='rio_fornitori')),
     path('app/rio-fornitori-new/', include('modules.rio_fornitori_new.urls', namespace='rio_fornitori_new')),
     path('app/parametri-rio/', include('modules.riordino_pdv.urls', namespace='riordino_pdv')),
-    path('app/ricette/',       include('modules.ricette.urls', namespace='ricette')),
+    path('app/ricette/', include('modules.ricette.urls', namespace='ricette')),
     path('app/scarti-gettati/', include('modules.scarti_gettati.urls')),
     path('app/ricerca_gold/', include('modules.ricerca_gold.urls')),
+    path('app/ins_articoli/', include('modules.ins_articoli.urls')),
 ]

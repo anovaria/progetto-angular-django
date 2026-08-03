@@ -15,7 +15,7 @@ Per ogni colonna:
 
 TRACCIATO = [
     {"nome": "Barcode",                                  "tipo": "articolo", "campo": "barcode"},
-    {"nome": "Descrizione principale (50car)",           "tipo": "articolo", "campo": "descrizione"},
+    {"nome": "Descrizione principale (50car)                       ", "tipo": "articolo", "campo": "descrizione"},
     {"nome": "Descrizione breve - cassa (20car)",        "tipo": "desc20"},
     {"nome": "Struttura Merceologica",                   "tipo": "testata",  "campo": "struttura"},
     {"nome": "Data inizio",                              "tipo": "oggi"},

@@ -105,6 +105,7 @@ INSTALLED_APPS = [
     'modules.scarti_gettati.apps.ScartiGettatiConfig',
     'modules.riordino_pdv.apps.RiordinoPdvConfig',
     'modules.ricerca_gold',
+    'modules.ins_articoli',
 ]
 
 # Middleware (Nessun cambiamento)
