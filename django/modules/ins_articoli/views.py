@@ -5,35 +5,58 @@ import csv
 import io
 from django.http import HttpResponse
 
-# Ordine delle colonne che l'utente incolla da Excel
-COLONNE = ["barcode", "descrizione", "costo", "prezzo", "referenza", "codgold"]
+# Le colonne che l'utente incolla, una per box.
+# La tupla è (nome del campo, etichetta mostrata a schermo).
+# L'ordine qui decide solo l'ordine dei box a schermo: il CSV segue TRACCIATO.
+COLONNE = [
+    ("barcode",     "Barcode"),
+    ("descrizione", "Descrizione principale"),
+    ("struttura",   "Struttura merceologica"),
+    ("iva",         "IVA acquisto"),
+    ("pzxcrt",      "Pezzi per collo"),
+    ("costo",       "Costo lordo"),
+    ("prezzo",      "Prezzo di vendita base"),
+    ("referenza",   "Referenza fornitore"),
+    ("codgold",     "Codice articolo Gold"),
+]
 
 
-def _parse_input(testo):
-    """Trasforma il testo incollato in una lista di articoli.
+def _parse_input(valori):
+    """Accoppia per posizione le sette colonne incollate in box separati.
 
-    Attende 6 colonne separate da TAB, nell'ordine di COLONNE.
-    Le colonne mancanti vengono riempite con stringa vuota, così una riga
-    incompleta non fa esplodere la generazione.
+    valori: dizionario {campo: testo della textarea}
 
-    Restituisce: [{"barcode": "...", "descrizione": "...", ...}, ...]
+    La riga N di ogni box appartiene allo stesso articolo, quindi tutte le
+    liste devono avere lo stesso numero di righe. Se non è così restituisce
+    un errore invece degli articoli: meglio fermarsi che generare righe sfasate.
+
+    Restituisce la coppia (articoli, errore): errore è None se tutto ok.
     """
-    articoli = []
-    for riga in testo.split("\n"):
-        riga = riga.strip()
-        if not riga:
-            continue
-        parti = riga.split("\t")
+    # Ogni box diventa una lista di valori puliti, senza righe vuote
+    liste = {
+        campo: [r.strip() for r in valori.get(campo, "").split("\n") if r.strip()]
+        for campo, _label in COLONNE
+    }
 
-        art = {}                                  # dizionario di questo articolo
-        for i, nome in enumerate(COLONNE):        # nome + posizione insieme
-            if i < len(parti):                    # la colonna esiste nella riga?
-                art[nome] = parti[i].strip()      # sì → prendi il valore
-            else:
-                art[nome] = ""                    # no → lascia vuoto
-        articoli.append(art)
+    conteggi = {campo: len(v) for campo, v in liste.items()}
+    n = max(conteggi.values())
 
-    return articoli
+    if n == 0:
+        return [], "Non hai incollato nessun dato."
+
+    # Colonne con un numero di righe diverso dal massimo: sono disallineate
+    diverse = [f"{label}: {conteggi[campo]}"
+               for campo, label in COLONNE if conteggi[campo] != n]
+    if diverse:
+        return [], (f"Le colonne hanno un numero di righe diverso (attese {n}). "
+                    f"Controlla — {' · '.join(diverse)}")
+
+    # Riga per riga, prende il valore corrispondente da ogni lista
+    articoli = [
+        {campo: liste[campo][i] for campo, _label in COLONNE}
+        for i in range(n)
+    ]
+    return articoli, None
 
 def _genera_righe(articoli, testata, iva="22"):
     """Costruisce le righe del CSV: una per articolo, 80 valori ciascuna.
@@ -49,9 +72,11 @@ def _genera_righe(articoli, testata, iva="22"):
         riga=[]
         for col in TRACCIATO:
             tipo= col["tipo"]
-            if tipo== "articolo":
-                # valore incollato dall'utente per questo articolo
-                valore = art.get(col["campo"],"")
+            if tipo == "articolo":
+                valore = art.get(col["campo"], "")
+                # Costo e prezzo: Gold vuole la virgola come separatore decimale
+                if col["campo"] in ("costo", "prezzo"):
+                    valore = valore.replace(".", ",")
             elif tipo == "testata":
                 # valore comune a tutta l'infornata
                 valore = testata.get(col["campo"], "")
@@ -74,40 +99,54 @@ def _genera_righe(articoli, testata, iva="22"):
     return righe
 
 def index(request):
-    """Genera il CSV di creazione anagrafica articoli per Gold.
-
-    L'utente compila i tre campi comuni all'infornata e incolla da Excel
-    le sei colonne degli articoli. Sostituisce il file Inser_Articoli_10001.xlsx.
-    """
     righe = None
     troppo_lunghe = []
     barcode_rotti = []
+    iva_errate = []
+    pezzi_errati = []
+    errore = None
     articoli_ok = None
-    testata = {"struttura": "", "fornitore": "", "ccom": ""}
+    testata = {"fornitore": "", "ccom": ""}
+    valori = {campo: "" for campo, _label in COLONNE}
 
     if request.method == "POST":
-        # Campi comuni a tutta l'infornata
+        # Campi comuni a tutta l'infornata (la struttura non è più qui)
         testata = {
-            "struttura": request.POST.get("struttura", "").strip(),
             "fornitore": request.POST.get("fornitore", "").strip(),
             "ccom": request.POST.get("ccom", "").strip(),
         }
-        articoli = _parse_input(request.POST.get("dati", ""))
+        # Il contenuto dei sette box, riletto anche per ripopolarli dopo il Genera
+        valori = {campo: request.POST.get(campo, "") for campo, _label in COLONNE}
+
+        articoli, errore = _parse_input(valori)
+
         troppo_lunghe = [
             {"riga": i, "descrizione": a["descrizione"], "lunghezza": len(a["descrizione"])}
             for i, a in enumerate(articoli, start=1)
             if len(a["descrizione"]) > 50
         ]
-
-        # Barcode non validi: un EAN è fatto solo di cifre. Se contiene altro
-        # (tipicamente "4,00687E+12") Excel l'ha convertito in notazione
-        # scientifica e il codice originale è perso.
         barcode_rotti = [
             {"riga": i, "barcode": a["barcode"]}
             for i, a in enumerate(articoli, start=1)
             if a["barcode"] and not a["barcode"].isdigit()
         ]
-        if not troppo_lunghe and not barcode_rotti:
+
+        # IVA: solo 22 (nazionale) o 222 (codice Gold per IVA estera)
+        iva_errate = [
+            {"riga": i, "iva": a["iva"]}
+            for i, a in enumerate(articoli, start=1)
+            if a["iva"] not in ("22", "222")
+        ]
+
+        # Pezzi per collo: deve essere un numero
+        pezzi_errati = [
+            {"riga": i, "pezzi": a["pzxcrt"]}
+            for i, a in enumerate(articoli, start=1)
+            if not a["pzxcrt"].isdigit()
+        ]
+
+        blocchi = [errore, troppo_lunghe, barcode_rotti, iva_errate, pezzi_errati]
+        if not any(blocchi):
             righe = _genera_righe(articoli, testata)
             request.session['ins_art_righe'] = righe
             request.session['ins_art_ccom'] = testata["ccom"]
@@ -118,13 +157,19 @@ def index(request):
     else:
         request.session.pop('ins_art_righe', None)
         request.session.pop('ins_art_ccom', None)
+
     return render(request, "ins_articoli/index.html", {
         "righe": righe,
+        "errore": errore,
         "troppo_lunghe": troppo_lunghe,
-        "articoli":articoli_ok,
         "barcode_rotti": barcode_rotti,
+        "iva_errate": iva_errate,
+        "pezzi_errati": pezzi_errati,
+        "articoli": articoli_ok,
         "testata": testata,
-        "intestazioni": [c["nome"] for c in TRACCIATO],
+        "colonne": [{"campo": c, "label": l, "valore": valori.get(c, ""),
+                     "peso": 3 if c == "descrizione" else 1}
+                    for c, l in COLONNE],
     })
 
 def download(request):

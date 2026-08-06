@@ -51,14 +51,23 @@ class ActiveUserMiddleware:
         if not username:
             return response
 
-        # Throttle: aggiorna solo se è passato abbastanza tempo
+        # Throttle: limita le scritture solo quando l'utente resta sulla
+        # STESSA pagina (es. richieste ripetute/polling). Se il path e'
+        # cambiato va sempre scritto, altrimenti last_path resta bloccato
+        # sulla pagina precedente per tutta la finestra di throttle (es.
+        # dopo il redirect di login a /portal/, il click immediato su
+        # un'app entro 30s veniva scartato e last_path restava "/portal/").
         now = timezone.now()
-        last = _last_update_cache.get(username)
-        if last and (now - last).total_seconds() < UPDATE_THRESHOLD_SECONDS:
+        last_time, last_path = _last_update_cache.get(username, (None, None))
+        if (
+            last_time is not None
+            and last_path == path
+            and (now - last_time).total_seconds() < UPDATE_THRESHOLD_SECONDS
+        ):
             return response
 
         # Aggiorna la cache in memoria
-        _last_update_cache[username] = now
+        _last_update_cache[username] = (now, path)
 
         # Aggiorna il DB (update_or_create)
         try:
@@ -148,5 +157,10 @@ class ActiveUserMiddleware:
             '/favicon.ico',
             '/__debug__/',
             '/admin/jsi18n/',
+            # Chiamata di background fatta da portal/base.html ad ogni pagina
+            # (popup messaggio urgente): non e' mai la pagina che l'utente
+            # sta davvero guardando, quindi non deve mai vincere la race
+            # col path della pagina reale.
+            '/api/util/check-message/',
         )
         return path.startswith(skip_prefixes)

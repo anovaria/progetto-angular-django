@@ -29,6 +29,8 @@
     textarea {
         width: 100%; padding: 8px 10px; border: 1px solid #ccc;
         border-radius: 4px; font-family: monospace; font-size: 0.9em;
+        white-space: pre;
+        overflow-x: auto;
     }
     textarea:focus { border-color: #8e44ad; outline: none; }
 
@@ -70,14 +72,8 @@
         <form method="post">
             {% csrf_token %}
 
-            <!-- I tre campi uguali per tutti gli articoli dell'infornata.
-                 value="{{ testata.x }}" li ripopola dopo il Genera, così
-                 l'utente non li riscrive a ogni caricamento. -->
+            <!-- Solo due campi comuni: la struttura ora è per articolo -->
             <div style="display:flex; gap:16px; flex-wrap:wrap; margin-bottom:14px;">
-                <div class="form-group">
-                    <label>Struttura merceologica</label>
-                    <input type="text" name="struttura" value="{{ testata.struttura }}" required>
-                </div>
                 <div class="form-group">
                     <label>Codice fornitore</label>
                     <input type="text" name="fornitore" value="{{ testata.fornitore }}" required>
@@ -88,26 +84,35 @@
                 </div>
             </div>
 
-            <!-- Istruzioni: l'utente non deve sapere del TAB, deve solo
-                 sapere che seleziona sei colonne in Excel e incolla -->
             <p style="font-size:0.85em; color:#666; margin-bottom:6px;">
-                Seleziona in Excel <strong>sei colonne</strong> nell'ordine
-                <em>barcode · descrizione · costo lordo · prezzo vendita ·
-                referenza fornitore · codice Gold</em> e incollale qui sotto.
+                Incolla ogni colonna nel box corrispondente. Tutte le colonne
+                devono avere <strong>lo stesso numero di righe</strong>:
+                la riga 1 di ogni box è lo stesso articolo.
             </p>
 
-            <!-- name="dati" corrisponde a request.POST.get("dati") nella view.
-                 &#9; nel placeholder è il carattere TAB: mostra l'esempio
-                 con le colonne separate come arrivano da Excel -->
-            <textarea name="dati" rows="12"
-                placeholder="4006874&#9;Mercedes-AMG GT4&#9;2,85&#9;5,5&#9;10111800000&#9;337206"></textarea>
+                <!-- I box, generati dal ciclo: name="{{ col.campo }}" corrisponde
+                 a request.POST.get(campo) nella view. La griglia manda a capo
+                 automaticamente quando non ci stanno in una fila sola. -->
+            <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(190px, 1fr)); gap:10px;">
+                {% for col in colonne %}
+                <div {% if col.campo == "descrizione" %}style="grid-column: span 2;"{% endif %}>
+                    <label style="font-size:0.78em; font-weight:600; color:#555;">{{ col.label }}</label>
+                    <textarea name="{{ col.campo }}" rows="12" wrap="off">{{ col.valore }}</textarea>
+                </div>
+                {% endfor %}
+            </div>
 
-            <br><br>
+            <br>
             <button type="submit" class="btn">Genera</button>
-            <!-- Pulisci: torna in GET, la view svuota la sessione -->
             <a href="{% url 'ins_art_main' %}" class="btn" style="background:#95a5a6;">Pulisci</a>
         </form>
     </div>
+    {% if errore %}
+    <div class="section">
+        <div class="section-title errore-title">⚠ Dati non validi</div>
+        <p style="font-size:0.9em;">{{ errore }}</p>
+    </div>
+    {% endif %}
 
     <!-- ================================================================
          SEZIONE 2 — Errori bloccanti: se compare, non c'è anteprima
@@ -150,6 +155,39 @@
         </ul>
     </div>
     {% endif %}
+
+    {% if iva_errate %}
+    <div class="section">
+        <div class="section-title errore-title">
+            ⚠ Codici IVA non validi — correggili prima di generare
+        </div>
+        <p style="font-size:0.85em; color:#666;">
+            Sono ammessi solo <strong>22</strong> (IVA nazionale) e
+            <strong>222</strong> (codice Gold per IVA estera).
+        </p>
+        <ul>
+            {% for e in iva_errate %}
+            <li>Riga {{ e.riga }}: <strong>{{ e.iva }}</strong></li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    {% if pezzi_errati %}
+    <div class="section">
+        <div class="section-title errore-title">
+            ⚠ Pezzi per collo non validi — correggili prima di generare
+        </div>
+        <p style="font-size:0.85em; color:#666;">
+            Il numero di pezzi per collo deve essere un numero intero.
+        </p>
+        <ul>
+            {% for e in pezzi_errati %}
+            <li>Riga {{ e.riga }}: <strong>{{ e.pezzi }}</strong></li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
     <!-- ================================================================
          SEZIONE 3 — Anteprima: mostra solo le colonne inserite dall'utente,
                      non tutte e 80 (sarebbero illeggibili)
@@ -165,8 +203,11 @@
                 <thead>
                     <tr>
                         <th>#</th>
-                        <th>Barcode</th>
+                        <th>Barcode</th>                     
                         <th>Descrizione</th>
+                        <th>Struttura</th>
+                        <th>IVA Acquisto</th>
+                        <th>Numero di Pezzi per collo</th>
                         <th>Descr. cassa (20)</th>
                         <th>Costo</th>
                         <th>Prezzo vend.</th>
@@ -183,6 +224,9 @@
                         <td>{{ forloop.counter }}</td>
                         <td>{{ a.barcode }}</td>
                         <td>{{ a.descrizione }}</td>
+                        <td>{{ a.struttura }}</td>
+                        <td>{{ a.iva }}</td>
+                        <td>{{ a.pzxcrt }}</td>
                         <!-- slice:":20" mostra come verrà troncata per la cassa -->
                         <td>{{ a.descrizione|slice:":20" }}</td>
                         <td>{{ a.costo }}</td>
