@@ -1,0 +1,56 @@
+{% extends 'portal/base.html' %}
+
+{% block page_content %}
+<div class="container">
+    <div class="section">
+        <div class="section-title">Codici Articolo:</div>
+            <form method="post">
+                {% csrf_token %}
+
+                <div class="row">
+                    <div class="col-md-2">
+                        <textarea name="codici_articolo" rows="12" wrap="off" class="form-control">{{ testo_originale }}</textarea>
+                    </div>
+                    <div class="col-md-2">
+                        <button type="submit" name="verifica" class="btn btn-primary">Verifica Codici</button>
+                        <a href="{% url 'preventivi' %}" class="btn btn-secondary mt-2">Pulisci Ricerca</a>   
+                    </div>
+                    
+                </div>
+                {% if non_trovati %}
+                    <p>Codici NON trovati: {{ non_trovati|join:", " }}</p>
+                {% endif %}
+                {% if risultati %}
+                    <p>Articoli trovati: {{ risultati|length }}</p>
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Contratto Comm.</th>
+                                <th>Descrizione Ccom</th>
+                                <th>Codice EAN</th>
+                                <th>Cod. art. forn.</th>
+                                <th>Codice Articolo</th>
+                                <th>Descrizione Articolo</th>
+                                <th>Prezzo Vend. cadauno</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for r in risultati %}
+                                <tr>
+                                    <td>{{ r.CCOM }}</td>
+                                    <td>{{ r.DESCRCCOM }}</td>
+                                    <td>{{ r.EAN }}</td>
+                                    <td>{{ r.CODARTFO }}</td>
+                                    <td>{{ r.CODART }}</td>
+                                    <td>{{ r.DESCRART }}</td>
+                                    <td>{{ r.PRZ_VEND }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    <button type="submit" name="esporta" class="btn btn-primary">Esporta Excel</button>
+                {% endif %}
+            </form>
+    </div>
+</div>
+{% endblock%}

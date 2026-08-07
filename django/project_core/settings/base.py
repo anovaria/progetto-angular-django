@@ -106,6 +106,7 @@ INSTALLED_APPS = [
     'modules.riordino_pdv.apps.RiordinoPdvConfig',
     'modules.ricerca_gold',
     'modules.ins_articoli',
+    'modules.preventivi',
 ]
 
 # Middleware (Nessun cambiamento)
