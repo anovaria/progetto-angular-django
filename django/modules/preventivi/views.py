@@ -12,11 +12,14 @@ def preventivi(request):
             risultati, testo_originale, non_trovati  = cerca_articoli(request)
             wb = Workbook()
             ws = wb.active
-            ws.append(['Contratto Comm.', 'Descrizione Ccom', 'Codice EAN', 'Cod. art. forn.', 'Codice Articolo', 'Descrizione Articolo', 'Prezzo Vend. cadauno'])
+            ws.append(['Contratto Comm.', 'Descrizione Ccom', 'Codice EAN', 'Cod. art. forn.', 'Codice Art.', 'Descrizione Articolo', 'Pr. Vend. cadauno'])
             for articolo in risultati:
                 ws.append([articolo.CCOM, articolo.DESCRCCOM, articolo.EAN, articolo.CODARTFO, articolo.CODART, articolo.DESCRART, articolo.PRZ_VEND])
             response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
             response['Content-Disposition'] = 'attachment; filename="preventivo.xlsx"'
+            larghezze = {'A': 12, 'B': 35, 'C': 16, 'D': 18, 'E': 12, 'F': 50, 'G': 14}
+            for lettera, larghezza in larghezze.items():
+                ws.column_dimensions[lettera].width = larghezza
             wb.save(response)
             return response
         else:

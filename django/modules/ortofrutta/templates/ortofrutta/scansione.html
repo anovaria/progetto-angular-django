@@ -1,0 +1,108 @@
+{% extends "portal/base.html" %}
+{% block page_content %}
+{% csrf_token %}
+{% load l10n %}
+    <div class="container mt-4">
+        <h2>Scansione Ortofrutta</h2>
+        <input type="text" id="input-scansione" class="form-control" autofocus>
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>EAN</th>
+                    <th>Codice Articolo</th>
+                    <th>Descrizione</th>
+                    <th>Peso/Qtà</th>
+                    <th>Data Competenza</th>
+                    <th>Azioni</th>
+                    <th>Utente</th>
+                </tr>
+            </thead>
+            <tbody id="tabella-scansioni">
+                {%for riga in scansioni_oggi%}
+                    <tr>
+                        <td>{{riga.ean_scansionato }}</td>
+                        <td>{{riga.codart }}</td>
+                        <td>{{riga.descrart }}</td>
+                        <td><input type="number" step="0.001" class="input-pesoqta" data-id="{{ riga.id }}" value="{{ riga.peso_num|default_if_none:riga.qta|default_if_none:''|unlocalize }}"></td>
+                        <td><input type="date" class="input-data-competenza" data-id="{{ riga.id }}" value="{{ riga.data_competenza|date:'Y-m-d' }}"></td>
+                        <td><button class="btn btn-sm btn-danger" onclick="eliminaScansione({{riga.id}}, this)">Elimina</button></td>
+                        <td>{{ riga.utente }}</td>  
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+<script>
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    const input = document.getElementById('input-scansione');
+    input.addEventListener('keydown', async function(event) {
+        if(event.key === 'Enter') {
+            const codice = input.value;
+            input.value = '';
+            const response = await fetch('/app/ortofrutta/salva/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken,
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: 'codice=' + encodeURIComponent(codice),
+            });
+            const dati = await response.json();
+            if (!dati.ok) {
+                alert(dati.errore);
+                return;
+            }
+            const riga = document.createElement('tr');
+            riga.innerHTML = `
+                <td>${dati.ean}</td>
+                <td>${dati.codart}</td>
+                <td>${dati.descrart}</td>
+                <td><input type="number" step="0.001" class="input-pesoqta" data-id="${dati.id}" value="${dati.peso_num || dati.qta}"></td>
+                <td><input type="date" class="input-data-competenza" data-id="${dati.id}" value="${dati.data_competenza}"></td>
+                <td><button class="btn btn-sm btn-danger" onclick="eliminaScansione(${dati.id}, this)">Elimina</button></td>
+                <td>${dati.utente}</td>
+            `;
+            document.getElementById('tabella-scansioni').prepend(riga);
+        }
+    });
+    document.getElementById('tabella-scansioni').addEventListener('change', async function(event) {
+        if (event.target.classList.contains('input-pesoqta')) {
+                const id = event.target.dataset.id;
+                const valore = event.target.value;
+                const response = await fetch('/app/ortofrutta/modifica-pesoqta/' + id + '/', {
+                    method: 'POST',
+                    headers: {
+                    'X-CSRFToken': csrfToken,
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                body: 'valore=' + encodeURIComponent(valore),
+                });
+        } else if (event.target.classList.contains('input-data-competenza')) {
+                const id = event.target.dataset.id;
+                const valore = event.target.value;
+                const response = await fetch('/app/ortofrutta/modifica-data/' + id + '/', {
+                    method: 'POST',
+                    headers: {
+                    'X-CSRFToken': csrfToken,
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                body: 'valore=' + encodeURIComponent(valore),
+                });
+        }
+    });
+    async function eliminaScansione(id, bottone) {
+        const response = await fetch('/app/ortofrutta/elimina/' + id + '/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrfToken,
+            },
+        });
+        const dati = await response.json();
+        if (dati.ok) {
+            bottone.closest('tr').remove();
+        }
+    }
+</script>
+
+{% endblock %}

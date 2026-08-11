@@ -56,4 +56,5 @@ urlpatterns = [
     path('app/ricerca_gold/', include('modules.ricerca_gold.urls')),
     path('app/ins_articoli/', include('modules.ins_articoli.urls')),
     path('app/preventivi/', include('modules.preventivi.urls')),
+    path('app/ortofrutta/' , include('modules.ortofrutta.urls')),
 ]

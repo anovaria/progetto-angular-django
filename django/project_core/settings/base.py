@@ -107,6 +107,7 @@ INSTALLED_APPS = [
     'modules.ricerca_gold',
     'modules.ins_articoli',
     'modules.preventivi',
+    'modules.ortofrutta',
 ]
 
 # Middleware (Nessun cambiamento)

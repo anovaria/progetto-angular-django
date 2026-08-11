@@ -18,8 +18,8 @@
                     
                 </div>
                 {% if non_trovati %}
-                    <p>Codici NON trovati: {{ non_trovati|join:", " }}</p>
-                {% endif %}
+                    <p class="text-danger">({{ non_trovati|length }}) Codici NON trovati : {{ non_trovati|join:", " }}</p>
+                {% endif %} 
                 {% if risultati %}
                     <p>Articoli trovati: {{ risultati|length }}</p>
                     <table class="table">

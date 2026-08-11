@@ -330,9 +330,9 @@ MENU_CONFIG = [
         {
         'path': '/app/preventivi/',
         'label': 'Preventivi',
-        'icon': 'search',
+        'icon': 'journal-text',
         'desc': 'Sostituisce il file Excel',
-        'groups': ['itd'],
+        'groups': ['gruppoced', 'itd'],
         'app_name': 'Preventivi',
     },
     {
