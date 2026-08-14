@@ -327,13 +327,21 @@ MENU_CONFIG = [
         'groups': ['itd'],
         'app_name': 'Ins. Art. 10001',
     },
-        {
+    {
         'path': '/app/preventivi/',
         'label': 'Preventivi',
         'icon': 'journal-text',
         'desc': 'Sostituisce il file Excel',
         'groups': ['gruppoced', 'itd'],
         'app_name': 'Preventivi',
+    },
+    {
+        'path': '/app/ortofrutta/',
+        'label': 'Scarico Frescheria',
+        'icon': 'journal-text',
+        'desc': 'Sostituisce il file Excel',
+        'groups': ['ortofrutta', 'itd'],
+        'app_name': 'Scarico Frescheria',
     },
     {
         'path': '/portal/utenti-online/',

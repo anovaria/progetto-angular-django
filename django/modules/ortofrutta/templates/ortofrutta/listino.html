@@ -1,0 +1,67 @@
+{% extends "portal/base.html" %}
+{% block page_content %}
+{% include "ortofrutta/_nav.html" %}
+{% csrf_token %}
+
+<div class="container mt-4">
+    <h2>Listino Giornaliero</h2>
+        <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Data Competenza</th>
+                <th>Codice Articolo</th>
+                <th>Descrizione</th>
+                <th>Totale</th>
+                <th>Prezzo Listino</th>
+            </tr>
+        </thead>
+        <tbody id="tabella-listino">
+                {%for riga in totali%}
+                    <tr>
+                        <td>{{ riga.data_competenza|date:'d/m/Y' }}</td>
+                        <td>{{ riga.codart }}</td>
+                        <td>{{ riga.descrart }}</td>
+                        <td>{{ riga.quantita|default_if_none:'' }}</td>
+                        <td><input type="number" step="0.0001" class="input-prezzo form-control" data-codart="{{ riga.codart }}" data-data="{{ riga.data_competenza|date:'Y-m-d' }}" value="{{ riga.prezzo_listino }}"></td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+         <form method="post" action="{% url 'ortofrutta:report_pdf' %}" target="_blank"
+                onsubmit="if (!confirm('Generare il report e chiudere le righe fatturate?')) return false; setTimeout(() =>
+                location.reload(), 1500);">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-primary">Scarica PDF</button>
+  </form>
+<script>
+    document.getElementById('tabella-listino').addEventListener('change', async function(event) {
+        if (event.target.classList.contains('input-prezzo')) {
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            const codart = event.target.dataset.codart;
+            const data = event.target.dataset.data;
+            const valore = event.target.value;
+            const response = await fetch('/app/ortofrutta/listino-salva/', {
+                method: 'POST',
+                headers: {
+                'X-CSRFToken': csrfToken,
+                'Content-Type': 'application/x-www-form-urlencoded',
+                },
+            body: 'codart=' + encodeURIComponent(codart) + '&data=' + encodeURIComponent(data) + '&prezzo=' + encodeURIComponent(valore),
+                        });
+            let dati;
+            try {
+                dati = await response.json();
+            } catch (e) {
+                dati = { ok: false };
+            }
+            if (dati.ok) {
+                event.target.style.backgroundColor = '#d4edda';
+                setTimeout(() => event.target.style.backgroundColor = '', 1000);
+            } else {
+                alert(dati.errore || 'Errore nel salvataggio del prezzo');
+                event.target.style.backgroundColor = '#f8d7da';
+            }
+        }
+    });
+</script>
+{% endblock %}

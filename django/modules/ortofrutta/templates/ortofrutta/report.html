@@ -1,0 +1,33 @@
+{% extends "portal/base.html" %}
+{% block page_content %}
+{% include "ortofrutta/_nav.html" %}
+<div class="container mt-4">
+    <h2>Report Cassa</h2>
+        <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Codice Articolo</th>
+                <th>Descrizione</th>
+                <th>Gest</th>
+                <th>Totale</th>
+                <th>Prezzo Unitario</th>
+                <th>Quantità</th>
+            </tr>
+        </thead>
+        <tbody>
+                {%for riga in totali%}
+                    <tr>
+                        <td>{{riga.codart }}</td>
+                        <td>{{riga.descrart }}</td>
+                        <td>{{riga.gest }}</td>
+                        <td>{{ riga.totale_peso|default_if_none:riga.totale_qta|default_if_none:'' }}</td>
+                        <td>{{ riga.prezzo_listino }}</td>
+                        <td>{{ riga.valore|floatformat:2 }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+</div>
+
+
+{% endblock %}

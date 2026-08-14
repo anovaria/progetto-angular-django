@@ -10,6 +10,7 @@ class ScansioneOrtofrutta(models.Model):
     gest = models.CharField(max_length=20, blank=True, default='')
     utente = models.CharField(max_length=50)
     creato_il = models.DateTimeField(auto_now_add=True)
+    fatturato = models.BooleanField(default=False)
 
     class Meta:
         app_label = 'ortofrutta'

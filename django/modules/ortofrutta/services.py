@@ -1,6 +1,33 @@
 from decimal import Decimal
-from .models import Ean
+from .models import Ean,ScansioneOrtofrutta,ListinoGiorno
+from django.db.models import Sum
 
+def totali_con_prezzo(solo_con_prezzo=True):
+    totali = (
+    ScansioneOrtofrutta.objects
+    .filter(data_competenza__isnull=False, fatturato=False)
+    .values('data_competenza', 'codart')
+    .annotate(totale_peso=Sum('peso_num'), totale_qta=Sum('qta'))
+    .order_by('data_competenza', 'codart')
+    )
+    codarts = [riga['codart'] for riga in totali]
+    articoli = {a.CODART: a for a in Ean.objects.filter(CODART__in=codarts)}
+    prezzi = {(p.codart, p.data_competenza): p for p in ListinoGiorno.objects.filter(codart__in=codarts)}
+    for riga in totali:
+        articolo = articoli.get(riga['codart'])
+        riga['descrart'] = articolo.DESCRART if articolo else ''
+        riga['gest'] = articolo.GEST if articolo else ''
+        prezzo = prezzi.get((riga['codart'], riga['data_competenza']))
+        riga['prezzo_listino'] = str(prezzo.prezzo_listino) if prezzo else ''
+        quantita = riga['totale_peso'] if riga['totale_peso'] is not None else riga['totale_qta']
+        riga['quantita'] = quantita
+        if prezzo and quantita is not None:
+            riga['valore'] = quantita * prezzo.prezzo_listino
+        else:
+            riga['valore'] = None
+    if solo_con_prezzo:
+        return [riga for riga in totali if riga['prezzo_listino'] != '']
+    return list(totali)
 
 def estrai_barcode(raw: str) -> str | None:
     """

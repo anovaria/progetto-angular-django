@@ -1,9 +1,99 @@
+import io
 import datetime
+from django.db.models import Q
 from django.shortcuts import render, get_object_or_404
-from django.http import JsonResponse
-from .models import ScansioneOrtofrutta,Ean
-from .services import estrai_barcode, risolvi_articolo
-from decimal import Decimal
+from django.http import JsonResponse, HttpResponse,HttpResponseNotAllowed
+from .models import ScansioneOrtofrutta,Ean,ListinoGiorno
+from .services import estrai_barcode, risolvi_articolo, totali_con_prezzo
+from decimal import Decimal,InvalidOperation
+from reportlab.lib.pagesizes import A4
+from reportlab.lib import colors
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet
+
+def report_pdf(request):
+    if request.method != 'POST':
+        return HttpResponseNotAllowed(['POST'])
+    totali = totali_con_prezzo()
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4)
+    styles = getSampleStyleSheet()
+
+    elementi = []
+    elementi.append(Paragraph("Report Cassa - Ortofrutta", styles['Title']))
+    elementi.append(Spacer(1, 12))
+
+    dati_tabella = [['Cod. Articolo', 'Descrizione', 'Gest', 'Totale', 'Prezzo Unitario', 'Quantità']]
+    for riga in totali:
+        dati_tabella.append([
+            riga['codart'],
+            riga['descrart'],
+            riga['gest'],
+            f"{riga['quantita']:.3f}" if riga['quantita'] is not None else '',
+            riga['prezzo_listino'],
+            f"{riga['valore']:.2f}" if riga['valore'] is not None else '',
+        ])
+
+    tabella = Table(dati_tabella)
+    tabella.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+        ('FONTSIZE', (0, 0), (-1, -1), 8),
+    ]))
+    elementi.append(tabella)
+    elementi.append(Spacer(1, 24))
+    data_generazione = datetime.datetime.now().strftime('%d/%m/%Y %H:%M')
+    utente = request.portal_user.get('username')
+    elementi.append(Paragraph(f"Generato il {data_generazione} da {utente}", styles['Normal']))
+    doc.build(elementi)
+    buffer.seek(0)
+    condizione = Q()
+    for riga in totali:
+        condizione |= Q(codart=riga['codart'], data_competenza=riga['data_competenza'])
+    if totali:
+        ScansioneOrtofrutta.objects.filter(condizione, fatturato=False).update(fatturato=True)
+    return HttpResponse(buffer, content_type='application/pdf')
+
+def report(request):
+    totali = totali_con_prezzo()
+    return render(request, 'ortofrutta/report.html', {'totali': totali})
+
+def listino_salva(request):
+    if request.method != 'POST':
+        return HttpResponseNotAllowed(['POST'])
+
+    codart = request.POST.get('codart')
+    data_str = request.POST.get('data')
+    prezzo = request.POST.get('prezzo')
+
+    try:
+        data_competenza = datetime.datetime.strptime(data_str, '%Y-%m-%d').date()
+    except (TypeError, ValueError):
+        return JsonResponse({'ok': False, 'errore': 'Data non valida'}, status=400)
+
+    if not prezzo:
+        ListinoGiorno.objects.filter(codart=codart, data_competenza=data_competenza).delete()
+        return JsonResponse({'ok': True})
+
+    try:
+        prezzo_decimal = Decimal(prezzo)
+    except InvalidOperation:
+        return JsonResponse({'ok': False, 'errore': 'Prezzo non valido'}, status=400)
+
+    ListinoGiorno.objects.update_or_create(
+        codart=codart,
+        data_competenza=data_competenza,
+        defaults={
+            'prezzo_listino': prezzo_decimal,
+            'utente_inserimento': request.portal_user.get('username'),
+        },
+    )
+    return JsonResponse({'ok': True})
+
+def listino(request):
+    totali = totali_con_prezzo(solo_con_prezzo=False)
+    return render(request, 'ortofrutta/listino.html', {'totali': totali})
 
 def scansione(request):
     oggi= datetime.date.today()
