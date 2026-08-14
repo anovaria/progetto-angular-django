@@ -1,6 +1,13 @@
-from decimal import Decimal
+from decimal import Decimal,ROUND_HALF_UP
 from .models import Ean,ScansioneOrtofrutta,ListinoGiorno
 from django.db.models import Sum
+
+# Divisore per il calcolo del prezzo "Da Applicare" (margine di trasferimento interno)   
+MARGINE_PERCENTUALE = Decimal('10')     #10% di margine sul venduto
+MARGINE_DIVISORE = Decimal('1') - (MARGINE_PERCENTUALE / Decimal('100'))
+
+# Aliquota IVA di default quando l'articolo non è presente in anagrafica
+IVA_DEFAULT = 4
 
 def totali_con_prezzo(solo_con_prezzo=True):
     totali = (
@@ -17,12 +24,22 @@ def totali_con_prezzo(solo_con_prezzo=True):
         articolo = articoli.get(riga['codart'])
         riga['descrart'] = articolo.DESCRART if articolo else ''
         riga['gest'] = articolo.GEST if articolo else ''
+        riga['iva'] = articolo.iva if articolo else IVA_DEFAULT
+        iva = riga['iva']
         prezzo = prezzi.get((riga['codart'], riga['data_competenza']))
-        riga['prezzo_listino'] = str(prezzo.prezzo_listino) if prezzo else ''
+        if prezzo:
+            riga['prezzo_inserito'] = str(prezzo.prezzo_listino)
+            da_applicare = prezzo.prezzo_listino / MARGINE_DIVISORE * (1 + Decimal(str(iva)) / Decimal('100'))
+            da_applicare = da_applicare.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+            riga['prezzo_listino'] = str(da_applicare)
+        else:
+            riga['prezzo_inserito'] = ''
+            da_applicare = None
+            riga['prezzo_listino'] = ''
         quantita = riga['totale_peso'] if riga['totale_peso'] is not None else riga['totale_qta']
         riga['quantita'] = quantita
         if prezzo and quantita is not None:
-            riga['valore'] = quantita * prezzo.prezzo_listino
+            riga['valore'] = quantita * da_applicare
         else:
             riga['valore'] = None
     if solo_con_prezzo:
