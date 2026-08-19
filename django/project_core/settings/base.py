@@ -108,6 +108,7 @@ INSTALLED_APPS = [
     'modules.ins_articoli',
     'modules.preventivi',
     'modules.ortofrutta',
+    'modules.entrata_merci',
 ]
 
 # Middleware (Nessun cambiamento)

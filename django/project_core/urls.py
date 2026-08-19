@@ -57,4 +57,5 @@ urlpatterns = [
     path('app/ins_articoli/', include('modules.ins_articoli.urls')),
     path('app/preventivi/', include('modules.preventivi.urls')),
     path('app/ortofrutta/' , include('modules.ortofrutta.urls')),
+    path('app/entrata_merci/' , include('modules.entrata_merci.urls')),
 ]

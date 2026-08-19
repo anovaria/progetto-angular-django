@@ -11,8 +11,10 @@
                 <th>Data Competenza</th>
                 <th>Codice Articolo</th>
                 <th>Descrizione</th>
+                <th>Gest</th>
                 <th>Totale</th>
                 <th>Prezzo Listino</th>
+                <th>IVA</th>
             </tr>
         </thead>
         <tbody id="tabella-listino">
@@ -21,8 +23,14 @@
                         <td>{{ riga.data_competenza|date:'d/m/Y' }}</td>
                         <td>{{ riga.codart }}</td>
                         <td>{{ riga.descrart }}</td>
+                        <td>{{ riga.gest }}</td>
                         <td>{{ riga.quantita|default_if_none:'' }}</td>
-                        <td><input type="number" step="0.0001" class="input-prezzo form-control" data-codart="{{ riga.codart }}" data-data="{{ riga.data_competenza|date:'Y-m-d' }}" value="{{ riga.prezzo_inserito }}"></td>
+                        <td>
+                            <div style="max-width: 120px;">
+                                <input type="number" step="0.0001" class="input-prezzo form-control" data-codart="{{ riga.codart }}" data-data="{{ riga.data_competenza|date:'Y-m-d' }}" value="{{ riga.prezzo_inserito }}">
+                            </div>
+                        </td>
+                        <td>{{ riga.iva }}</td>
                     </tr>
                 {% endfor %}
             </tbody>

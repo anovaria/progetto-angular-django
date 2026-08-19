@@ -130,8 +130,8 @@ elif ENV == 'prod':
             },
         },
     }
-
 # Comune a entrambi gli ambienti
+print(f"--- Database: {DATABASES['default']['NAME']} su {DATABASES['default']['HOST']} ---")
 LOGGING['handlers']['file']['filename'] = str(PROJECT_ROOT / 'logs' / 'django_prod.log')
 FORCE_SCRIPT_NAME = None
 STATIC_URL = "/static/"

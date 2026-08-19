@@ -1,0 +1,97 @@
+{% extends 'portal/base.html' %}
+{% block page_content %}
+{% csrf_token %}
+
+    <div class="container-fluid mt-4">
+        <h2>Entrata merci PDV</h2>
+        <form method="get" class="mb-3 d-flex align-items-end gap-2 flex-wrap">
+            <div>
+                <label class="form-label d-block">Filtra per stato:</label>
+                <div class="d-flex gap-2 flex-wrap">
+                    {% for lettera in "AEIKNPSW" %}
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="checkbox" 
+                                name="stato" value="{{ lettera }}" 
+                                id="stato-{{ lettera }}">
+                            <label class="form-check-label" for="stato-{{ lettera }}">{{ lettera }}</label>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary">Filtra</button>
+        </form>
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Data Ric</th>
+                    <th>Settore</th>
+                    <th>Reparto</th>
+                    <th>CCom</th>
+                    <th>CodArtFo</th>
+                    <th>Codice Articolo</th>
+                    <th>EAN/Barcode</th>
+                    <th>Descrizione</th>
+                    <th>Stato</th>
+                    <th>UM</th>
+                    <th>Qta Ric</th>
+                    <th>Corsia</th>
+                    <th>Campata</th>
+                    <th>Giac PDV</th>
+                </tr>
+            </thead>
+            <tbody id="tabella-ricevimenti">
+                {% for riga in merciPdv%}
+                    <tr>
+                        <td><input type="date" class="input-data-ric" data-id="{{ riga.cod_interno_ric}}" value="{{ riga.data_ricevimento|date:'Y-m-d' }}"></td>
+                        <td>{{riga.settore }}</td>
+                        <td>{{riga.reparto }}</td>
+                        <td>{{riga.contr_comm }}</td>
+                        <td>{{riga.codartfo }}</td>
+                        <td>{{riga.cod_art }}</td>
+                        <td>{{riga.ean_13 }}</td>
+                        <td>{{riga.desc_art }}</td>
+                        <td>{{riga.stato }}</td>
+                        <td>{{riga.unita_misura }}</td>
+                        <td>{{ riga.quantita_ricevuta }}</td>
+                        <td>{{ riga.corsia }}</td> 
+                        <td>{{ riga.campata }}</td> 
+                        <td>{{ riga.giacenza_pdv }}</td>                          
+                    </tr>
+                {%endfor%}
+            </tbody>
+        </table>
+    </div>
+
+<script>
+
+    document.getElementById('tabella-ricevimenti').addEventListener('change', async function(event) {
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        if (event.target.classList.contains('input-data-ric')) {
+            const id = event.target.dataset.id;
+            const valore = event.target.value;
+            const response = await fetch('/app/entrata_merci/modifica-data/' + id + '/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken,
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: 'valore=' + encodeURIComponent(valore),
+            });
+
+            if (response.ok) {
+                event.target.classList.add('input-salvato-ok');
+                setTimeout(() => {
+                    event.target.classList.remove('input-salvato-ok');
+                }, 1000);
+            } else {
+                event.target.classList.add('input-salvato-errore');
+                setTimeout(() => {
+                    event.target.classList.remove('input-salvato-errore');
+                }, 1000);
+            }
+        }
+    });
+
+</script>
+
+{% endblock %}
