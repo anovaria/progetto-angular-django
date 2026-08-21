@@ -23,15 +23,15 @@ def report_pdf(request):
     elementi.append(Paragraph("Report Cassa - Ortofrutta", styles['Title']))
     elementi.append(Spacer(1, 12))
 
-    dati_tabella = [['Cod. Articolo', 'Descrizione', 'Gest', 'Totale', 'Prezzo Unitario', 'Quantità']]
+    dati_tabella = [['Cod. Articolo', 'Descrizione', 'Gest', 'Quantità', 'Prezzo Unitario', 'Totale']]
     for riga in totali:
         dati_tabella.append([
             riga['codart'],
             riga['descrart'],
             riga['gest'],
-            f"{riga['quantita']:.3f}" if riga['quantita'] is not None else '',
+            f"{riga['quantita']:.3f}" if riga['quantita'] is not None else '',   # sotto "Quantità" -> quantita
             riga['prezzo_listino'],
-            f"{riga['valore']:.2f}" if riga['valore'] is not None else '',
+            f"{riga['valore']:.2f}" if riga['valore'] is not None else '',       # sotto "Totale" -> valore
         ])
 
     tabella = Table(dati_tabella)
@@ -153,14 +153,19 @@ def scansione_salva(request):
             return JsonResponse({'ok': False, 'errore': 'Codice non riconosciuto'}, status=400)
         info = risolvi_articolo(ean13)
         qta = Decimal('1') if info['gest'] != 'Kilogrammi' else None
+        ultima = ScansioneOrtofrutta.objects.filter(
+            utente=request.portal_user.get('username'),
+            data_competenza__isnull=False,
+        ).order_by('-creato_il').first()
+        data_precedente = ultima.data_competenza if ultima else None
         riga = ScansioneOrtofrutta.objects.create(
             ean_scansionato = ean13,
-            data_competenza = None,
+            data_competenza = data_precedente,
             codart = info['codart'],
             peso_num = info['peso_num'],
             qta = qta,
             gest = info['gest'],
-            utente = request.portal_user.get('username'),
+            utente = request.portal_user.get('username')
         )
         return JsonResponse({
             'ok': True,

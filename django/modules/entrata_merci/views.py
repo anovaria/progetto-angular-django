@@ -2,12 +2,16 @@ from datetime import datetime
 from django.shortcuts import render
 from .models import V_RicevimentiGoldArtFo,EntrataMerciOverride
 from django.db.models import F
+from django.core.paginator import Paginator
+from django.http import HttpResponseNotAllowed, JsonResponse
+
+REPARTI_PDV = ['BEVANDE', 'CURA CASA', 'CURA PERSONA E PROFUMERIA', 'DROGHERIA ALIMENTARE']
 
 def entrata_merci_pdv(request):
     stati_selezionati = request.GET.getlist('stato')
     queryset = (
         V_RicevimentiGoldArtFo.objects
-        .filter(sito=10001, eanprinc=1)
+        .filter(sito=10001, eanprinc=1, reparto__in=REPARTI_PDV)
         .order_by(F('codartfo').desc(nulls_last=True), 'contr_comm')
         )
     if stati_selezionati:
@@ -46,4 +50,30 @@ def entrata_merci_pdv(request):
             'giacenza_pdv': riga.giacenza_pdv,
             'ean_13': riga.ean
         })
-    return render(request, 'entrata_merci/entrata_merci_pdv.html', {'merciPdv': righe_finali})
+    paginator = Paginator(righe_finali, 30)  # 30 righe per pagina, es.
+    numero_pagina = request.GET.get('pagina')
+    pagina_corrente = paginator.get_page(numero_pagina)  
+    return render(request, 'entrata_merci/entrata_merci_pdv.html', {
+        'merciPdv': pagina_corrente,
+        'conteggio':len(righe_finali)
+    })
+def modifica_data(request, pk):
+    if request.method != 'POST':
+        return HttpResponseNotAllowed(['POST'])
+    
+    cod_art = request.POST.get('cod_art')
+    valore = request.POST.get('valore')
+    utente = request.portal_user.get('username')
+    try:
+        data_finale = datetime.strptime(valore, '%Y-%m-%d').date()
+    except (TypeError, ValueError):
+        return JsonResponse({'ok': False, 'errore': 'Data non valida'}, status=400)
+    EntrataMerciOverride.objects.update_or_create(
+        cod_interno_ric= pk,
+        cod_art = cod_art,
+        defaults={
+            'data_ricevimento_modificata': data_finale,
+            'utente': utente,
+        }
+    )
+    return JsonResponse({'ok': True})

@@ -3,5 +3,6 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
-    path('', views.entrata_merci_pdv, name='entrata_merci_pdv')
+    path('', views.entrata_merci_pdv, name='entrata_merci_pdv'),
+    path('modifica-data/<int:pk>/', views.modifica_data, name='modifica_data'),
 ]

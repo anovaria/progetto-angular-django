@@ -201,6 +201,14 @@ MENU_CONFIG = [
         'app_name': 'cursori',
     },
     {
+        'path': '/app/entrata_merci/',
+        'label': 'Entrata Merci',
+        'icon': 'box-arrow-in-down',
+        'desc': 'Consultazione ed esportazione delle merci in entrata per PDV e Magazzino',
+        'groups': ['itd','resp.vendita'],
+        'app_name': 'entrata_merci',
+    },
+    {
         'path': '/app/welfare/',
         'label': 'Welfare',
         'icon': 'gift',
