@@ -35,12 +35,7 @@
                 {% endfor %}
             </tbody>
         </table>
-         <form method="post" action="{% url 'ortofrutta:report_pdf' %}" target="_blank"
-                onsubmit="if (!confirm('Generare il report e chiudere le righe fatturate?')) return false; setTimeout(() =>
-                location.reload(), 1500);">
-      {% csrf_token %}
-      <button type="submit" class="btn btn-primary">Scarica PDF</button>
-  </form>
+
 <script>
     document.getElementById('tabella-listino').addEventListener('change', async function(event) {
         if (event.target.classList.contains('input-prezzo')) {

@@ -1,0 +1,329 @@
+{% extends 'portal/base.html' %}
+{# Descrizione del template: Griglia articoli in promo futura ad uso del PDV.
+   Permette di filtrare tramite tendine (piano promo, reparto, sottoreparto, fornitore); mostra
+   un'anteprima JSON-driven dei risultati (max 100 righe) e offre il download Excel con tutti i record. #}
+
+{% block title %}Offerte Future PDV{% endblock %}
+
+{% block extra_css %}
+<style>
+    .filtri-card { background: white; color: #212529; margin: 16px; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.1); overflow: hidden; }
+    .filtri-title { background: #2e86c1; color: white; padding: 10px 16px; font-size: 12px; font-weight: 600; }
+    .filtri-body { padding: 16px; display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end; }
+
+    .field { display: flex; flex-direction: column; gap: 4px; }
+    .field label { font-size: 11px; font-weight: 600; color: #566573; text-transform: uppercase; letter-spacing: 0.4px; }
+    .field select.form-select { width: 260px; }
+    .field-check { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+    .field-check label { font-size: 11px; font-weight: 500; color: #566573; text-transform: none; letter-spacing: normal; cursor: pointer; }
+    .field-check input[type="checkbox"] { cursor: pointer; }
+    .fornitori-count-info { font-size: 11px; font-weight: 700; color: #117864; }
+
+    .btn-group { display: flex; gap: 8px; align-items: flex-end; }
+    .btn-app {
+        padding: 8px 18px; border: none; border-radius: 5px; cursor: pointer;
+        font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px; transition: all 0.2s;
+    }
+    .btn-app.btn-primary   { background: #2e86c1; color: white; }
+    .btn-app.btn-primary:hover   { background: #1a5276; }
+    .btn-app.btn-success   { background: #1e8449; color: white; }
+    .btn-app.btn-success:hover   { background: #145a32; }
+    .btn-app.btn-info      { background: #117864; color: white; }
+    .btn-app.btn-info:hover      { background: #0b5345; }
+    .btn-app.btn-secondary { background: #717d7e; color: white; }
+    .btn-app.btn-secondary:hover { background: #4d5656; }
+    .btn-app:disabled  { opacity: 0.55; cursor: not-allowed; }
+
+    .results-card { background: white; color: #212529; margin: 0 16px 16px; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.1); overflow: hidden; }
+    .results-title { background: #1a5276; color: white; padding: 10px 16px; font-size: 12px; font-weight: 600; display: flex; align-items: center; justify-content: space-between; }
+    .badge-count { background: rgba(255,255,255,0.25); padding: 2px 10px; border-radius: 12px; font-size: 11px; }
+
+    .spinner-wrap { padding: 40px; text-align: center; color: #717d7e; display: none; }
+    .spinner { width: 32px; height: 32px; border: 3px solid #d5d8dc; border-top-color: #2e86c1; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 10px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .msg-empty { padding: 40px; text-align: center; color: #717d7e; }
+    .msg-empty .icon { font-size: 36px; margin-bottom: 8px; }
+
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    thead th { background: #1a5276; color: white; padding: 9px 10px; text-align: left; white-space: nowrap; font-weight: 600; font-size: 11px; position: sticky; top: 0; }
+    tbody tr { border-bottom: 1px solid #eaecee; }
+    tbody tr:nth-child(even) { background: #eaf4fb; }
+    tbody tr:hover { background: #d6eaf8; }
+    tbody td { padding: 7px 10px; white-space: nowrap; }
+    .td-num { text-align: right; }
+    .td-center { text-align: center; }
+    .stato-i { color: #e67e22; font-weight: 700; }
+    .stato-a { color: #1e8449; font-weight: 700; }
+
+    .nota-preview { padding: 8px 16px; background: #fef9e7; border-top: 1px solid #f9e79f; font-size: 11px; color: #7d6608; }
+    .alert-error { margin: 16px; padding: 12px 16px; background: #fdedec; border: 1px solid #f1948a; border-radius: 6px; color: #922b21; font-size: 12px; display: none; }
+</style>
+{% endblock %}
+
+{% block page_content %}
+{# Sezione: form di ricerca con filtri a tendina #}
+<div class="filtri-card">
+    <div class="filtri-title">🔍 Filtri di ricerca</div>
+    <div class="filtri-body">
+
+        <div class="field">
+            <label>Piano Promo</label>
+            <select id="codpromo" class="form-select" onchange="aggiornaFornitori()">
+                <option value="">-- Tutti --</option>
+                {% for p in piani %}
+                <option value="{{ p.codice }}">{{ p.codice }} | {{ p.dtaini }} → {{ p.dtafine }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="field">
+            <label>Reparto</label>
+            <select id="reparto" class="form-select">
+                <option value="">-- Tutti --</option>
+                {% for r in reparti %}
+                <option value="{{ r.codice }}">{{ r.descrizione }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="field">
+            <label>Sottoreparto</label>
+            <select id="sottoreparto" class="form-select">
+                <option value="">-- Tutti --</option>
+                {% for s in sottoreparti %}
+                <option value="{{ s.codice }}">{{ s.descrizione }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="field">
+            <label>Fornitore</label>
+            <select id="codforn" class="form-select">
+                <option value="">-- Tutti --</option>
+                {% for f in fornitori %}
+                <option value="{{ f.codice }}">{{ f.descrizione }}</option>
+                {% endfor %}
+            </select>
+            <div class="field-check">
+                <input type="checkbox" id="abilitaFornitore" onchange="aggiornaFornitori()">
+                <label for="abilitaFornitore">Abilita Fornitore (solo del piano)</label>
+                <span id="fornitoriCountInfo" class="fornitori-count-info"></span>
+            </div>
+        </div>
+
+        <div class="btn-group">
+            <button class="btn-app btn-primary" onclick="cerca()">🔍 Cerca</button>
+            <button class="btn-app btn-success" id="btnExcel" onclick="exportExcel()" disabled>📥 Scarica Excel</button>
+            <button class="btn-app btn-info" id="btnPdf" onclick="visualizzaPerOrdine()" disabled>🖨️ Visualizza per Ordine</button>
+            <button class="btn-app btn-secondary" onclick="resetFiltri()">✖ Reset</button>
+        </div>
+    </div>
+</div>
+
+<div class="alert-error" id="alertError"></div>
+
+<div class="results-card">
+    <div class="results-title">
+        <span>📊 Risultati</span>
+        <span class="badge-count" id="badgeCount">—</span>
+    </div>
+
+    <div class="spinner-wrap" id="spinner">
+        <div class="spinner"></div>
+        <div>Caricamento in corso...</div>
+    </div>
+
+    <div class="msg-empty" id="msgEmpty">
+        <div class="icon">📂</div>
+        <div>Imposta i filtri e clicca <strong>Cerca</strong> per visualizzare gli articoli in promo.</div>
+    </div>
+
+    <div class="table-wrap" id="tableWrap" style="display:none;">
+        <div class="nota-preview" id="notaPreview"></div>
+        <table>
+            <thead>
+                <tr>
+                    <th>CCOM</th><th>Desc. CCOM</th>
+                    <th>Cod. Art.</th><th>Stato</th><th>Descrizione</th>
+                    <th>Cod. EAN</th>
+                    <th>Giac. Dep.</th><th>Giac. PDV</th><th>Qta Ordine</th>
+                    <th>Data Consegna</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Lista completa dei fornitori caricata al primo render, usata per ripristinare
+    // la tendina quando il checkbox 'Abilita Fornitore' viene disattivato
+    const fornitoriCompleti = [
+        {% for f in fornitori %}
+        {codice: "{{ f.codice|escapejs }}", descrizione: "{{ f.descrizione|escapejs }}"},
+        {% endfor %}
+    ];
+
+    function popolaFornitori(lista, valoreSelezionato) {
+        const sel = document.getElementById('codforn');
+        sel.innerHTML = '<option value="">-- Tutti --</option>';
+        lista.forEach(f => {
+            const opt = document.createElement('option');
+            opt.value = f.codice;
+            opt.textContent = f.descrizione;
+            sel.appendChild(opt);
+        });
+        // Mantiene la selezione precedente solo se ancora presente nella nuova lista
+        if (valoreSelezionato && lista.some(f => String(f.codice) === String(valoreSelezionato))) {
+            sel.value = valoreSelezionato;
+        }
+        return lista.length;
+    }
+
+    function setFornitoriCountInfo(testo) {
+        document.getElementById('fornitoriCountInfo').textContent = testo;
+    }
+
+    // Se il checkbox è attivo e c'è un piano promo selezionato, restringe la tendina
+    // Fornitore ai soli fornitori presenti in quel piano (come nell'Access originale)
+    function aggiornaFornitori() {
+        const abilitato = document.getElementById('abilitaFornitore').checked;
+        const codpromo = document.getElementById('codpromo').value;
+        const valoreAttuale = document.getElementById('codforn').value;
+
+        if (!abilitato) {
+            popolaFornitori(fornitoriCompleti, valoreAttuale);
+            setFornitoriCountInfo('');
+            return;
+        }
+        if (!codpromo) {
+            popolaFornitori(fornitoriCompleti, valoreAttuale);
+            setFornitoriCountInfo('⚠️ Seleziona prima un piano promo');
+            return;
+        }
+
+        setFornitoriCountInfo('Aggiornamento...');
+        fetch('fornitori/?codpromo=' + encodeURIComponent(codpromo))
+            .then(r => r.json())
+            .then(data => {
+                const n = popolaFornitori(data.fornitori || [], valoreAttuale);
+                setFornitoriCountInfo(`✓ ${n} fornitori nel piano`);
+            })
+            .catch(err => {
+                console.error('Errore aggiornamento fornitori:', err);
+                popolaFornitori(fornitoriCompleti, valoreAttuale);
+                setFornitoriCountInfo('⚠️ Errore nel filtro, mostro tutti i fornitori');
+            });
+    }
+
+    function getParams() {
+        return new URLSearchParams({
+            codpromo:     document.getElementById('codpromo').value,
+            reparto:      document.getElementById('reparto').value,
+            sottoreparto: document.getElementById('sottoreparto').value,
+            codforn:      document.getElementById('codforn').value,
+        });
+    }
+
+    function fmtDate(val) {
+        if (!val) return '';
+        return val.substring(0, 10).split('-').reverse().join('/');
+    }
+
+    function fmtNum(val, dec) {
+        if (val === null || val === undefined || val === '') return '';
+        return parseFloat(val).toFixed(dec).replace('.', ',');
+    }
+
+    function cerca() {
+        document.getElementById('alertError').style.display = 'none';
+        document.getElementById('msgEmpty').style.display = 'none';
+        document.getElementById('tableWrap').style.display = 'none';
+        document.getElementById('spinner').style.display = 'block';
+        document.getElementById('btnExcel').disabled = true;
+        document.getElementById('btnPdf').disabled = true;
+        document.getElementById('badgeCount').textContent = '...';
+
+        fetch('anteprima/?' + getParams())
+            .then(r => r.json())
+            .then(data => {
+                document.getElementById('spinner').style.display = 'none';
+                if (data.error) { showError(data.error); return; }
+
+                document.getElementById('badgeCount').textContent = data.count + ' righe';
+
+                if (data.count === 0) {
+                    document.getElementById('msgEmpty').style.display = 'block';
+                    document.getElementById('msgEmpty').querySelector('div:last-child').textContent =
+                        'Nessun risultato trovato con i filtri selezionati.';
+                    return;
+                }
+
+                renderTable(data.rows);
+                document.getElementById('tableWrap').style.display = 'block';
+                document.getElementById('btnExcel').disabled = false;
+                document.getElementById('btnPdf').disabled = false;
+                document.getElementById('notaPreview').textContent = data.count > 100
+                    ? `⚠️ Anteprima limitata ai primi 100 di ${data.count} risultati. L'Excel conterrà tutti i ${data.count} record.`
+                    : `✅ ${data.count} risultati trovati.`;
+            })
+            .catch(err => {
+                document.getElementById('spinner').style.display = 'none';
+                showError('Errore di connessione: ' + err);
+            });
+    }
+
+    function renderTable(rows) {
+        const tbody = document.getElementById('tableBody');
+        tbody.innerHTML = '';
+        rows.forEach(r => {
+            const stato = r.STATO ? r.STATO.trim() : '';
+            const statoClass = stato === 'I' ? 'stato-i' : stato === 'A' ? 'stato-a' : '';
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td class="td-center">${fmtNum(r.CCOM, 0)}</td>
+                <td>${r.DESCRCCOM ?? ''}</td>
+                <td><strong>${r.CodArt ?? ''}</strong></td>
+                <td class="td-center ${statoClass}">${stato}</td>
+                <td>${r.Descrizione ?? ''}</td>
+                <td>${r.EAN ?? ''}</td>
+                <td class="td-num">${fmtNum(r.GIACENZA_DEPOSITO, 0)}</td>
+                <td class="td-num">${fmtNum(r.GIACENZA_PDV, 0)}</td>
+                <td class="td-num">${fmtNum(r.QTA_IN_ORDINE, 0)}</td>
+                <td class="td-center">${fmtDate(r.DataConsegna)}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function exportExcel() { window.location.href = 'export/?' + getParams(); }
+
+    // Apre il PDF di stampa in una nuova finestra/scheda del browser: l'utente decide se stamparlo
+    function visualizzaPerOrdine() { window.open('pdf/?' + getParams(), '_blank'); }
+
+    function resetFiltri() {
+        ['codpromo', 'reparto', 'sottoreparto', 'codforn'].forEach(id => document.getElementById(id).value = '');
+        document.getElementById('abilitaFornitore').checked = false;
+        popolaFornitori(fornitoriCompleti, '');
+        setFornitoriCountInfo('');
+        document.getElementById('tableWrap').style.display = 'none';
+        document.getElementById('msgEmpty').style.display = 'block';
+        document.getElementById('msgEmpty').querySelector('div:last-child').textContent =
+            'Imposta i filtri e clicca Cerca per visualizzare gli articoli in promo.';
+        document.getElementById('btnExcel').disabled = true;
+        document.getElementById('btnPdf').disabled = true;
+        document.getElementById('badgeCount').textContent = '—';
+        document.getElementById('alertError').style.display = 'none';
+    }
+
+    function showError(msg) {
+        const el = document.getElementById('alertError');
+        el.textContent = '⚠️ ' + msg;
+        el.style.display = 'block';
+    }
+</script>
+{% endblock %}

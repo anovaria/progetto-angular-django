@@ -7,7 +7,7 @@ class GoldReportRouter:
     route_app_labels = {'goldreport_mssql'}
     
     # Tabelle specifiche da leggere su goldreport (anche se in altre app)
-    goldreport_tables = {'TFornitori', 'v_masterdata', 't_t_ean1','v_RicevimentiGoldArtFo'}
+    goldreport_tables = {'TFornitori', 'v_masterdata', 't_t_ean1','v_RicevimentiGoldArtFo','v_luke'}
 
     def db_for_read(self, model, **hints):
         if model._meta.app_label in self.route_app_labels:

@@ -31,7 +31,7 @@ def cerca_articoli(request):
     raw_input = request.POST.get("codici_articolo", "")
     righe = raw_input.split('\n')
     codici = [r.strip() for r in righe if r.strip()]
-    codici_unici = set(codici)
+    codici_unici = dict.fromkeys(codici)
     risultati = []
     non_trovati = []
     for codice in codici_unici:

@@ -27,6 +27,12 @@
             {% endfor %}
         </tbody>
     </table>
+    <form method="post" action="{% url 'ortofrutta:report_pdf' %}" 
+        onsubmit="if (!confirm('Generare il report e chiudere le righe fatturate?')) 
+        return false; setTimeout(() => location.href = '{% url "ortofrutta:scansione" %}', 1500);">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-primary">Scarica PDF</button>
+    </form>
 </div>
 
 

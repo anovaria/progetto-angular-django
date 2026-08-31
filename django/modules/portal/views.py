@@ -61,6 +61,14 @@ MENU_CONFIG = [
         'app_name': 'stampaoffertefuture',
     },
     {
+        'path': '/app/offerte-future-pdv/',
+        'label': 'Offerte Future PDV',
+        'icon': 'file-earmark-image',
+        'desc': 'Griglia articoli in promo futura per il PDV (CCOM, giacenze, data consegna)',
+        'groups': ['itd', 'resp.vendita'],
+        'app_name': 'offerte_future_pdv',
+    },
+    {
         'path': '/app/importelab/',
         'label': 'Rossetto',
         'icon': 'arrow-repeat',

@@ -76,6 +76,7 @@ INSTALLED_APPS = [
     'modules.scaricopromo',
     'modules.active_users',
     'modules.stampaoffertefuture.apps.StampaOfferteFutureConfig',
+    'modules.offerte_future_pdv.apps.OfferteFuturePdvConfig',
     'modules.portal',
     'modules.plu_web',
     'modules.caricopromo_reparto',

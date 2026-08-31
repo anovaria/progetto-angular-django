@@ -53,7 +53,10 @@ def report_pdf(request):
         condizione |= Q(codart=riga['codart'], data_competenza=riga['data_competenza'])
     if totali:
         ScansioneOrtofrutta.objects.filter(condizione, fatturato=False).update(fatturato=True)
-    return HttpResponse(buffer, content_type='application/pdf')
+    nome_file = f"report_cassa_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.pdf"
+    response = HttpResponse(buffer, content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{nome_file}"'
+    return response
 
 def report(request):
     totali = totali_con_prezzo()

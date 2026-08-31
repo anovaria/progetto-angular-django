@@ -26,6 +26,7 @@ urlpatterns = [
     path('app/scaricopromo/', include('modules.scaricopromo.urls')),
     path('api/active-users/', include('modules.active_users.urls')),
     path('app/stampaoffertefuture/', include('modules.stampaoffertefuture.urls')),
+    path('app/offerte-future-pdv/', include('modules.offerte_future_pdv.urls')),
     path('app/plu/', include('modules.plu_web.urls')),
     path('app/caricopromo-reparto/', include('modules.caricopromo_reparto.urls')),
     path('app/masterdata/', include('modules.masterdata.urls')),
