@@ -104,12 +104,12 @@ INSTALLED_APPS = [
     'modules.rio_fornitori_new.apps.RioFornitoriNewConfig',
     'modules.ricette.apps.RicetteConfig',
     'modules.scarti_gettati.apps.ScartiGettatiConfig',
-    'modules.riordino_pdv.apps.RiordinoPdvConfig',
     'modules.ricerca_gold',
     'modules.ins_articoli',
     'modules.preventivi',
     'modules.ortofrutta',
     'modules.entrata_merci',
+    'modules.giacenze_negative',
 ]
 
 # Middleware (Nessun cambiamento)

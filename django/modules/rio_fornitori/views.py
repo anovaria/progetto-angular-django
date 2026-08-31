@@ -28,7 +28,7 @@ def home(request):
 
         request.session[_SESSION_CCOM] = fornitore['ccom']
         request.session[_SESSION_DESCR] = fornitore['descrccom']
-        return redirect('rio_fornitori:ordine')
+        return redirect('rio-fornitori:ordine')
 
     return render(request, 'rio_fornitori/home.html', ctx)
 
@@ -38,7 +38,7 @@ def ordine(request):
     descrccom = request.session.get(_SESSION_DESCR)
 
     if not ccom:
-        return redirect('rio_fornitori:home')
+        return redirect('rio-fornitori:home')
 
     config = services.leggi_config_fornitore(ccom)
 
@@ -59,7 +59,7 @@ def modifica_email(request):
     descrccom = request.session.get(_SESSION_DESCR)
 
     if not ccom:
-        return redirect('rio_fornitori:home')
+        return redirect('rio-fornitori:home')
 
     config = services.leggi_config_fornitore(ccom)
     emails = config.get('emails_fornitore', []) if config else []
@@ -96,7 +96,7 @@ def esegui(request):
     descrccom = request.session.get(_SESSION_DESCR)
 
     if not ccom:
-        return redirect('rio_fornitori:home')
+        return redirect('rio-fornitori:home')
 
     try:
         gg_cons = int(request.POST.get('gg_cons', 7))

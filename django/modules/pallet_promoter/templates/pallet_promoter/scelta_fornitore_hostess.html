@@ -338,7 +338,7 @@
                 return;
             }
             timeout = setTimeout(() => {
-                fetch(`{% url 'pallet_promoter:cerca_fornitore' %}?q=${encodeURIComponent(q)}`)
+                fetch(`{% url 'pallet-promoter:cerca_fornitore' %}?q=${encodeURIComponent(q)}`)
                     .then(r => r.text())
                     .then(html => {
                         const temp = document.createElement('div');
@@ -398,7 +398,7 @@
         formData.append('fornitore_id', fornId);
         formData.append('nota', nota);
         formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
-        fetch("{% url 'pallet_promoter:salva_fornitore_slot' %}", { method: 'POST', body: formData });
+        fetch("{% url 'pallet-promoter:salva_fornitore_slot' %}", { method: 'POST', body: formData });
     }
 
     function salvaTutto() {

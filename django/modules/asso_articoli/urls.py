@@ -4,7 +4,7 @@ URL configuration per app AssoArticoli
 from django.urls import path
 from . import views
 
-app_name = 'asso_articoli'
+app_name = 'asso-articoli'
 
 urlpatterns = [
     # Maschera principale

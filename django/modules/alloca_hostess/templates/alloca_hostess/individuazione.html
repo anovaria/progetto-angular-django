@@ -546,7 +546,7 @@ document.querySelectorAll('.fornitore-search-input').forEach(function(input) {
         if (q.length < 2) { resultsDiv.innerHTML = ''; resultsDiv.classList.remove('show'); return; }
         // Debounce 300ms per evitare troppe chiamate API durante la digitazione
         timeout = setTimeout(function() {
-            fetch("{% url 'pallet_promoter:cerca_fornitore' %}?q=" + encodeURIComponent(q))
+            fetch("{% url 'pallet-promoter:cerca_fornitore' %}?q=" + encodeURIComponent(q))
                 .then(function(r) { return r.text(); })
                 .then(function(html) { resultsDiv.innerHTML = html; resultsDiv.classList.add('show'); });
         }, 300);
@@ -678,7 +678,7 @@ function salvaTutto() {
     });
 
     // Fase 1: salva gli slot del giorno corrente
-    fetch("{% url 'pallet_promoter:salva_presenze' %}", {
+    fetch("{% url 'pallet-promoter:salva_presenze' %}", {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
         body: JSON.stringify({ giorno: form.dataset.giorno, presenze: presenze })
@@ -698,7 +698,7 @@ function salvaTutto() {
 
         return copies.reduce(function(chain, copia) {
             return chain.then(function() {
-                return fetch("{% url 'alloca_hostess:copia_slot' %}", {
+                return fetch("{% url 'alloca-hostess:copia_slot' %}", {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
                     body: JSON.stringify({ giorni: copia.giorni, presenza: copia.presenza })

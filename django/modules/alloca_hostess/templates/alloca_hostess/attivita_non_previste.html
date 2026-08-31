@@ -504,7 +504,7 @@ function salvaRiga(btn) {
         uscita_extra_1: row.querySelector('[name="uscex"]').value || null,
     };
 
-    fetch("{% url 'alloca_hostess:salva_attivita_non_prevista' %}", {
+    fetch("{% url 'alloca-hostess:salva_attivita_non_prevista' %}", {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -589,7 +589,7 @@ function aggiungiPersona() {
         return;
     }
 
-    fetch("{% url 'alloca_hostess:aggiungi_nominativo_polmone' %}", {
+    fetch("{% url 'alloca-hostess:aggiungi_nominativo_polmone' %}", {
         method: 'POST',
         headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrfToken},
         body: JSON.stringify({nominativo, note})

@@ -5,7 +5,7 @@ Da aggiungere in modules/active_users/urls.py
 from django.urls import path
 from . import views
 
-app_name = 'active_users'
+app_name = 'active-users'
 
 urlpatterns = [
     path('', views.active_users_api, name='active-users'),

@@ -694,20 +694,20 @@ document.addEventListener('DOMContentLoaded', function() {
 const OPERATORE = "{{ username|escapejs }}";
 {# URL delle API Django per le chiamate AJAX, incluse quelle specifiche del reparto #}
 const URLS = {
-    carica: "{% url 'caricopromo_reparto:api_carica_articoli' %}",
-    toggle: "{% url 'caricopromo_reparto:api_toggle_selezione' %}",
-    batch: "{% url 'caricopromo_reparto:api_seleziona_batch' %}",
-    accoda: "{% url 'caricopromo_reparto:api_accoda_promo' %}",
-    svuota: "{% url 'caricopromo_reparto:api_svuota_fase1' %}",
-    visualizza: "{% url 'caricopromo_reparto:api_visualizza_inseriti' %}",
-    svuotaInseriti: "{% url 'caricopromo_reparto:api_svuota_inseriti' %}",
-    rimuoviInserito: "{% url 'caricopromo_reparto:api_rimuovi_inserito' %}",
-    cercaBarcode: "{% url 'caricopromo_reparto:api_cerca_barcode' %}",
-    aggiungiManuali: "{% url 'caricopromo_reparto:api_aggiungi_manuali' %}",
-    duplicaPromos: "{% url 'caricopromo_reparto:api_duplica_get_promos' %}",
-    duplicaCcom: "{% url 'caricopromo_reparto:api_duplica_get_ccom' %}",
-    duplicaArticoli: "{% url 'caricopromo_reparto:api_duplica_get_articoli' %}",
-    duplicaInserisci: "{% url 'caricopromo_reparto:api_duplica_inserisci' %}",
+    carica: "{% url 'caricopromo-reparto:api_carica_articoli' %}",
+    toggle: "{% url 'caricopromo-reparto:api_toggle_selezione' %}",
+    batch: "{% url 'caricopromo-reparto:api_seleziona_batch' %}",
+    accoda: "{% url 'caricopromo-reparto:api_accoda_promo' %}",
+    svuota: "{% url 'caricopromo-reparto:api_svuota_fase1' %}",
+    visualizza: "{% url 'caricopromo-reparto:api_visualizza_inseriti' %}",
+    svuotaInseriti: "{% url 'caricopromo-reparto:api_svuota_inseriti' %}",
+    rimuoviInserito: "{% url 'caricopromo-reparto:api_rimuovi_inserito' %}",
+    cercaBarcode: "{% url 'caricopromo-reparto:api_cerca_barcode' %}",
+    aggiungiManuali: "{% url 'caricopromo-reparto:api_aggiungi_manuali' %}",
+    duplicaPromos: "{% url 'caricopromo-reparto:api_duplica_get_promos' %}",
+    duplicaCcom: "{% url 'caricopromo-reparto:api_duplica_get_ccom' %}",
+    duplicaArticoli: "{% url 'caricopromo-reparto:api_duplica_get_articoli' %}",
+    duplicaInserisci: "{% url 'caricopromo-reparto:api_duplica_inserisci' %}",
 };
 
 let _dupPromos = [];
@@ -1343,7 +1343,7 @@ function confermaImportaSvendita() {
     fd.append('file', input.files[0]);
     fd.append('csrfmiddlewaretoken', getCsrfToken());
 
-    fetch("{% url 'caricopromo_reparto:api_importa_excel_svendita' %}", { method: 'POST', body: fd })
+    fetch("{% url 'caricopromo-reparto:api_importa_excel_svendita' %}", { method: 'POST', body: fd })
         .then(r => r.json())
         .then(data => {
             btn.disabled = false;

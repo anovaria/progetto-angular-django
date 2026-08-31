@@ -10,7 +10,7 @@ class VLuke(models.Model):
     descr_articolo = models.CharField(db_column='DESCRART', max_length=4000, null=True, blank=True)
     stato = models.CharField(db_column='STATO', max_length=8)
     giac_pdv = models.FloatField(db_column='GIAC_PDV', null=True, blank=True)
-    ultima_vendita = models.DateTimeField(db_column='ULTIMA_VENDITA', null=True, blank=True)
+    ultima_vendita = models.CharField(db_column='ULTIMA_VENDITA', max_length=10, null=True, blank=True)
     giac_dep = models.FloatField(db_column='GIAC_DEP', null=True, blank=True)
     corsia = models.CharField(db_column='Corsia', max_length=10, null=True, blank=True)
     campata = models.CharField(db_column='Campata', max_length=10, null=True, blank=True)

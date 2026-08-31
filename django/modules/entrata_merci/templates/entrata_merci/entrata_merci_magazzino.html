@@ -31,7 +31,7 @@
                 </div>
             </form>
 
-            <form method="post" action="{% url 'entrata_merci:report_pdf_magazzino' %}?{{ request.GET.urlencode }}" class="mb-0" target="_blank">
+            <form method="post" action="{% url 'entrata-merci:report_pdf_magazzino' %}?{{ request.GET.urlencode }}" class="mb-0" target="_blank">
                 {% csrf_token %}
                 <button type="submit" class="btn btn-success">Genera Stampa PDF</button>
             </form>

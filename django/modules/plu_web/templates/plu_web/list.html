@@ -111,10 +111,10 @@
             <button type="submit" class="btn-plu btn-plu-primary">🔍 Cerca</button>
             <a href="?" class="btn-plu btn-plu-outline">✕ Reset</a>
             {# Export Excel: passa i filtri correnti come parametri GET #}
-            <a href="{% url 'plu_web:export' %}?{{ request.GET.urlencode }}" class="btn-plu btn-plu-success">📥 Export Excel</a>
+            <a href="{% url 'plu-web:export' %}?{{ request.GET.urlencode }}" class="btn-plu btn-plu-success">📥 Export Excel</a>
             {# Il pulsante stampa barcode è visibile solo se ci sono articoli nei risultati #}
             {% if articoli %}
-            <a href="{% url 'plu_web:stampa' %}?{{ request.GET.urlencode }}" target="_blank" class="btn-plu" style="background:#9c27b0;color:white;">🖨 Stampa Barcode</a>
+            <a href="{% url 'plu-web:stampa' %}?{{ request.GET.urlencode }}" target="_blank" class="btn-plu" style="background:#9c27b0;color:white;">🖨 Stampa Barcode</a>
             {% endif %}
         </div>
 

@@ -19,7 +19,7 @@
     <h2 class="mb-4">Master Ordini</h2>
 
     {# Sezione: form di ricerca con filtri per numero ordine, date e stato #}
-    <form method="get" action="{% url 'master_ordini:index' %}">
+    <form method="get" action="{% url 'master-ordini:index' %}">
         <div class="row g-3">
 
             {# Filtro per numero ordine: select2 per ricerca rapida #}
@@ -73,7 +73,7 @@
             </button>
             {# Il bottone Excel è visibile solo se ci sono risultati (rows non None) #}
             {% if rows is not None %}
-            <a href="{% url 'master_ordini:export_excel' %}?{{ params_qs }}" class="btn btn-success">
+            <a href="{% url 'master-ordini:export_excel' %}?{{ params_qs }}" class="btn btn-success">
                 <i class="bi bi-file-earmark-excel"></i> Esporta Excel
             </a>
             {% endif %}

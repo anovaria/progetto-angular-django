@@ -55,7 +55,7 @@ def home(request):
         # Salva il fornitore in sessione e passa alla schermata ordine.
         request.session[_SESSION_CCOM] = fornitore['ccom']
         request.session[_SESSION_DESCR] = fornitore['descrccom']
-        return redirect('rio_fornitori_new:ordine')
+        return redirect('rio-fornitori-new:ordine')
 
     return render(request, 'rio_fornitori_new/home.html', ctx)
 
@@ -67,7 +67,7 @@ def ordine(request):
 
     # Se non c'e' un fornitore in sessione, torna alla home.
     if not ccom:
-        return redirect('rio_fornitori_new:home')
+        return redirect('rio-fornitori-new:home')
 
     config = services.leggi_config_fornitore(ccom)
 
@@ -90,7 +90,7 @@ def modifica_email(request):
     descrccom = request.session.get(_SESSION_DESCR)
 
     if not ccom:
-        return redirect('rio_fornitori_new:home')
+        return redirect('rio-fornitori-new:home')
 
     config = services.leggi_config_fornitore(ccom)
     emails = config.get('emails_fornitore', []) if config else []
@@ -139,7 +139,7 @@ def esegui(request):
     descrccom = request.session.get(_SESSION_DESCR)
 
     if not ccom:
-        return redirect('rio_fornitori_new:home')
+        return redirect('rio-fornitori-new:home')
 
     # --- 1. Lettura e validazione parametri del form ---
     try:
@@ -239,7 +239,7 @@ def scarica_csv(request):
     """
     nr_ord = request.session.get(_SESSION_CSV_NR)
     if not nr_ord:
-        return redirect('rio_fornitori_new:home')
+        return redirect('rio-fornitori-new:home')
 
     data = transfer.leggi_csv_salvato(nr_ord)
     if data is None:

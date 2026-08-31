@@ -150,7 +150,7 @@
                             <button type="submit" class="btn btn-primary">
                                 <i class="bi bi-funnel" style="vertical-align: middle;"></i> Applica Filtri
                             </button>
-                            <a href="{% url 'asso_articoli:index' %}" class="btn btn-outline-secondary">
+                            <a href="{% url 'asso-articoli:index' %}" class="btn btn-outline-secondary">
                                 <i class="bi bi-arrow-repeat" style="vertical-align: middle;"></i> Reset Filtri
                             </a>
                         </div>
@@ -161,15 +161,15 @@
                                 {{ total_count }} articoli
                             </span>
                             {# Pulsante export Excel completo (con CCOM, prezzi, fornitore) #}
-                            <a href="{% url 'asso_articoli:export_excel' %}?{{ request.GET.urlencode }}" class="btn btn-success" title="Export completo per segreteria">
+                            <a href="{% url 'asso-articoli:export_excel' %}?{{ request.GET.urlencode }}" class="btn btn-success" title="Export completo per segreteria">
                                 <i class="bi bi-file-earmark-arrow-down" style="vertical-align: middle;"></i> Excel
                             </a>
                             {# Pulsante export Excel ridotto per reparti (senza dati commerciali) #}
-                            <a href="{% url 'asso_articoli:export_excel_reparti' %}?{{ request.GET.urlencode }}" class="btn btn-warning" title="Export ridotto per reparti">
+                            <a href="{% url 'asso-articoli:export_excel_reparti' %}?{{ request.GET.urlencode }}" class="btn btn-warning" title="Export ridotto per reparti">
                                 <i class="bi bi-file-earmark-arrow-down" style="vertical-align: middle;"></i> Reparti
                             </a>
                             {# Pulsante report BAR (export diretto senza filtri aggiuntivi) #}
-                            <a href="{% url 'asso_articoli:report_bar' %}" class="btn btn-info" title="Report BAR">
+                            <a href="{% url 'asso-articoli:report_bar' %}" class="btn btn-info" title="Report BAR">
                                 <i class="bi bi-cup" style="vertical-align: middle;"></i> BAR
                             </a>
                         </div>
@@ -379,7 +379,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!ccom) { lineaSelect.innerHTML = ''; return; }
         loadingLinee.style.display = 'block';
         lineaSelect.style.display = 'none';
-        fetch(`{% url 'asso_articoli:api_linee' %}?ccom=${encodeURIComponent(ccom)}`)
+        fetch(`{% url 'asso-articoli:api_linee' %}?ccom=${encodeURIComponent(ccom)}`)
             .then(r => r.json())
             .then(data => {
                 loadingLinee.style.display = 'none';

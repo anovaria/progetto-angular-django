@@ -49,7 +49,7 @@
         <h4>Proposte Ordine Fornitori{% if rio.env == 'test' %} <span class="badge bg-warning text-dark ms-2" style="font-size:12px;">TEST</span>{% endif %}</h4>
         <nav aria-label="breadcrumb">
             <ol class="breadcrumb mb-0">
-                <li class="breadcrumb-item"><a href="{% url 'rio_fornitori_new:home' %}">Ricerca</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'rio-fornitori-new:home' %}">Ricerca</a></li>
                 {% block breadcrumb_extra %}{% endblock %}
             </ol>
         </nav>

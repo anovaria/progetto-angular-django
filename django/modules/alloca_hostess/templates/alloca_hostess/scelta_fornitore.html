@@ -411,7 +411,7 @@ document.querySelectorAll('.forn-search').forEach(input => {
 
         // Debounce 300ms per ridurre le chiamate API durante la digitazione
         timeout = setTimeout(() => {
-            fetch(`{% url 'alloca_hostess:cerca_fornitore' %}?q=${encodeURIComponent(q)}`)
+            fetch(`{% url 'alloca-hostess:cerca_fornitore' %}?q=${encodeURIComponent(q)}`)
                 .then(r => r.text())
                 .then(html => {
                     // Converte il partial HTML in opzioni del dropdown
@@ -485,7 +485,7 @@ function salvaSlot(giorno, slot) {
     formData.append('nota', nota);
     formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
 
-    fetch("{% url 'alloca_hostess:salva_fornitore_slot' %}", {
+    fetch("{% url 'alloca-hostess:salva_fornitore_slot' %}", {
         method: 'POST',
         body: formData
     });

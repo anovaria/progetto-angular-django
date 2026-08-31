@@ -315,7 +315,7 @@ def dati_live(request):
     Permette di filtrare per piano gold, date SellOut, settore e testo libero.
     """
     if not _is_editor(request):
-        return redirect('piano_promo:index')
+        return redirect('piano-promo:index')
 
     piani_sel = [p for p in request.GET.getlist('piano') if p.strip()]
     data_da   = request.GET.get('data_da', '').strip() or None
@@ -436,10 +436,10 @@ def nuova(request):
     """
     if not _is_editor(request):
         messages.error(request, 'Permesso negato.')
-        return redirect('piano_promo:index')
+        return redirect('piano-promo:index')
 
     if request.method != 'POST':
-        return redirect('piano_promo:index')
+        return redirect('piano-promo:index')
 
     piani_gold = [p for p in request.POST.getlist('piano_gold') if p.strip()]
     titolo  = request.POST.get('titolo', '').strip()
@@ -451,7 +451,7 @@ def nuova(request):
     # Almeno un criterio di filtro è obbligatorio
     if not piani_gold and not data_da and not data_a and not sett:
         messages.error(request, 'Seleziona un Piano Gold o specifica almeno un filtro.')
-        return redirect('piano_promo:index')
+        return redirect('piano-promo:index')
 
     try:
         if len(piani_gold) == 1 and not data_da and not data_a and not sett:
@@ -460,7 +460,7 @@ def nuova(request):
             righe_db = _righe_live(piani=piani_gold or None, data_da=data_da, data_a=data_a, sett=sett)
     except Exception as e:
         messages.error(request, f'Errore lettura DB: {e}')
-        return redirect('piano_promo:index')
+        return redirect('piano-promo:index')
 
     # Costruisce l'etichetta della sessione
     if piani_gold:
@@ -510,10 +510,10 @@ def nuova(request):
         ])
     except Exception as e:
         messages.error(request, f'Errore creazione sessione: {e}')
-        return redirect('piano_promo:index')
+        return redirect('piano-promo:index')
 
     messages.success(request, f'Sessione "{piano_label}" creata con {len(righe_db)} articoli (una riga per articolo e piano).')
-    return redirect('piano_promo:dettaglio', pk=sessione.pk)
+    return redirect('piano-promo:dettaglio', pk=sessione.pk)
 
 
 def dettaglio(request, pk):
@@ -544,7 +544,7 @@ def dettaglio(request, pk):
                 stato='incluso',
                 aggiunta_manuale=True,
             )
-        return redirect('piano_promo:dettaglio', pk=pk)
+        return redirect('piano-promo:dettaglio', pk=pk)
 
     righe = sessione.righe.all()
     piani, setti = [], []
@@ -628,7 +628,7 @@ def aggiungi_articoli(request, pk):
     """
     if not _is_editor(request):
         messages.error(request, 'Permesso negato.')
-        return redirect('piano_promo:index')
+        return redirect('piano-promo:index')
 
     sessione = get_object_or_404(PromoSessione, pk=pk)
     piani_gold = [p for p in request.POST.getlist('piano_gold') if p.strip()]
@@ -638,7 +638,7 @@ def aggiungi_articoli(request, pk):
 
     if not piani_gold and not data_da and not data_a and not sett:
         messages.error(request, 'Seleziona almeno un filtro.')
-        return redirect('piano_promo:dettaglio', pk=pk)
+        return redirect('piano-promo:dettaglio', pk=pk)
 
     try:
         if len(piani_gold) == 1 and not data_da and not data_a and not sett:
@@ -647,12 +647,12 @@ def aggiungi_articoli(request, pk):
             righe_db = _righe_live(piani=piani_gold or None, data_da=data_da, data_a=data_a, sett=sett)
     except Exception as e:
         messages.error(request, f'Errore lettura DB: {e}')
-        return redirect('piano_promo:dettaglio', pk=pk)
+        return redirect('piano-promo:dettaglio', pk=pk)
 
     n_new, n_upd = _upsert_righe(sessione, righe_db)
     _salva_query(sessione, piani_gold, data_da, data_a, sett)
     messages.success(request, f'Aggiunti {n_new} articoli nuovi, aggiornati {n_upd} esistenti.')
-    return redirect('piano_promo:dettaglio', pk=pk)
+    return redirect('piano-promo:dettaglio', pk=pk)
 
 
 @require_POST
@@ -683,7 +683,7 @@ def aggiorna_lista(request, pk):
         )
         if not piani_gold:
             messages.error(request, 'Nessuna query salvata e nessun piano rilevabile dalle righe.')
-            return redirect('piano_promo:dettaglio', pk=pk)
+            return redirect('piano-promo:dettaglio', pk=pk)
 
     try:
         if len(piani_gold) == 1 and not data_da and not data_a and not sett:
@@ -692,11 +692,11 @@ def aggiorna_lista(request, pk):
             righe_db = _righe_live(piani=piani_gold or None, data_da=data_da, data_a=data_a, sett=sett)
     except Exception as e:
         messages.error(request, f'Errore lettura DB: {e}')
-        return redirect('piano_promo:dettaglio', pk=pk)
+        return redirect('piano-promo:dettaglio', pk=pk)
 
     n_new, n_upd = _upsert_righe(sessione, righe_db)
     messages.success(request, f'Lista aggiornata: {n_new} nuovi, {n_upd} aggiornati.')
-    return redirect('piano_promo:dettaglio', pk=pk)
+    return redirect('piano-promo:dettaglio', pk=pk)
 
 
 @require_POST
@@ -706,11 +706,11 @@ def elimina_riga(request, pk):
     Dopo l'eliminazione reindirizza al dettaglio della sessione padre.
     """
     if not _is_editor(request):
-        return redirect('piano_promo:index')
+        return redirect('piano-promo:index')
     riga = get_object_or_404(PromoSessioneRiga, pk=pk)
     sessione_pk = riga.sessione_id
     riga.delete()
-    return redirect('piano_promo:dettaglio', pk=sessione_pk)
+    return redirect('piano-promo:dettaglio', pk=sessione_pk)
 
 
 @require_POST
@@ -720,10 +720,10 @@ def elimina(request, pk):
     Accessibile solo agli editor.
     """
     if not _is_editor(request):
-        return redirect('piano_promo:index')
+        return redirect('piano-promo:index')
     sessione = get_object_or_404(PromoSessione, pk=pk)
     sessione.delete()
-    return redirect('piano_promo:index')
+    return redirect('piano-promo:index')
 
 
 def export_sessione(request, pk):

@@ -517,14 +517,14 @@ document.addEventListener('DOMContentLoaded', function() {
 const OPERATORE = "{{ username|escapejs }}";
 {# URL delle API Django per le chiamate AJAX #}
 const URLS = {
-    carica: "{% url 'caricopromo_abbig:api_carica_articoli' %}",
-    toggle: "{% url 'caricopromo_abbig:api_toggle_selezione' %}",
-    batch: "{% url 'caricopromo_abbig:api_seleziona_batch' %}",
-    accoda: "{% url 'caricopromo_abbig:api_accoda_promo' %}",
-    svuota: "{% url 'caricopromo_abbig:api_svuota_fase1' %}",
-    visualizza: "{% url 'caricopromo_abbig:api_visualizza_inseriti' %}",
-    svuotaInseriti: "{% url 'caricopromo_abbig:api_svuota_inseriti' %}",
-    importaExcel: "{% url 'caricopromo_abbig:api_importa_excel' %}",
+    carica: "{% url 'caricopromo-abbig:api_carica_articoli' %}",
+    toggle: "{% url 'caricopromo-abbig:api_toggle_selezione' %}",
+    batch: "{% url 'caricopromo-abbig:api_seleziona_batch' %}",
+    accoda: "{% url 'caricopromo-abbig:api_accoda_promo' %}",
+    svuota: "{% url 'caricopromo-abbig:api_svuota_fase1' %}",
+    visualizza: "{% url 'caricopromo-abbig:api_visualizza_inseriti' %}",
+    svuotaInseriti: "{% url 'caricopromo-abbig:api_svuota_inseriti' %}",
+    importaExcel: "{% url 'caricopromo-abbig:api_importa_excel' %}",
 };
 
 // Dizionario con i dati delle date dei piani promo, letti dagli attributi data-* delle option

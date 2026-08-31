@@ -175,9 +175,9 @@
                 {% if sessione.inizio_sellout %}<div class="hdr-titolo">SellOut dal {{ sessione.inizio_sellout }}</div>{% endif %}
             </div>
             <div class="hdr-actions">
-                <a href="{% url 'piano_promo:index' %}" class="btn-app btn-back"><i class="bi bi-arrow-left"></i> Elenco</a>
-                <a href="{% url 'piano_promo:export' sessione.pk %}" class="btn-app btn-xls"><i class="bi bi-file-earmark-excel"></i> Excel</a>
-                <form method="post" action="{% url 'piano_promo:aggiorna_lista' sessione.pk %}" style="display:inline;"
+                <a href="{% url 'piano-promo:index' %}" class="btn-app btn-back"><i class="bi bi-arrow-left"></i> Elenco</a>
+                <a href="{% url 'piano-promo:export' sessione.pk %}" class="btn-app btn-xls"><i class="bi bi-file-earmark-excel"></i> Excel</a>
+                <form method="post" action="{% url 'piano-promo:aggiorna_lista' sessione.pk %}" style="display:inline;"
                       onsubmit="return confirm('Aggiornare la lista con i dati attuali del Piano Gold?\nLe giacenze verranno aggiornate, gli stati e le note resteranno invariati.');">
                     {% csrf_token %}
                     <button class="btn-app" style="background:#1a5276;color:white;">
@@ -190,7 +190,7 @@
                     <i class="bi bi-plus-circle"></i> Aggiungi articoli
                 </button>
                 {# Form per eliminare l'intera sessione (con conferma) #}
-                <form method="post" action="{% url 'piano_promo:elimina' sessione.pk %}" style="display:inline;"
+                <form method="post" action="{% url 'piano-promo:elimina' sessione.pk %}" style="display:inline;"
                       onsubmit="return confirm('Eliminare la sessione? L\'operazione è irreversibile.');">
                     {% csrf_token %}
                     <button class="btn-app btn-del"><i class="bi bi-trash"></i> Elimina</button>
@@ -311,7 +311,7 @@
                         {# Pulsante eliminazione riga (solo editor) #}
                         {% if editor %}
                         <td>
-                            <form method="post" action="{% url 'piano_promo:elimina_riga' riga.pk %}" onsubmit="return confirm('Rimuovere la riga?');">
+                            <form method="post" action="{% url 'piano-promo:elimina_riga' riga.pk %}" onsubmit="return confirm('Rimuovere la riga?');">
                                 {% csrf_token %}
                                 <button type="submit" style="background:none;border:none;cursor:pointer;color:#cb4335;font-size:14px;" title="Rimuovi riga">🗑</button>
                             </form>
@@ -378,7 +378,7 @@
                 <h5 class="modal-title"><i class="bi bi-plus-circle me-2"></i>Aggiungi articoli</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Chiudi"></button>
             </div>
-            <form method="post" action="{% url 'piano_promo:aggiungi_articoli' sessione.pk %}">
+            <form method="post" action="{% url 'piano-promo:aggiungi_articoli' sessione.pk %}">
                 {% csrf_token %}
                 <div class="modal-body modal-pp d-flex flex-column gap-3">
 
@@ -445,7 +445,7 @@
 
 <script>
 {# URL per le chiamate AJAX di aggiornamento stato/nota (il pk 0 verrà sostituito dinamicamente) #}
-const AGGIORNA_URL = "{% url 'piano_promo:aggiorna_riga' 0 %}";
+const AGGIORNA_URL = "{% url 'piano-promo:aggiorna_riga' 0 %}";
 const CSRF = "{{ csrf_token }}";
 
 // Mostra un toast di feedback (verde = ok, rosso = errore)
@@ -546,7 +546,7 @@ function toggleAdd() {
     chev.className = body.classList.contains('open') ? 'bi bi-chevron-up' : 'bi bi-chevron-down';
 }
 
-const SEGNA_TUTTI_URL = "{% url 'piano_promo:segna_tutti_ordinato' sessione.pk %}";
+const SEGNA_TUTTI_URL = "{% url 'piano-promo:segna_tutti_ordinato' sessione.pk %}";
 
 // Segna tutti gli articoli "Da Ordinare" come Ordinato (solo utente reparto)
 function segnaTuttiOrdinato() {

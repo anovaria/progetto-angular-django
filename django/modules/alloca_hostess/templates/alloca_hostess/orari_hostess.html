@@ -479,7 +479,7 @@ function salvaOrario(slot) {
         formData.append(campo, input.value || '');
     });
 
-    fetch('{% url "alloca_hostess:salva_orario_hostess" %}', {
+    fetch('{% url "alloca-hostess:salva_orario_hostess" %}', {
         method: 'POST',
         headers: {'X-CSRFToken': csrfToken},
         body: formData

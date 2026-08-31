@@ -120,14 +120,6 @@ MENU_CONFIG = [
         'app_name': 'rio-fornitori-new',
     },
     {
-        'path': '/app/parametri-rio/',
-        'label': 'Parametri Rio',
-        'icon': 'calendar-week',
-        'desc': 'Configurazione dei parametri del riordino fornitori',
-        'groups': ['itd'],
-        'app_name': 'parametri-rio',
-    },
-    {
         'path': '/app/pallet-promoter/',
         'label': 'Pallet Buyer',
         'icon': 'box-seam',
@@ -209,12 +201,12 @@ MENU_CONFIG = [
         'app_name': 'cursori',
     },
     {
-        'path': '/app/entrata_merci/',
+        'path': '/app/entrata-merci/',
         'label': 'Entrata Merci',
         'icon': 'box-arrow-in-down',
         'desc': 'Consultazione ed esportazione delle merci in entrata per PDV e Magazzino',
         'groups': ['itd','resp.vendita'],
-        'app_name': 'entrata_merci',
+        'app_name': 'entrata-merci',
     },
     {
         'path': '/app/welfare/',
@@ -232,12 +224,12 @@ MENU_CONFIG = [
         ],
     },
     {
-        'path': '/app/asso_articoli/',
+        'path': '/app/asso-articoli/',
         'label': 'AssoArticoli',
         'icon': 'box-seam',
         'desc': 'Consultazione e filtro degli articoli dell\'assortimento (GoldReport)',
         'groups': ['gruppoced', 'itd'],
-        'app_name': 'asso_articoli',
+        'app_name': 'asso-articoli',
     },
     {
         'path': '/app/scaricopromo/attributi/',
@@ -286,6 +278,14 @@ MENU_CONFIG = [
         'desc': 'Consultazione ed esportazione degli articoli invenduti',
         'groups': ['itd', 'resp.vendita'],
         'app_name': 'invenduti',
+    },
+        {
+        'path': '/app/giacenze-negative/',
+        'label': 'Giacenze Negative',
+        'icon': 'archive',
+        'desc': 'Consultazione delle giacenze negative',
+        'groups': ['itd', 'resp.vendita'],
+        'app_name': 'giacenze-negative',
     },
     {
         'path': '/app/stock-picking/',
@@ -336,7 +336,7 @@ MENU_CONFIG = [
         'app_name': 'ricerca_gold',
     },
     {
-        'path': '/app/ins_articoli/',
+        'path': '/app/ins-articoli/',
         'label': 'Ins. Art. 10001',
         'icon': 'search',
         'desc': 'Sostituisce il file Excel Inser_Articoli_10001',
@@ -440,9 +440,6 @@ def get_visible_menu(user_groups, username, user_app_permissions=None):
     """
     visible = []
     for app in MENU_CONFIG:
-        # Parametri Rio nascosta finché non è pronto il nuovo riordino (RIO_PDV_ENABLED)
-        if app.get('app_name') == 'parametri-rio' and not settings.RIO_PDV_ENABLED:
-            continue
         # Salta le voci padre non accessibili
         if not can_access(app, user_groups, username, user_app_permissions):
             continue

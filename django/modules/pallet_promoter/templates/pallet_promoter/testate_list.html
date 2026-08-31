@@ -59,7 +59,7 @@
     {% for m in mesi %}
     <div class="col-md-3 col-sm-4 col-6">
         {# Il data-mese è usato da JavaScript per aggiornare i link al cambio anno #}
-        <a href="{% url 'pallet_promoter:testate_griglia' anno m %}"
+        <a href="{% url 'pallet-promoter:testate_griglia' anno m %}"
            class="text-decoration-none month-link" data-mese="{{ m }}">
             {# La card riceve la classe "active" se il mese corrisponde a quello corrente #}
             <div class="card h-100 month-card {% if m == mese %}active{% endif %}">

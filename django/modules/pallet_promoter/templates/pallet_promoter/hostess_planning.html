@@ -481,7 +481,7 @@ document.querySelectorAll('.fornitore-search-input').forEach(input => {
         }
         
         timeout = setTimeout(() => {
-            fetch(`{% url 'pallet_promoter:cerca_fornitore' %}?q=${encodeURIComponent(q)}`)
+            fetch(`{% url 'pallet-promoter:cerca_fornitore' %}?q=${encodeURIComponent(q)}`)
                 .then(r => r.text())
                 .then(html => {
                     resultsDiv.innerHTML = html;
@@ -546,7 +546,7 @@ function salvaTutto() {
         });
     });
     
-    fetch("{% url 'pallet_promoter:salva_presenze' %}", {
+    fetch("{% url 'pallet-promoter:salva_presenze' %}", {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
