@@ -59,4 +59,5 @@ urlpatterns = [
     path('app/ortofrutta/' , include('modules.ortofrutta.urls')),
     path('app/entrata-merci/' , include('modules.entrata_merci.urls')),
     path('app/giacenze-negative/' , include('modules.giacenze_negative.urls')),
+    path('app/articoli-nuovi/' , include('modules.articoli_nuovi.urls')),
 ]

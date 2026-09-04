@@ -75,6 +75,16 @@
     <a href="{% url 'cursori:stampa' %}" class="btn btn-terminal btn-home">&#8592;</a>
 </div>
 
+{# Sezione: invio della stessa coda via email, in alternativa alla stampa fisica #}
+<form method="post" action="{% url 'cursori:stampa_invia_email' %}" class="mt-2">
+    {% csrf_token %}
+    <div class="d-flex gap-2">
+        <input type="email" name="email" required placeholder="indirizzo email destinatario"
+               class="field-input" style="flex:1 1 auto;">
+        <button type="submit" class="btn btn-terminal btn-blu">INVIA MAIL</button>
+    </div>
+</form>
+
 {# Coda vuota: messaggio informativo e link per tornare alla scansione #}
 {% else %}
 <div style="color:#aaa; text-align:center; margin-top:30px;">Coda vuota.</div>

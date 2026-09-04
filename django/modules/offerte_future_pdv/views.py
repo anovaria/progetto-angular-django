@@ -27,6 +27,7 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 from reportlab.graphics.barcode import createBarcodeDrawing
 from datetime import datetime
+from modules.asso_articoli.barcode_utils import generate_ean13_svg
 
 
 def get_current_user(request):
@@ -239,7 +240,22 @@ def anteprima(request):
                 if hasattr(v, 'isoformat'):
                     r[k] = v.isoformat() if v else None
         # Restituisce solo i primi 100 per l'anteprima; l'Excel conterrà tutti i record
-        return JsonResponse({'count': len(rows), 'rows': rows[:100]})
+        anteprima_rows = rows[:100]
+        # Genera il barcode SVG solo per le righe mostrate in anteprima (evita di
+        # generarlo per tutti i record quando sono più di 100, inutile e più lento)
+        for r in anteprima_rows:
+            ean_raw = r.get('EAN') or ''
+            ean_val = ean_raw.zfill(13) if ean_raw else ''
+            # Il default (module_width 0.2mm) è pensato per l'anteprima minuscola di
+            # asso_articoli: a schermo a 100% di zoom le barre sono troppo sottili per
+            # essere lette dalla pistola. Qui usiamo 1.5x in proporzione (via di mezzo
+            # tra il default e il raddoppio, risultato troppo grande) e nascondiamo il
+            # numero stampato sotto, non necessario per la scansione.
+            r['barcode_svg'] = generate_ean13_svg(
+                ean_val, module_width=0.3, module_height=15.0,
+                quiet_zone=3.0, write_text=False,
+            ) if ean_val else None
+        return JsonResponse({'count': len(rows), 'rows': anteprima_rows})
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 

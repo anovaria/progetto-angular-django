@@ -6,16 +6,20 @@ Contiene:
   - lookup articolo su goldreport (v_AllArticolo + v_MasterAssortimenti)
   - lookup posizione da Db_Category (t_masterdataCategory)
   - utilità EAN peso-variabile (prefisso 21)
-  - operazioni su ListaInventario, StampaCursori
+  - operazioni su StampaCursori
 """
 import secrets
 import logging
 from datetime import datetime
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
+from django.core.mail import EmailMultiAlternatives
+from django.core.validators import validate_email
 from django.db import connections
+from django.utils.html import escape
 
-from .models import ListaInventario, StampaCursori
+from .models import StampaCursori
 from modules.edicola.models import EdicolaPrincipale
 
 logger = logging.getLogger(__name__)
@@ -281,66 +285,6 @@ def _arricchisci_articolo(row, ean: str) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Lista inventario
-# ---------------------------------------------------------------------------
-
-def lista_get_items(token: str):
-    """Articoli non ancora elaborati per il token corrente."""
-    return ListaInventario.objects.filter(
-        numero_richiesta=token,
-        elab='0',
-    ).order_by('id')
-
-
-def lista_conta(token: str) -> int:
-    return ListaInventario.objects.filter(numero_richiesta=token, elab='0').count()
-
-
-def lista_add_articolo(token: str, articolo: dict, qta: str) -> None:
-    """
-    Aggiunge (o aggiorna se già presente) un articolo alla lista inventario.
-    qta: stringa quantità (es. "01200" per peso-var, "1" per normale).
-    """
-    # Elimina eventuali duplicati preesistenti tenendo solo il più recente
-    qs = ListaInventario.objects.filter(
-        numero_richiesta=token,
-        cod_articolo=articolo['codart'],
-        elab='0',
-    ).order_by('-id')
-    if qs.count() > 1:
-        ids_da_eliminare = list(qs.values_list('id', flat=True)[1:])
-        ListaInventario.objects.filter(id__in=ids_da_eliminare).delete()
-
-    ListaInventario.objects.update_or_create(
-        numero_richiesta=token,
-        cod_articolo=articolo['codart'],
-        elab='0',
-        defaults={
-            'descrizione':   articolo['descrizione'],
-            'cd_ean':        articolo['ean'],
-            'qtar':          qta,
-            'tipo_articolo': articolo.get('tipo_articolo', ''),
-        },
-    )
-
-
-def lista_cancella_articolo(token: str, codart: str) -> None:
-    ListaInventario.objects.filter(
-        numero_richiesta=token,
-        cod_articolo=codart,
-        elab='0',
-    ).delete()
-
-
-def lista_chiudi(token: str) -> None:
-    """Marca tutti gli articoli come elaborati (fine sessione)."""
-    ListaInventario.objects.filter(
-        numero_richiesta=token, elab='0'
-    ).update(elab='1')
-
-
-
-# ---------------------------------------------------------------------------
 # Stampa frontalini
 # ---------------------------------------------------------------------------
 
@@ -472,8 +416,7 @@ def stampa_invia(token: str, ip: str) -> str:
             cw = pw - 2 * mx
             col = {
                 'cod':     int(cw * 0.08),
-                'descr':   int(cw * 0.25),
-                'tipo':    int(cw * 0.06),
+                'descr':   int(cw * 0.31),
                 'qta':     int(cw * 0.05),
                 'prz':     int(cw * 0.06),
                 'gpdv':    int(cw * 0.06),
@@ -482,7 +425,7 @@ def stampa_invia(token: str, ip: str) -> str:
                 'ean':     int(cw * 0.12),
                 'forn':    int(cw * 0.18),
             }
-            order = ['cod','descr','tipo','qta','prz','gpdv','ccom','codartfo','ean','forn']
+            order = ['cod','descr','qta','prz','gpdv','ccom','codartfo','ean','forn']
             def x_of(keys):
                 return mx + sum(col[k] for k in order[:order.index(keys)])
 
@@ -502,7 +445,6 @@ def stampa_invia(token: str, ip: str) -> str:
             headers = [
                 ('cod',      'Cod. Art.'),
                 ('descr',    'Descrizione'),
-                ('tipo',     'Tipo'),
                 ('qta',      'Qta'),
                 ('prz',      'Prezzo'),
                 ('gpdv',     'G.PDV'),
@@ -553,7 +495,6 @@ def stampa_invia(token: str, ip: str) -> str:
                 vals = [
                     ('cod',      item.cod_articolo),
                     ('descr',    item.descrizione[:38]),
-                    ('tipo',     item.get_tipo_label()),
                     ('qta',      qta_val),
                     ('prz',      item.prezzo_vend or ''),
                     ('gpdv',     item.giac_pdv or ''),
@@ -601,288 +542,61 @@ def stampa_invia(token: str, ip: str) -> str:
     return 'Inviata'
 
 
-# ---------------------------------------------------------------------------
-# Posizione articoli (riordino automatico PDV)
-#
-# Porting del vecchio web service mainWsAllArticolo.PosArticoli (TestRAzor4).
-# Scrive sulla tabella DRAFT t_posArticoli su GoldCursori srviis (172.17.10.51),
-# raggiunta via LINKED SERVER dalla connessione 'goldreport' (stesso pattern di
-# modules/rio_fornitori). Un processo separato promuove t_posArticoli ->
-# t_posArticoliglob, che il riordino PDV consuma. Query SEMPRE parametrizzate
-# (il web service originale concatenava stringhe: SQL injection).
-#
-# Ciclo Elab in t_posArticoli: ''=bozza (scan), '1'=confermato (OK), 'D'=da smappare.
-# ---------------------------------------------------------------------------
-
-_POS_DB = '[172.17.10.51].goldcursori.dbo'   # GoldCursori su srviis via linked server
-
-
-def get_posizione_riordino(codart: str) -> dict:
+def stampa_invia_email(token: str, email_to: str) -> str:
     """
-    Legge i dati 'autentici' che il riordino PDV conosce, come faceva
-    DettaglioArticolo del vecchio web service:
-      - corsia/campata/facing da V_coordArticoli (campi [3],[5],[7]) su srviis
-      - min/max di default da t_posarticoliglob su srviis
-      - gest (unità gestione: Pezzo/Collo/Strato/Pallet) e pzxcrt da t_masterData
-        (Db_GoldReport) — è la sorgente autentica del pz/cartone usata dal vecchio app.
-    Restituisce sempre un dict (stringhe vuote se non trovato).
+    Invia la coda di stampa frontalini via email, in alternativa alla stampante fisica
+    (es. quando l'operatore non ha accesso a una stampante o vuole tenere traccia).
+
+    In caso di successo marca la coda come elaborata, come dopo la stampa: le due
+    modalità di consegna si affiancano ma non si sommano sulla stessa coda.
     """
-    corsia = campata = facing = minimo = massimo = ''
-    gest = pzxcrt = ''
+    email_to = (email_to or '').strip()
     try:
-        with connections['goldreport'].cursor() as cur:
-            cur.execute(f"SELECT * FROM {_POS_DB}.V_coordArticoli WHERE codarticolo = %s", [codart])
-            row = cur.fetchone()
-            if row:
-                corsia  = str(row[3] or '').strip()
-                campata = str(row[5] or '').strip()
-                facing  = str(row[7] or '').strip()
+        validate_email(email_to)
+    except ValidationError:
+        return 'Indirizzo email non valido'
+
+    items = list(StampaCursori.objects.filter(numero_richiesta=token, elaborato='NO'))
+    if not items:
+        return 'Nessun articolo in coda'
+
+    ora = datetime.now().strftime('%d/%m/%Y %H:%M')
+    righe_html = ''.join(
+        '<tr>'
+        f'<td>{escape(i.cod_articolo)}</td>'
+        f'<td>{escape(i.descrizione)}</td>'
+        f'<td>{i.num_cursori}</td>'
+        f'<td>{escape(i.prezzo_vend)}</td>'
+        f'<td>{escape(i.giac_pdv)}</td>'
+        f'<td>{escape(i.ccom)}</td>'
+        f'<td>{escape(i.codartfo)}</td>'
+        f'<td>{escape(i.ean)}</td>'
+        f'<td>{escape(i.descforn)}</td>'
+        '</tr>'
+        for i in items
+    )
+    html = (
+        f'<p>Lista Articoli Cursori — {ora} — {len(items)} articoli</p>'
+        '<table border="1" cellspacing="0" cellpadding="4" '
+        'style="border-collapse:collapse; font-size:13px;">'
+        '<tr><th>Cod.Art</th><th>Descrizione</th><th>Qta</th>'
+        '<th>Prezzo</th><th>G.PDV</th><th>CCom</th><th>Cd.Forn</th>'
+        '<th>EAN</th><th>Fornitore</th></tr>'
+        f'{righe_html}</table>'
+    )
+    testo = f'Lista Articoli Cursori del {ora} ({len(items)} articoli). Visualizza in un client che supporta HTML.'
+
+    try:
+        msg = EmailMultiAlternatives(
+            subject=f'Lista Articoli Cursori — {ora}',
+            body=testo,
+            to=[email_to],
+        )
+        msg.attach_alternative(html, 'text/html')
+        msg.send(fail_silently=False)
     except Exception:
-        logger.exception("get_posizione_riordino: V_coordArticoli per %s", codart)
-    try:
-        with connections['goldreport'].cursor() as cur:
-            cur.execute(f"SELECT Min, Max FROM {_POS_DB}.t_posarticoliglob WHERE codarticolo = %s", [codart])
-            row = cur.fetchone()
-            if row:
-                minimo  = str(row[0] or '').strip()
-                massimo = str(row[1] or '').strip()
-    except Exception:
-        logger.exception("get_posizione_riordino: t_posarticoliglob per %s", codart)
-    try:
-        with connections['goldreport'].cursor() as cur:
-            cur.execute("SELECT TOP 1 ISNULL(GEST,''), ISNULL(PZXCART,0) "
-                        "FROM dbo.t_masterData WHERE CODART = %s", [codart])
-            row = cur.fetchone()
-            if row:
-                gest = str(row[0] or '').strip()
-                try:
-                    pzxcrt = str(int(float(row[1])))   # '10.0' -> '10'
-                except (ValueError, TypeError):
-                    pzxcrt = str(row[1] or '').strip()
-    except Exception:
-        logger.exception("get_posizione_riordino: t_masterData per %s", codart)
+        logger.exception('stampa_invia_email: errore invio a %s (token=%s)', email_to, token)
+        return 'Errore invio email — contattare ITD'
 
-    # Venduto casse correnti (t_vendutonow su srviis); default '0' come il vecchio app
-    venduto = '0'
-    try:
-        with connections['goldreport'].cursor() as cur:
-            cur.execute(f"SELECT qtavend FROM {_POS_DB}.t_vendutonow WHERE CodiceArticolo = %s", [codart])
-            row = cur.fetchone()
-            if row and row[0] is not None:
-                try:
-                    venduto = ('%g' % float(row[0]))   # '12.000' -> '12', '8.735' -> '8.735'
-                except (ValueError, TypeError):
-                    venduto = str(row[0]).strip()
-    except Exception:
-        logger.exception("get_posizione_riordino: t_vendutonow per %s", codart)
-
-    # Flag "Rio OK" (MappaOk): articolo candidato valido al riordino automatico.
-    # Count su join posArticoliGlob+masterdata+Ord901+Cons901+CorsiaAbilita (corsia abilitata).
-    rio_ok = False
-    try:
-        with connections['goldreport'].cursor() as cur:
-            cur.execute(f"""
-                SELECT COUNT(*) FROM {_POS_DB}.t_posArticoliGlob p
-                  INNER JOIN {_POS_DB}.t_masterdata m ON p.codArticolo = m.CODART
-                  INNER JOIN {_POS_DB}.t_Ord901 o ON o.CODART = m.CODART
-                  INNER JOIN {_POS_DB}.t_Cons901 c ON c.CODARTICOLO = o.CODART
-                  INNER JOIN (SELECT Corsia FROM {_POS_DB}.t_CorsiaAbilita WHERE note IS NOT NULL) co
-                          ON p.Corsia = co.Corsia
-                WHERE m.CODART = %s
-            """, [codart])
-            row = cur.fetchone()
-            rio_ok = bool(row and (row[0] or 0) > 0)
-    except Exception:
-        logger.exception("get_posizione_riordino: MappaOk per %s", codart)
-
-    return {'corsia': corsia, 'campata': campata, 'facing': facing,
-            'minimo': minimo, 'massimo': massimo, 'gest': gest, 'pzxcrt': pzxcrt,
-            'venduto': venduto, 'rio_ok': rio_ok}
-
-
-# Query Oracle: giacenze + unità di gestione (Gest) dell'originale DettaglioArticolo,
-# chiave artcexr = codart (artcexr = etichetta = codice articolo).
-_SQL_DATI_ORACLE = """
-    with ord as (
-        select distinct at.aracinr acinr, max(at.aradfin) dtaf
-        from artuc at where at.aratfou='1' and at.arasite='10001' group by at.aracinr)
-    select
-        NVL(PKSTOCK.GETSTOCKENQTEVALADATE(1, 10001,
-            PKARTSTOCK.RECUPCINLUVCPARCINRETSEQVL(1, ARACINR, ARASEQVL), TRUNC(sysdate+1)), 0) GIAC_PDV,
-        trunc(NVL(PKSTOCK.GETSTOCKENQTEVALADATE(1, 901,
-            PKARTSTOCK.RECUPCINLUVCPARCINRETSEQVL(1, ARACINR, ARASEQVL), TRUNC(sysdate+1)), 0)
-            / PKARTSTOCK.RECUPCOEFFUVC(1, ARACINL)) GIAC_DEP,
-        PKARTUL.GETLIBLTYPEUL(1, ARACINL, 'IT') GEST
-    from artrac, ord, artcoca, artattri, artuv, aveprix, artuc, tsv_strucrel
-    where 1=1 and artcinr=acinr and artcinr=arccinr and arcieti='1'
-      and trunc(sysdate) between arcddeb and arcdfin
-      and artcinr=aatcinr and aatccla='SARGC'
-      and trunc(sysdate) between AATDDEB and AATDFIN
-      and artcinr=ARVCINR and arvcinv=avicinv
-      and trunc(sysdate) between AVIDDEB and AVIDFIN
-      and artcinr=aracinr and aratfou='1' and arasite='10001'
-      and to_date(aradfin)=to_date(dtaf)
-      and artcinr=TSSRECINR
-      and artcexr = :codart
-"""
-
-
-def get_dati_oracle(codart: str):
-    """
-    Dati LIVE da Oracle GOLDPROD (come il vecchio web service DettaglioArticolo,
-    connessione "GOLDTEST" = utente GOLDCEN):
-      - giac_pdv = stock sito 10001
-      - giac_dep = stock sito 901 diviso pz/cartone (in colli)
-      - gest     = unità di gestione (Pezzo/Collo/Strato/Pallet) = DESC_UNITA_GESTIONE
-    Usa i settings CURSORI_ORACLE_* (password ereditata da quella GOLDCEN di rio).
-    Ritorna dict {'giac_pdv':int, 'giac_dep':int, 'gest':str} oppure None se Oracle
-    non configurato/errore (il chiamante tiene i valori ETL come fallback).
-    """
-    dsn  = getattr(settings, 'CURSORI_ORACLE_DSN', '')
-    user = getattr(settings, 'CURSORI_ORACLE_USER', '')
-    pwd  = getattr(settings, 'CURSORI_ORACLE_PASS', '')
-    if not (dsn and user and pwd):
-        # password/DSN non impostati -> dati Oracle disattivati (fallback ETL)
-        logger.warning("get_dati_oracle: Oracle disattivato (pwd %s, dsn %s) -> fallback ETL",
-                       'impostata' if pwd else 'VUOTA', dsn or 'VUOTO')
-        return None
-    try:
-        import oracledb  # import lazy: dipendenza presente nei venv di test/prod
-        with oracledb.connect(user=user, password=pwd, dsn=dsn,
-                              tcp_connect_timeout=8) as conn:
-            conn.call_timeout = 12000   # ms: la query non può bloccare oltre 12s
-            with conn.cursor() as cur:
-                cur.execute(_SQL_DATI_ORACLE, {'codart': str(codart).strip()})
-                rows = cur.fetchall()
-        if not rows:
-            return None
-        # L'articolo può avere più unità logistiche (Collo, Pallet, ...): la query
-        # restituisce una riga per unità. Il vecchio web service (while reader.Read())
-        # teneva l'ULTIMA riga -> replichiamo prendendo rows[-1].
-        row = rows[-1]
-        return {'giac_pdv': int(row[0] or 0),
-                'giac_dep': int(row[1] or 0),
-                'gest':     str(row[2] or '').strip()}
-    except Exception:
-        logger.exception("get_dati_oracle: errore codart=%s", codart)
-        return None
-
-
-def pos_get_items(token: str) -> list[dict]:
-    """Righe inserite nella sessione corrente (per VediPosArticoli)."""
-    sql = (f"SELECT id, Corsia, Campata, codArticolo, Descrizione, Capienza, Min, Max, facing, Elab "
-           f"FROM {_POS_DB}.t_posArticoli WHERE NumeroRichiesta = %s ORDER BY id DESC")
-    rows: list[dict] = []
-    try:
-        with connections['goldreport'].cursor() as cur:
-            cur.execute(sql, [token])
-            for r in cur.fetchall():
-                rows.append({
-                    'id':          r[0],
-                    'corsia':      str(r[1] or '').strip(),
-                    'campata':     str(r[2] or '').strip(),
-                    'codart':      str(r[3] or '').strip(),
-                    'descrizione': str(r[4] or '').strip(),
-                    'capienza':    str(r[5] or '').strip(),
-                    'min':         str(r[6] or '').strip(),
-                    'max':         str(r[7] or '').strip(),
-                    'facing':      str(r[8] or '').strip(),
-                    'elab':        str(r[9] or '').strip(),
-                })
-    except Exception:
-        logger.exception("pos_get_items: errore token=%s", token)
-    return rows
-
-
-def pos_salva(token: str, articolo: dict, corsia: str, campata: str, facing: str,
-              capienza: str, minimo: str, massimo: str, azione: str) -> str:
-    """
-    Replica mainWsAllArticolo.PosArticoli (azioni 0-4) con query parametrizzate.
-    Scrive su t_posArticoli su srviis (target del riordino PDV).
-      '0' scan  -> INSERT bozza (Elab='') o UPDATE posizione se gia presente
-      '1' OK    -> UPDATE + MinimoRio = Max-Min, Elab='1' (solo righe con Capienza='')
-      '2' Togli -> INSERT/UPDATE Elab='D' (smappa dal riordino)
-      '3' CLR (modo togli) -> DELETE righe Elab='D'
-      '4' CLR (normale)    -> DELETE bozza (Elab='')
-    """
-    T = f"{_POS_DB}.t_posArticoli"
-    codart = str(articolo.get('codart', '')).strip()
-    descr  = articolo.get('descrizione', '')
-    stato  = articolo.get('stato', '')
-    ean    = articolo.get('ean', '')
-    now    = datetime.now().strftime('%Y%m%d%H%M%S')
-
-    # pz/cartone: normalizza a intero (la sorgente puo restituire '12.0' -> '12')
-    pzcrt = str(articolo.get('pz_xcrt', '') or '').strip()
-    try:
-        pzcrt = str(int(float(pzcrt)))
-    except (ValueError, TypeError):
-        pass
-
-    cols = ("NumeroRichiesta, Corsia, Campata, codArticolo, Descrizione, Stato, "
-            "qtaXCrt, cdEan, Capienza, Min, Max, dataIns, facing, Elab")
-
-    # Guard di sicurezza: con CURSORI_POS_DRY_RUN attivo (default) le SCRITTURE non
-    # toccano il DB di produzione, vengono solo loggate. Le COUNT restano (letture).
-    dry = getattr(settings, 'CURSORI_POS_DRY_RUN', True)
-
-    try:
-        with connections['goldreport'].cursor() as cur:
-
-            def _w(sql: str, params: list) -> None:
-                """Esegue una scrittura, o la logga soltanto se dry-run è attivo."""
-                if dry:
-                    logger.warning("[CURSORI_POS_DRY_RUN] write NON eseguita | %s | params=%s", sql, params)
-                else:
-                    cur.execute(sql, params)
-
-            if azione == '0':
-                cur.execute(
-                    f"SELECT COUNT(*) FROM {T} WHERE Corsia=%s AND Campata=%s "
-                    f"AND codArticolo=%s AND Elab='' AND NumeroRichiesta=%s",
-                    [corsia, campata, codart, token])
-                if (cur.fetchone()[0] or 0) <= 0:
-                    _w(f"INSERT INTO {T}({cols}) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'')",
-                       [token, corsia, campata, codart, descr, stato, pzcrt, ean,
-                        capienza, minimo, massimo, now, facing])
-                else:
-                    _w(f"UPDATE {T} SET Capienza=%s, Min=%s, Max=%s, Corsia=%s, Campata=%s, "
-                       f"facing=%s, dataUpg=%s WHERE codArticolo=%s AND NumeroRichiesta=%s",
-                       [capienza, minimo, massimo, corsia, campata, facing, now, codart, token])
-
-            elif azione == '1':
-                minimorio = int(str(massimo).strip()) - int(str(minimo).strip())
-                _w(f"UPDATE {T} SET Capienza=%s, Min=%s, Max=%s, Corsia=%s, Campata=%s, "
-                   f"facing=%s, MinimoRio=%s, Elab='1' "
-                   f"WHERE codArticolo=%s AND Capienza='' AND NumeroRichiesta=%s",
-                   [capienza, minimo, massimo, corsia, campata, facing, str(minimorio), codart, token])
-
-            elif azione == '2':
-                cur.execute(
-                    f"SELECT COUNT(*) FROM {T} WHERE Corsia=%s AND Campata=%s "
-                    f"AND codArticolo=%s AND Elab='D' AND NumeroRichiesta=%s",
-                    [corsia, campata, codart, token])
-                if (cur.fetchone()[0] or 0) <= 0:
-                    _w(f"INSERT INTO {T}({cols}) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'D')",
-                       [token, corsia, campata, codart, descr, stato, pzcrt, ean,
-                        capienza, minimo, massimo, now, facing])
-                else:
-                    _w(f"UPDATE {T} SET Elab='D', dataUpg=%s "
-                       f"WHERE codArticolo=%s AND NumeroRichiesta=%s",
-                       [now, codart, token])
-
-            elif azione == '3':
-                cur.execute(f"SELECT COUNT(*) FROM {T} WHERE codArticolo=%s AND Elab='D'", [codart])
-                if (cur.fetchone()[0] or 0) > 0:
-                    _w(f"DELETE FROM {T} WHERE codArticolo=%s AND Elab='D'", [codart])
-
-            else:  # '4' / default
-                _w(f"DELETE FROM {T} WHERE codArticolo=%s AND NumeroRichiesta=%s AND Elab=''",
-                   [codart, token])
-
-        return 'DRY-RUN: nessuna scrittura' if dry else 'Operazione Eseguita'
-    except ValueError:
-        return 'Min/Max non validi'
-    except Exception:
-        logger.exception("pos_salva: errore azione=%s codart=%s", azione, codart)
-        return 'Errore non aggiornato'
+    StampaCursori.objects.filter(numero_richiesta=token, elaborato='NO').update(elaborato='SI')
+    return 'Inviata'

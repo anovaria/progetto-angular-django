@@ -54,6 +54,7 @@
     tbody td { padding: 7px 10px; white-space: nowrap; }
     .td-num { text-align: right; }
     .td-center { text-align: center; }
+    .col-giac { width: 60px; }
     .stato-i { color: #e67e22; font-weight: 700; }
     .stato-a { color: #1e8449; font-weight: 700; }
 
@@ -147,8 +148,8 @@
                 <tr>
                     <th>CCOM</th><th>Desc. CCOM</th>
                     <th>Cod. Art.</th><th>Stato</th><th>Descrizione</th>
-                    <th>Cod. EAN</th>
-                    <th>Giac. Dep.</th><th>Giac. PDV</th><th>Qta Ordine</th>
+                    <th>Cod. EAN</th><th>Barcode</th>
+                    <th class="col-giac">Giac. Dep.</th><th class="col-giac">Giac. PDV</th><th>Qta Ordine</th>
                     <th>Data Consegna</th>
                 </tr>
             </thead>
@@ -291,10 +292,11 @@
                 <td class="td-center ${statoClass}">${stato}</td>
                 <td>${r.Descrizione ?? ''}</td>
                 <td>${r.EAN ?? ''}</td>
-                <td class="td-num">${fmtNum(r.GIACENZA_DEPOSITO, 0)}</td>
-                <td class="td-num">${fmtNum(r.GIACENZA_PDV, 0)}</td>
-                <td class="td-num">${fmtNum(r.QTA_IN_ORDINE, 0)}</td>
-                <td class="td-center">${fmtDate(r.DataConsegna)}</td>
+                <td>${r.barcode_svg ?? ''}</td>
+                <td class="col-giac">${fmtNum(r.GIACENZA_DEPOSITO, 0)}</td>
+                <td class="col-giac">${fmtNum(r.GIACENZA_PDV, 0)}</td>
+                <td>${fmtNum(r.QTA_IN_ORDINE, 0)}</td>
+                <td>${fmtDate(r.DataConsegna)}</td>
             `;
             tbody.appendChild(tr);
         });

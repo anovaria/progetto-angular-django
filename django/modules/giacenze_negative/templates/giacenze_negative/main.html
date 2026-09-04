@@ -22,14 +22,40 @@
     .giac-table-card .card-body {
     padding-top: 0;
     }
-    
+    @media print {
+    .app-header-bar { display: none; }
+    .sidebar { display: none; }
+    .sidebar-overlay { display: none; }
+    .portal-footer { display: none; }
+    .main-content-bg {
+        margin-left: 0 !important;
+        }
+    * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        }
+    .giac-title {
+        position: static !important;
+        }
+    .giac-table thead th {
+        position: static !important;
+        }
+    .no-print {
+        display: none !important;
+        }
+    }
+    @page {
+        size: landscape;
+    }
 </style>
 {%endblock%}
 {% block page_content %}
 
 {% with cur=filters.sort dir=filters.dir %}
 <div class="container-fluid">
-    <h2 class="giac-title"> Giacenze Negative </h2>
+    <h2 class="giac-title"> Giacenze Negative 
+    <button class="btn btn-primary no-print" onclick="window.print()"> 🖨 Stampa </button>
+    </h2>
     <div class="card giac-table-card">
         <div class="card-body">
         <table class="table table-striped table-hover table-sm giac-table">
@@ -61,17 +87,17 @@
             </thead>
             <tbody>
                 {% for g in righe %}
-                    <tr class="{% if g.stato.strip == 'A' %} table-danger {% endif %}">
+                    <tr>
                         <td>{{ g.reparto }}</td>
                         <td>{{ g.descr_reparto }}</td>
                         <td>{{ g.corsia }}</td>
                         <td>{{ g.campata }}</td>
                         <td>{{ g.cod_articolo }}</td>
                         <td>{{ g.descr_articolo }}</td>
-                        <td> {{ g.stato.strip }}</td>
+                        <td class="{% if g.stato.strip == 'A' %} table-danger {% elif g.stato.strip == 'E'%} table-warning {% else %}  {% endif %}"> {{ g.stato.strip }}</td>
                         <td>{{ g.giac_pdv }}</td>
                         <td>{{ g.ultima_vendita }}</td>
-                        <td>{{ g.giac_dep }}</td>
+                        <td class="{% if g.giac_dep > 0 %} table-danger {% endif %}">{{ g.giac_dep }}</td>
                     </tr>
                 {% endfor %}
             </tbody>

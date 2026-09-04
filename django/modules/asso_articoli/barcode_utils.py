@@ -8,37 +8,43 @@ from io import BytesIO
 import base64
 
 
-def generate_ean13_svg(ean_code, add_checksum=True):
+def generate_ean13_svg(ean_code, add_checksum=True, module_width=0.2, module_height=10.0,
+                        quiet_zone=2.0, font_size=8, text_distance=5.0, write_text=True):
     """
     Genera barcode EAN13 come SVG inline
-    
+
     Args:
         ean_code: Codice EAN (12 cifre, la 13a viene calcolata automaticamente)
         add_checksum: Se True, calcola automaticamente il checksum digit
-    
+        module_width/module_height/quiet_zone/font_size/text_distance: dimensioni
+            fisiche (mm) del barcode. Default pensato per l'anteprima piccola di
+            asso_articoli; per un barcode leggibile da pistola a schermo (senza dover
+            zoomare il browser) passare valori più alti mantenendo le proporzioni.
+
     Returns:
         str: SVG come stringa (può essere embedded direttamente in HTML)
     """
     if not ean_code or len(str(ean_code)) < 12:
         return None
-    
+
     try:
         # Prendi i primi 12 caratteri
         ean_12 = str(ean_code)[:12]
-        
+
         # Genera il barcode EAN13
         ean = barcode.get('ean13', ean_12, writer=SVGWriter())
-        
+
         # Genera SVG in memoria
         buffer = BytesIO()
         ean.write(buffer, options={
-            'module_width': 0.2,
-            'module_height': 10.0,
-            'quiet_zone': 2.0,
-            'font_size': 8,
-            'text_distance': 5.0,  # era 2.0, aumentato per staccare i numeri
+            'module_width': module_width,
+            'module_height': module_height,
+            'quiet_zone': quiet_zone,
+            'font_size': font_size,
+            'text_distance': text_distance,  # era 2.0, aumentato per staccare i numeri
+            'write_text': write_text,
         })
-        
+
         svg_content = buffer.getvalue().decode('utf-8')
         return svg_content
     except Exception as e:

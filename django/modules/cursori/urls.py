@@ -12,9 +12,5 @@ urlpatterns = [
     path('stampa/qta/',       views.stampa_salva_qta, name='stampa_salva_qta'),
     path('stampa/cancella/',  views.stampa_cancella,  name='stampa_cancella'),
     path('stampa/invia/',     views.stampa_invia,     name='stampa_invia'),
-    path('lista/',            views.lista,            name='lista'),
-    path('lista/cancella/',   views.lista_cancella,   name='lista_cancella'),
-    path('lista/chiudi/',     views.lista_chiudi,     name='lista_chiudi'),
-    path('posizione/',        views.pos_articoli,     name='pos_articoli'),
-    path('posizione/vedi/',   views.vedi_pos_articoli, name='vedi_pos_articoli'),
+    path('stampa/invia-email/', views.stampa_invia_email, name='stampa_invia_email'),
 ]

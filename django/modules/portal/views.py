@@ -279,13 +279,21 @@ MENU_CONFIG = [
         'groups': ['itd', 'resp.vendita'],
         'app_name': 'invenduti',
     },
-        {
+    {
         'path': '/app/giacenze-negative/',
         'label': 'Giacenze Negative',
         'icon': 'archive',
         'desc': 'Consultazione delle giacenze negative',
         'groups': ['itd', 'resp.vendita'],
         'app_name': 'giacenze-negative',
+    },
+    {
+        'path': '/app/articoli-nuovi/',
+        'label': 'Articoli Nuovi',
+        'icon': 'archive',
+        'desc': 'Consultazione degli articoli Nuovi',
+        'groups': ['itd', 'resp.vendita'],
+        'app_name': 'articoli-nuovi',
     },
     {
         'path': '/app/stock-picking/',

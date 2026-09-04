@@ -106,41 +106,65 @@ def scansione(request):
         riga.descrart = articolo.DESCRART if articolo else ''
     return render(request, 'ortofrutta/scansione.html', {'scansioni_oggi' : scansioni_oggi})
 
-def scansione_modifica_pesoqta(request,pk):
-    if request.method == 'POST':
-        riga = get_object_or_404(ScansioneOrtofrutta, pk=pk)
-        valore = request.POST.get('valore')
-        articolo  = Ean.objects.filter(CODART=riga.codart).first()
-        descrart = articolo.DESCRART if articolo else ''
-        if riga.gest == 'Kilogrammi':
-            riga.peso_num = Decimal(valore)
-        else:
-            riga.qta = Decimal(valore)
-        riga.save()
-        return JsonResponse({
-            'ok': True,
-            'id': riga.id,
-            'ean': riga.ean_scansionato,
-            'codart': riga.codart,
-            'descrart': descrart,
-            'gest': riga.gest,
-            'utente': riga.utente,
-            'peso_num': str(riga.peso_num) if riga.peso_num is not None else '',
-            'qta': str(riga.qta) if riga.qta is not None else '',
-            'trovato': bool(articolo),
-            'data_competenza': riga.data_competenza.strftime('%d/%m/%Y') if riga.data_competenza else '',
-        })
+def scansione_modifica_pesoqta(request, pk):
+    if request.method != 'POST':
+        return HttpResponseNotAllowed(['POST'])
+
+    riga = get_object_or_404(ScansioneOrtofrutta, pk=pk)
+    valore = request.POST.get('valore')
+    articolo = Ean.objects.filter(CODART=riga.codart).first()
+    descrart = articolo.DESCRART if articolo else ''
+
+    if not valore:
+        valore_decimal = None
+    else:
+        try:
+            valore_decimal = Decimal(valore)
+        except InvalidOperation:
+            return JsonResponse({'ok': False, 'errore': 'Valore non valido'}, status=400)
+
+    if riga.gest == 'Kilogrammi':
+        riga.peso_num = valore_decimal
+    else:
+        riga.qta = valore_decimal
+
+    riga.save()
+
+    return JsonResponse({
+        'ok': True,
+        'id': riga.id,
+        'ean': riga.ean_scansionato,
+        'codart': riga.codart,
+        'descrart': descrart,
+        'gest': riga.gest,
+        'utente': riga.utente,
+        'peso_num': str(riga.peso_num) if riga.peso_num is not None else '',
+        'qta': str(riga.qta) if riga.qta is not None else '',
+        'trovato': bool(articolo),
+        'data_competenza': riga.data_competenza.strftime('%d/%m/%Y') if riga.data_competenza else '',
+    })
 
 def scansione_modifica_data(request, pk):
-    if request.method == 'POST':
-        riga = get_object_or_404(ScansioneOrtofrutta, pk=pk)
-        valore = request.POST.get('valore')
-        riga.data_competenza = datetime.datetime.strptime(valore, '%Y-%m-%d').date()
-        riga.save()
-        return JsonResponse({
-            'ok' : True,
-            'data_competenza': riga.data_competenza.strftime('%d/%m/%Y')
-            })
+    if request.method != 'POST':
+        return HttpResponseNotAllowed(['POST'])
+
+    riga = get_object_or_404(ScansioneOrtofrutta, pk=pk)
+    valore = request.POST.get('valore')
+
+    if not valore:
+        riga.data_competenza = None
+    else:
+        try:
+            riga.data_competenza = datetime.datetime.strptime(valore, '%Y-%m-%d').date()
+        except (TypeError, ValueError):
+            return JsonResponse({'ok': False, 'errore': 'Data non valida'}, status=400)
+
+    riga.save()
+
+    return JsonResponse({
+        'ok': True,
+        'data_competenza': riga.data_competenza.strftime('%d/%m/%Y') if riga.data_competenza else '',
+    })
 
 def scansione_elimina(request,pk):
     if request.method == 'POST':

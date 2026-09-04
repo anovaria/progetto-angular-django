@@ -61,7 +61,6 @@
     <tr>
       <th>Cod. Art.</th>
       <th>Descrizione</th>
-      <th>Tipo</th>
       <th class="col-right">Prezzo</th>
       <th class="col-right">G.PDV</th>
       <th class="col-right">G.Dep</th>
@@ -70,12 +69,10 @@
     </tr>
   </thead>
   <tbody>
-    {# items è una lista di tuple (articolo, tipo_label) proveniente dalla view #}
-    {% for item, tipo_label in items %}
+    {% for item in items %}
     <tr>
       <td>{{ item.cod_articolo }}</td>
       <td>{{ item.descrizione }}</td>
-      <td>{{ tipo_label }}</td>
       <td class="col-right">{{ item.prezzo_vend }}</td>
       <td class="col-right">{{ item.giac_pdv }}</td>
       <td class="col-right">{{ item.giac_dep }}</td>

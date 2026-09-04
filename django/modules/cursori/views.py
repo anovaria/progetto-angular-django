@@ -1,7 +1,6 @@
 from django.shortcuts import render, redirect
 from django.views.decorators.http import require_POST
 from django.contrib import messages
-from django.conf import settings
 
 from . import services
 
@@ -11,7 +10,6 @@ Modulo views per il terminale palmare (cursori).
 Gestisce le funzionalità del terminale palmare aziendale:
   - Consultazione dettaglio articolo tramite scansione EAN
   - Stampa frontalini (raccolta articoli in una coda di sessione, invio alla stampante)
-  - Lista inventario (rilevazione quantità a scaffale per sessione di inventario)
 
 Ogni vista utilizza un token di sessione univoco per isolare le code di lavoro
 dell'operatore corrente. Il token viene creato automaticamente se assente.
@@ -39,9 +37,7 @@ def _get_ip(request) -> str:
 
 def home(request):
     """Menu principale terminale."""
-    return render(request, 'cursori/home.html', {
-        'pos_enabled': settings.CURSORI_POS_ENABLED,
-    })
+    return render(request, 'cursori/home.html')
 
 
 # ---------------------------------------------------------------------------
@@ -199,101 +195,6 @@ def stampa_cancella(request):
     return redirect('cursori:vedi_stampa')
 
 
-# ---------------------------------------------------------------------------
-# Lista inventario
-# ---------------------------------------------------------------------------
-
-def lista(request):
-    """Gestisce la rilevazione di inventario da terminale palmare.
-
-    Flusso in tre fasi per ogni articolo:
-      1. azione='scan': cerca l'articolo per EAN e lo mostra per la conferma.
-      2. azione='ok': conferma l'aggiunta con la quantità inserita dall'operatore.
-      3. azione='nuova': azzera la lista (nuovo giro di inventario).
-
-    Il totale articoli rilevati viene mostrato nel titolo della pagina.
-    """
-    token = services.get_or_create_token(request, 'cursori_lista_token')
-    ctx = {
-        'token':    token,
-        'errore':   None,
-        'msg':      None,
-        'articolo': None,
-        'ean':      '',
-        'qta':      '1',
-        'items':    [],
-        'totale':   0,
-    }
-
-    if request.method == 'POST':
-        azione = request.POST.get('azione', '')
-        ean    = request.POST.get('ean', '').strip()
-        ctx['ean'] = ean
-
-        if azione == 'scan':
-            if not ean.isdigit():
-                ctx['errore'] = 'Codice non valido'
-            else:
-                # Ricerca per EAN; se non trovato, ripiega su CODART (stesso campo)
-                art = services.get_articolo_by_ean(ean)
-                if not art:
-                    art = services.get_articolo_by_codart(ean)
-                if art:
-                    ctx['articolo'] = art
-                else:
-                    ctx['errore'] = 'EAN / Cod. art. non trovato'
-
-        elif azione == 'ok':
-            # Conferma l'aggiunta dell'articolo con la quantità inserita
-            codart = request.POST.get('codart', '').strip()
-            qta    = request.POST.get('qta', '1').strip()
-            art    = services.get_articolo_by_ean(ean) if ean else None
-            if not art and ean:
-                art = services.get_articolo_by_codart(ean)
-            if art and codart:
-                services.lista_add_articolo(token, art, qta)
-                request.session['cursori_lista_msg'] = f"+ {art['descrizione'][:32]}"
-            return redirect('cursori:lista')
-
-        elif azione == 'nuova':
-            # Svuota la lista corrente e ricomincia da capo
-            services.reset_token(request, 'cursori_lista_token')
-            return redirect('cursori:lista')
-
-    # Recupera il messaggio di conferma dalla sessione e popola il contesto
-    ctx['msg']    = request.session.pop('cursori_lista_msg', None)
-    ctx['items']  = services.lista_get_items(token)
-    ctx['totale'] = services.lista_conta(token)
-    return render(request, 'cursori/lista.html', ctx)
-
-
-@require_POST
-def lista_cancella(request):
-    """Rimuove un articolo dalla lista inventario tramite il codice articolo.
-
-    Solo POST consentito (decoratore @require_POST).
-    """
-    token  = services.get_or_create_token(request, 'cursori_lista_token')
-    codart = request.POST.get('codart', '').strip()
-    if codart:
-        services.lista_cancella_articolo(token, codart)
-    return redirect('cursori:lista')
-
-
-@require_POST
-def lista_chiudi(request):
-    """Chiude la sessione di inventario: salva i dati definitivamente e azzera il token.
-
-    Dopo la chiusura l'operatore viene reindirizzato al menu principale.
-    Solo POST consentito (decoratore @require_POST).
-    """
-    token = services.get_or_create_token(request, 'cursori_lista_token')
-    services.lista_chiudi(token)
-    # Resetta il token in modo che la prossima apertura parta da una lista pulita
-    services.reset_token(request, 'cursori_lista_token')
-    return redirect('cursori:home')
-
-
 @require_POST
 def stampa_invia(request):
     """Invia la coda di stampa al servizio di stampa frontalini.
@@ -317,138 +218,21 @@ def stampa_invia(request):
     })
 
 
-# ---------------------------------------------------------------------------
-# Posizione articoli (riordino automatico PDV)
-# ---------------------------------------------------------------------------
+@require_POST
+def stampa_invia_email(request):
+    """Invia la coda di stampa frontalini via email all'indirizzo indicato dall'operatore.
 
-def pos_articoli(request):
-    """Scansione EAN e gestione posizione articolo per il riordino automatico PDV.
-
-    Porting di PosArticoli.aspx (web service mainWsAllArticolo.PosArticoli):
-      - azione='scan'  : cerca l'articolo, legge la posizione autentica da srviis
-        e inserisce una bozza (Elab=''); in modo 'togli' smappa subito (Elab='D').
-      - azione='ok'    : conferma la posizione (Capienza=Max=qta, MinimoRio=Max-Min,
-        Elab='1'). Richiede qta e Min numerici.
-      - azione='clr'   : cancella la bozza (o la riga smappata in modo 'togli').
-      - azione='nuova' : nuova sessione (nuovo token).
-
-    Le scritture vanno su t_posArticoli su GoldCursori srviis via services.pos_salva.
+    Si affianca alla stampa fisica (STAMPA): stessa logica di esito/pulizia coda.
+    Solo POST consentito (decoratore @require_POST).
     """
-    # Funzione disattivata (es. produzione finché non è pronto il nuovo riordino):
-    # nasconde l'accesso anche a chi digita l'URL a mano. Vedi CURSORI_POS_ENABLED.
-    if not settings.CURSORI_POS_ENABLED:
+    token = services.get_or_create_token(request, 'cursori_stampa_token')
+    email = request.POST.get('email', '')
+    esito = services.stampa_invia_email(token, email)
+    if esito == 'Inviata':
+        services.reset_token(request, 'cursori_stampa_token')
         return redirect('cursori:home')
-
-    token = services.get_or_create_token(request, 'cursori_pos_token')
-    ctx = {
-        'token':    token,
-        'errore':   None,
-        'msg':      request.session.pop('cursori_pos_msg', None),
-        'articolo': None,
-        'pos':      None,
-        'modo':     request.POST.get('modo', 'normale'),
-        'ean':      '',
-        'qta':      '',
-    }
-
-    if request.method == 'POST':
-        azione = request.POST.get('azione', '')
-
-        if azione == 'nuova':
-            services.reset_token(request, 'cursori_pos_token')
-            return redirect('cursori:pos_articoli')
-
-        if azione == 'scan':
-            ean = request.POST.get('ean', '').strip()
-            ctx['ean'] = ean
-            if not ean.isdigit():
-                ctx['errore'] = 'Codice non valido'
-            else:
-                # Ricerca per EAN; se non trovato, ripiega su CODART (stesso campo)
-                art = services.get_articolo_by_ean(ean)
-                if not art:
-                    art = services.get_articolo_by_codart(ean)
-                if not art:
-                    ctx['errore'] = 'EAN / Cod. art. non trovato'
-                else:
-                    pos = services.get_posizione_riordino(art['codart'])
-                    # pz/cartone autentico da t_masterData (come il vecchio app)
-                    if pos.get('pzxcrt'):
-                        art['pz_xcrt'] = pos['pzxcrt']
-                    # Gest da t_masterData come fallback (sovrascritto da Oracle sotto)
-                    art['gest'] = pos.get('gest', '')
-                    # normalizza le giacenze a intero per la visualizzazione (15.0 -> 15)
-                    for _k in ('giac_pdv', 'giac_dep'):
-                        try:
-                            art[_k] = str(int(float(art.get(_k, '0'))))
-                        except (ValueError, TypeError):
-                            pass
-                    # giacenze + Gest LIVE da Oracle GOLDPROD (come il vecchio app); fallback ETL
-                    o = services.get_dati_oracle(art['codart'])
-                    if o:
-                        art['giac_pdv'] = str(o['giac_pdv'])
-                        art['giac_dep'] = str(o['giac_dep'])
-                        if o['gest']:
-                            art['gest'] = o['gest']
-                    if ctx['modo'] == 'togli':
-                        # Smappa dal riordino (azione 2)
-                        services.pos_salva(token, art, pos['corsia'], pos['campata'],
-                                           pos['facing'], '1', '', '1', '2')
-                        request.session['cursori_pos_msg'] = f"Smappato: {art['descrizione'][:28]}"
-                        return redirect('cursori:pos_articoli')
-                    # Modo normale: inserisce bozza (azione 0) e mostra per conferma
-                    services.pos_salva(token, art, pos['corsia'], pos['campata'],
-                                       pos['facing'], '', '', '', '0')
-                    ctx['articolo'] = art
-                    ctx['pos'] = pos
-
-        elif azione == 'ok':
-            art = {
-                'codart':      request.POST.get('codart', '').strip(),
-                'descrizione': request.POST.get('descrizione', ''),
-                'stato':       request.POST.get('stato', ''),
-                'pz_xcrt':     request.POST.get('pz_xcrt', ''),
-                'ean':         request.POST.get('ean_art', ''),
-            }
-            corsia  = request.POST.get('corsia', '').strip()
-            campata = request.POST.get('campata', '').strip()
-            facing  = request.POST.get('facing', '').strip()
-            qta     = request.POST.get('qta', '').strip()
-            minimo  = request.POST.get('minimo', '').strip()
-
-            if not (qta.isdigit() and minimo.isdigit() and art['codart'].isdigit()):
-                ctx['errore'] = 'Qta / Min non validi'
-                ctx['articolo'] = art
-                ctx['pos'] = {'corsia': corsia, 'campata': campata, 'facing': facing,
-                              'minimo': minimo, 'massimo': qta}
-                ctx['qta'] = qta
-            else:
-                # Capienza = Max = qta ; MinimoRio = Max - Min (calcolato nel service)
-                esito = services.pos_salva(token, art, corsia, campata, facing,
-                                           qta, minimo, qta, '1')
-                request.session['cursori_pos_msg'] = esito
-                return redirect('cursori:pos_articoli')
-
-        elif azione == 'clr':
-            art = {'codart': request.POST.get('codart', '').strip(),
-                   'ean':    request.POST.get('ean_art', '')}
-            corsia  = request.POST.get('corsia', '').strip()
-            campata = request.POST.get('campata', '').strip()
-            facing  = request.POST.get('facing', '').strip()
-            azione_clr = '3' if ctx['modo'] == 'togli' else '4'
-            services.pos_salva(token, art, corsia, campata, facing, '', '', '', azione_clr)
-            request.session['cursori_pos_msg'] = 'Eliminato'
-            return redirect('cursori:pos_articoli')
-
-    return render(request, 'cursori/pos_articoli.html', ctx)
-
-
-def vedi_pos_articoli(request):
-    """Coda delle posizioni inserite nella sessione corrente (porting VediPosArticoli.aspx)."""
-    if not settings.CURSORI_POS_ENABLED:
-        return redirect('cursori:home')
-    token = services.get_or_create_token(request, 'cursori_pos_token')
-    return render(request, 'cursori/vedi_pos_articoli.html', {
-        'token': token,
-        'items': services.pos_get_items(token),
+    return render(request, 'cursori/vedi_stampa.html', {
+        'token':  token,
+        'items':  list(services.stampa_get_items(token)),
+        'errore': f'Errore invio: {esito}',
     })

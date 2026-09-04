@@ -110,6 +110,7 @@ INSTALLED_APPS = [
     'modules.ortofrutta',
     'modules.entrata_merci',
     'modules.giacenze_negative',
+    'modules.articoli_nuovi',
 ]
 
 # Middleware (Nessun cambiamento)
@@ -229,48 +230,12 @@ DATABASES = {
 CURSORI_PRINTER_NAME = 'Kyocera TASKalfa MZ2501ci (7)'
 #CURSORI_PRINTER_NAME = 'Microsoft Print to PDF'
 
-# Posizione articoli (riordino PDV): se True, pos_salva NON scrive su t_posArticoli
-# (produzione su srviis via linked server), logga soltanto. Default ON per sicurezza.
-# Per la scrittura reale: impostare CURSORI_POS_DRY_RUN=0 nell'ambiente (NSSM) e riavviare.
-CURSORI_POS_DRY_RUN = os.environ.get('CURSORI_POS_DRY_RUN', '1') != '0'
-
-# Posizione articoli: visibilità della funzione. Default OFF (nascosta): il bottone
-# nel menu palmare sparisce e le URL posizione/ e posizione/vedi/ rispondono con un
-# redirect alla home. Va abilitata SOLO dove serve impostando CURSORI_POS_ENABLED=1
-# nell'ambiente (NSSM) e riavviando. In produzione resta spenta finché non sarà
-# pronto il nuovo riordino (il vecchio non si usa più).
-CURSORI_POS_ENABLED = os.environ.get('CURSORI_POS_ENABLED', '0') == '1'
-
 # Parametri Rio (modulo riordino_pdv): visibilità della voce di menu e della pagina.
 # Default OFF (nascosta): la voce sparisce dal menu e la URL /app/parametri-rio/
 # reindirizza alla home. Riguarda il vecchio riordino automatico PDV, che non si usa
 # più; resta spenta in produzione finché non sarà pronto il nuovo riordino. Abilitare
 # con RIO_PDV_ENABLED=1 nell'ambiente (NSSM) dove serve, poi riavviare.
 RIO_PDV_ENABLED = os.environ.get('RIO_PDV_ENABLED', '0') == '1'
-
-# Giacenze LIVE da Oracle GOLDPROD per la Posizione Articoli (come il vecchio web
-# service DettaglioArticolo). Stesso account/host Oracle di rio_fornitori_new
-# (GOLDCEN su Srvoracle.groscidac.local): testato in dev, ritorna i valori del
-# vecchio app (es. 299866 -> 175/13). DSN e password ereditano dai RIO_DASH_ORACLE_*
-# se non impostati esplicitamente. Senza password -> giacenze Oracle disattivate e
-# si usano i valori ETL (Db_GoldReport) come fallback.
-# NB: l'host storico 172.17.10.40 rifiuta GOLDCEN (istanza diversa) -> usare Srvoracle.
-CURSORI_ORACLE_DSN  = os.environ.get('CURSORI_ORACLE_DSN',
-                                     os.environ.get('RIO_DASH_ORACLE_DSN',
-                                                    'Srvoracle.groscidac.local:1521/GOLDPROD'))
-CURSORI_ORACLE_USER = os.environ.get('CURSORI_ORACLE_USER', 'GOLDCEN')
-CURSORI_ORACLE_PASS = os.environ.get('CURSORI_ORACLE_PASS',
-                                     os.environ.get('RIO_DASH_ORACLE_PASS', ''))
-# Fallback dev: se la password non è nell'ambiente, leggila da un file locale
-# NON committato (C:\portale\django\.oracle_pass). Evita la fragilità del passaggio
-# di variabili d'ambiente attraverso npm/PowerShell.
-if not CURSORI_ORACLE_PASS:
-    try:
-        _pwfile = PROJECT_ROOT / '.oracle_pass'
-        if _pwfile.exists():
-            CURSORI_ORACLE_PASS = _pwfile.read_text(encoding='utf-8').strip()
-    except Exception:
-        pass
 
 # =========================================================================
 #  RIO FORNITORI (srviisnew) - trasferimento proposta a Gold via Python
