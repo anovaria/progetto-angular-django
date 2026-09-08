@@ -1,0 +1,366 @@
+from pathlib import Path
+from datetime import timedelta
+import os
+
+#print(f"--- [DEBUG] INIZIO ESECUZIONE BASE.PY da: {__file__} ---")
+
+# Definizioni di base
+SETTINGS_DIR = Path(__file__).resolve().parent
+LANGUAGE_CODE = 'it-IT'  # Cambia da 'en-us' a 'it-IT'
+TIME_ZONE = 'Europe/Rome'
+
+USE_I18N = True
+USE_L10N = True
+USE_TZ = True
+
+# 2. Definisce la cartella 'project_core'
+PROJECT_CORE_DIR = SETTINGS_DIR.parent
+
+# 3. Definisce la RADICE del progetto
+PROJECT_ROOT = PROJECT_CORE_DIR.parent
+BASE_DIR = PROJECT_ROOT
+
+# =========================================================================
+#  MODIFICHE CHIAVE PER LA SICUREZZA
+# =========================================================================
+
+# 1. SECRET_KEY: Viene letta dall'ambiente.
+#    Il valore hardcoded (default Django) è usato solo se non specificato.
+#    QUESTO VALORE DEVE ESSERE SOVRASCRITTO OBBLIGATORIAMENTE IN PROD.PY
+SECRET_KEY = os.environ.get(
+    'DJANGO_SECRET_KEY',
+    'django-insecure-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' # << Fallback INSICURO, solo per sviluppo iniziale
+)
+
+# 2. LDAP Configuration: Leggi le configurazioni LDAP dall'ambiente.
+#    Questo permette di specificare indirizzi diversi in prod.py.
+LDAP_SERVER = os.environ.get("LDAP_SERVER", "SRVDC1.groscidac.local")
+LDAP_DOMAIN = os.environ.get("LDAP_DOMAIN", "GROSCIDAC")
+
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+    'x-auth-user',  # ← aggiungi questo
+]
+# HOSTS consentiti (Solo per sviluppo/default, da sovrascrivere in prod.py)
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
+
+# Applicazioni
+INSTALLED_APPS = [
+    'django.contrib.admin',
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    'django.contrib.sessions',
+    'django.contrib.messages',
+    'django.contrib.staticfiles',
+    'django_extensions',
+    'rest_framework',
+    'corsheaders',
+    'project_core',
+    'modules.auth.apps.ModulesAuthConfig',
+    'modules.util',
+    'modules.importelab',
+    'modules.edicola',
+    'modules.pallet_promoter',
+    'modules.alloca_hostess',
+    'modules.merchandiser',
+    'modules.welfare',
+    'modules.asso_articoli',
+    'modules.scaricopromo',
+    'modules.active_users',
+    'modules.stampaoffertefuture.apps.StampaOfferteFutureConfig',
+    'modules.offerte_future_pdv.apps.OfferteFuturePdvConfig',
+    'modules.portal',
+    'modules.plu_web',
+    'modules.caricopromo_reparto',
+    'modules.masterdata',
+    'modules.masterdatacategory',
+    'modules.caricopromo_abbig',
+    'modules.assortimento_abbig',
+    'modules.invenduti',
+    'modules.master_ordini',
+    'modules.ordini_bloccati',
+    'modules.art_stato_ord_aperta',
+    'modules.promo_doppie',
+    'modules.promo_doppie_domani',
+    'modules.giac_negative',
+    'modules.art_no_ean',
+    'modules.stesso_prezzo',
+    'modules.prezzo_promo_alto',
+    'modules.controllo_legami',
+    'modules.bidone',
+    'modules.cursori.apps.CursoriConfig',
+    'modules.stock_picking.apps.StockPickingConfig',
+    'modules.picking_negativi.apps.PickingNegativiConfig',
+    'modules.piano_promo.apps.PianoPromoConfig',
+    'modules.rio_fornitori.apps.RioFornitoriConfig',
+    'modules.rio_fornitori_new.apps.RioFornitoriNewConfig',
+    'modules.ricette.apps.RicetteConfig',
+    'modules.scarti_gettati.apps.ScartiGettatiConfig',
+    'modules.ricerca_gold',
+    'modules.ins_articoli',
+    'modules.preventivi',
+    'modules.ortofrutta',
+    'modules.entrata_merci',
+    'modules.giacenze_negative',
+    'modules.articoli_nuovi',
+]
+
+# Middleware (Nessun cambiamento)
+MIDDLEWARE = [
+    'django.middleware.security.SecurityMiddleware', # Spostato in cima per sicurezza (base.py)
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'modules.portal.middleware.PortalUserMiddleware',
+    'modules.portal.middleware.PortalAuthMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
+    'django.middleware.common.CommonMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'modules.active_users.middleware.ActiveUserMiddleware',
+]
+
+# Autenticazione / REST Framework (Nessun cambiamento)
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.RemoteUserBackend',
+    'django.contrib.auth.backends.ModelBackend',
+]
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+    ),
+}
+
+# URL Configuration
+ROOT_URLCONF = 'project_core.urls' # <--- ASSICURATI CHE QUESTA RIGA CI SIA!
+
+# WSGI Application
+WSGI_APPLICATION = 'project_core.wsgi.application'
+
+# JWT (Simple JWT) (Nessun cambiamento necessario qui, usa la SECRET_KEY definita sopra)
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=5),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
+    "UPDATE_LAST_LOGIN": True,
+    "ALGORITHM": "HS256",
+    # Usa la SECRET_KEY del progetto (che ora è letta dall'ambiente)
+    "SIGNING_KEY": SECRET_KEY,
+    "AUTH_HEADER_TYPES": ("Bearer",),
+    "AUTH_TOKEN_CLASSES": ("rest_framework_simplejwt.tokens.AccessToken",),
+}
+
+# Logging (Nessun cambiamento)
+LOG_DIR = PROJECT_ROOT / 'logs'
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {'format': '{asctime} [{levelname}] {name}: {message}', 'style': '{'},
+    },
+    'handlers': {
+        'file': {
+            'level': 'DEBUG',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': str(PROJECT_ROOT / 'logs' / 'django.log'),
+            'maxBytes': 5*1024*1024,
+            'backupCount': 3,
+            'formatter': 'verbose',
+        },
+        'console': {'class': 'logging.StreamHandler', 'formatter': 'verbose'},
+    },
+    'loggers': {
+        'PIL': {'handlers': ['file', 'console'], 'level': 'WARNING', 'propagate': False},
+        'paramiko': {'handlers': ['file', 'console'], 'level': 'WARNING', 'propagate': False},
+    },
+    'root': {'handlers': ['file', 'console'], 'level': 'DEBUG'},
+}
+
+DATABASES = {
+    'default': {
+        'ENGINE': 'mssql',
+        'NAME': os.environ.get('DB_DEFAULT_NAME', 'DjangoIntranet'),
+        'USER': os.environ.get('DB_DEFAULT_USER', 'dev_django_user'),
+        'PASSWORD': os.environ.get('DB_DEFAULT_PASSWORD'),
+        'HOST': os.environ.get('DB_DEFAULT_HOST', 'localhost\\SQLEXPRESS'),
+        'OPTIONS': {
+            'driver': 'ODBC Driver 18 for SQL Server',
+            'extra_params': 'Encrypt=no;TrustServerCertificate=yes',
+        },
+    },
+    'goldreport': {
+        'ENGINE': 'mssql',
+        'NAME': os.environ.get('DB_GOLD_NAME', 'Db_GoldReport'),
+        'USER': os.environ.get('DB_GOLD_USER', 'dev_django_user'),
+        'PASSWORD': os.environ.get('DB_GOLD_PASSWORD'),
+        'HOST': os.environ.get('DB_GOLD_HOST', 'localhost\\SQLEXPRESS'),
+        'OPTIONS': {
+            'driver': 'ODBC Driver 18 for SQL Server',
+            'extra_params': 'Encrypt=no;TrustServerCertificate=yes',
+        },
+    },
+    'category': {
+        'ENGINE': 'mssql',
+        'NAME': os.environ.get('DB_CATEGORY_NAME', 'Db_Category'),
+        'USER': os.environ.get('DB_GOLD_USER', 'dev_django_user'),
+        'PASSWORD': os.environ.get('DB_GOLD_PASSWORD'),
+        'HOST': os.environ.get('DB_GOLD_HOST', 'localhost\\SQLEXPRESS'),
+        'OPTIONS': {
+            'driver': 'ODBC Driver 18 for SQL Server',
+            'extra_params': 'Encrypt=no;TrustServerCertificate=yes',
+        },
+    },
+}
+# Nome stampante Windows per stampa frontalini cursori.
+# Impostare con il nome esatto come appare in "Dispositivi e stampanti" sul server IIS.
+# Es: 'HP LaserJet Pro M501dn' oppure r'\\SRV\NomeStampante'
+CURSORI_PRINTER_NAME = 'Kyocera TASKalfa MZ2501ci (7)'
+#CURSORI_PRINTER_NAME = 'Microsoft Print to PDF'
+
+# Parametri Rio (modulo riordino_pdv): visibilità della voce di menu e della pagina.
+# Default OFF (nascosta): la voce sparisce dal menu e la URL /app/parametri-rio/
+# reindirizza alla home. Riguarda il vecchio riordino automatico PDV, che non si usa
+# più; resta spenta in produzione finché non sarà pronto il nuovo riordino. Abilitare
+# con RIO_PDV_ENABLED=1 nell'ambiente (NSSM) dove serve, poi riavviare.
+RIO_PDV_ENABLED = os.environ.get('RIO_PDV_ENABLED', '0') == '1'
+
+# =========================================================================
+#  RIO FORNITORI (srviisnew) - trasferimento proposta a Gold via Python
+#  Sostituisce trasffileriodash.exe. Le PASSWORD vanno messe in env
+#  (RIO_DASH_SFTP_PASS, RIO_DASH_ORACLE_PASS); host/utenti hanno i default
+#  storici dell'exe per comodita'.
+# =========================================================================
+RIO_DASH_SFTP_HOST   = os.environ.get('RIO_DASH_SFTP_HOST', '172.17.10.41')
+RIO_DASH_SFTP_PORT   = int(os.environ.get('RIO_DASH_SFTP_PORT', '22'))
+RIO_DASH_SFTP_USER   = os.environ.get('RIO_DASH_SFTP_USER', 'glpcenadm')
+RIO_DASH_SFTP_PASS   = os.environ.get('RIO_DASH_SFTP_PASS', '')
+RIO_DASH_SFTP_DEST   = os.environ.get('RIO_DASH_SFTP_DEST', '/gold/glp/central/gaia/RECEIVED/')
+RIO_DASH_SSH_CMD     = os.environ.get('RIO_DASH_SSH_CMD', '/gold/glp/central/shell/./gc_xls_xlsord.sh')
+
+RIO_DASH_ORACLE_DSN  = os.environ.get('RIO_DASH_ORACLE_DSN', 'Srvoracle.groscidac.local:1521/GOLDPROD')
+RIO_DASH_ORACLE_USER = os.environ.get('RIO_DASH_ORACLE_USER', 'GOLDCEN')
+RIO_DASH_ORACLE_PASS = os.environ.get('RIO_DASH_ORACLE_PASS', '')
+RIO_DASH_ORACLE_PROC = os.environ.get('RIO_DASH_ORACLE_PROC', 'sil_rioDash')
+
+# Formato CSV (deve combaciare con quello che si aspetta il loader Oracle / bcp)
+RIO_DASH_CSV_SEP      = ';'
+RIO_DASH_CSV_NEWLINE  = '\r\n'
+RIO_DASH_CSV_ENCODING = 'utf-8'
+
+# DRY RUN: se attivo la SP gira e il CSV viene generato/salvato su disco, ma
+# NON si fa SFTP/Oracle/SSH e NON si tocca lo stato in t_fileRiodash/t_exportfoRiodash.
+# Default attivo (sicuro): per il trasferimento reale impostare RIO_DASH_DRY_RUN=0 in env.
+RIO_DASH_DRY_RUN = os.environ.get('RIO_DASH_DRY_RUN', '1').strip().lower() not in ('0', 'false', 'no')
+# Cartella dove salvare il CSV in dry-run (default: logs del progetto)
+RIO_DASH_DRY_RUN_DIR = os.environ.get('RIO_DASH_DRY_RUN_DIR', str(PROJECT_ROOT / 'logs'))
+
+# =========================================================================
+#  RIO FORNITORI AUTOMATICO (management command rio_auto)
+#  Migrazione dei 7 task legacy di srviis (Task Scheduler + sqlcmd +
+#  OrdineFornitore_04_dash + trasffilerioDash.exe) nel flusso Python del
+#  portale (decisione Carlo, 02/07/2026). Schedulato da Windows Task Scheduler
+#  su Srv-Dev1 (dove gira il portale), un task per cadenza -> `manage.py rio_auto`.
+# =========================================================================
+# DRY RUN INDIPENDENTE da RIO_DASH_DRY_RUN: cosi' l'automatico si puo' pilotare in
+# simulazione mentre il riordino manuale e' gia' in reale (e viceversa). Default
+# attivo (sicuro): per l'invio reale impostare RIO_AUTO_DRY_RUN=0 in env, oppure
+# passare --no-dry-run al comando (che ha la precedenza sul setting).
+RIO_AUTO_DRY_RUN = os.environ.get('RIO_AUTO_DRY_RUN', '1').strip().lower() not in ('0', 'false', 'no')
+# Lista di default dei fornitori (CCOM) se non si passa --ccom. Di norma vuota:
+# ogni task di Task Scheduler passa i propri codici via --ccom.
+RIO_AUTO_CCOM = [c.strip() for c in os.environ.get('RIO_AUTO_CCOM', '').split(',') if c.strip()]
+# Destinatari della mail di riepilogo del riordino automatico (sostituiscono il
+# 'silve@' del legacy). Piu' indirizzi separati da virgola.
+RIO_AUTO_MAIL_TO = [e.strip() for e in os.environ.get(
+    'RIO_AUTO_MAIL_TO', 'alessandro.novaria@groscidac.it').split(',') if e.strip()]
+# Destinatari SEMPRE in copia (es. IT: tecnico@), separati da RIO_AUTO_MAIL_TO
+# cosi' compaiono in Cc e non mischiati al destinatario principale. Default vuoto.
+RIO_AUTO_MAIL_CC = [e.strip() for e in os.environ.get(
+    'RIO_AUTO_MAIL_CC', '').split(',') if e.strip()]
+
+# =========================================================================
+#  RIO FORNITORI - canale CENTRAL (i 7 fornitori automatici legacy)
+#  Sostituisce trasffilerio.exe (lo stesso exe usato da RIOQ10). Stesso
+#  host/credenziali SFTP e Oracle di RIO_DASH_* (stesso server Gold): cambia
+#  solo la SP Oracle (SIL_Rio invece di sil_rioDash) e le tabelle SQL Server
+#  di appoggio (t_exportfoRio/t_fileRio invece di *dash*). Decisione:
+#  riprodurre il comportamento storico dei 7 fornitori automatici (ordine
+#  reale diretto in Gold, validato/annullato li', non in Dashboard).
+# =========================================================================
+RIO_CENTRAL_ORACLE_DSN  = os.environ.get('RIO_CENTRAL_ORACLE_DSN',  RIO_DASH_ORACLE_DSN)
+RIO_CENTRAL_ORACLE_USER = os.environ.get('RIO_CENTRAL_ORACLE_USER', RIO_DASH_ORACLE_USER)
+RIO_CENTRAL_ORACLE_PASS = os.environ.get('RIO_CENTRAL_ORACLE_PASS', RIO_DASH_ORACLE_PASS)
+RIO_CENTRAL_ORACLE_PROC = os.environ.get('RIO_CENTRAL_ORACLE_PROC', 'SIL_Rio')
+
+# =========================================================================
+#  RIO PDV (srviisnew) - trasferimento ordini CSV a Gold via Python
+#  Sostituisce TrasfFileRio.exe. SFTP/SSH/Oracle stessi endpoint di rioDash.
+#  PASSWORD condivise con RIO_DASH_*; solo la SP Oracle cambia (SIL_RIO).
+# =========================================================================
+RIO_PDV_SFTP_HOST   = os.environ.get('RIO_PDV_SFTP_HOST',   '172.17.10.41')
+RIO_PDV_SFTP_PORT   = int(os.environ.get('RIO_PDV_SFTP_PORT', '22'))
+RIO_PDV_SFTP_USER   = os.environ.get('RIO_PDV_SFTP_USER',   'glpcenadm')
+RIO_PDV_SFTP_PASS   = os.environ.get('RIO_PDV_SFTP_PASS',   os.environ.get('RIO_DASH_SFTP_PASS', ''))
+RIO_PDV_SSH_CMD     = os.environ.get('RIO_PDV_SSH_CMD',     '/gold/glp/central/shell/./gc_xls_xlsord.sh')
+
+RIO_PDV_ORACLE_DSN  = os.environ.get('RIO_PDV_ORACLE_DSN',  'Srvoracle.groscidac.local:1521/GOLDPROD')
+RIO_PDV_ORACLE_USER = os.environ.get('RIO_PDV_ORACLE_USER', 'GOLDCEN')
+RIO_PDV_ORACLE_PASS = os.environ.get('RIO_PDV_ORACLE_PASS', os.environ.get('RIO_DASH_ORACLE_PASS', ''))
+RIO_PDV_ORACLE_PROC = os.environ.get('RIO_PDV_ORACLE_PROC', 'SIL_RIO')
+
+# DRY RUN: non fa SFTP/Oracle/SSH e non aggiorna t_fileRio. Default attivo.
+RIO_PDV_DRY_RUN = os.environ.get('RIO_PDV_DRY_RUN', '1').strip().lower() not in ('0', 'false', 'no')
+
+DATABASE_ROUTERS = [
+    'project_core.routers.GoldReportRouter',
+    'project_core.routers.CursoriRouter',
+    'project_core.routers.CategoryRouter',
+    'project_core.routers.ImportelabRouter',
+]
+
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [BASE_DIR / 'templates'],
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                'django.template.context_processors.debug',
+                'django.template.context_processors.request',
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages',
+                'modules.portal.context_processors.portal_menu',
+            ],
+        },
+    },
+]
+
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+STATICFILES_DIRS = [PROJECT_ROOT / 'static']
+X_FRAME_OPTIONS = 'SAMEORIGIN'
+ELAB_SOURCE_DIR = r"C:\importelab\ordini"
+
+ADMINS = [
+    ('Tecnico', 'tecnico@groscidac.it'),
+]
+EMAIL_HOST = 'Srvmail.groscidac.local'
+EMAIL_PORT = 25
+EMAIL_USE_TLS = False
+EMAIL_HOST_USER = ''
+EMAIL_HOST_PASSWORD = ''
+DEFAULT_FROM_EMAIL = 'Portale Groscidac <noreply@groscidac.it>'
+SERVER_EMAIL = 'noreply@groscidac.it'
+#print(f"--- [DEBUG] FINE ESECUZIONE BASE.PY. ROOT_URLCONF è definito? {'ROOT_URLCONF' in locals()} ---")

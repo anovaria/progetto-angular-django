@@ -1,0 +1,25 @@
+To: ordini@rossettogroup.it
+Subject: Gros Cidac: in allegato il nostro ordine 
+From: webmaster@localhost
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="===============6349073796180419749=="
+
+--===============6349073796180419749==
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+
+ Buongiorno, 
+ inviamo in allegato il file con l'ordine.
+ Rimaniamo a disposizione per eventuali problematiche
+ Grazie e Buon Lavoro 
+
+
+--===============6349073796180419749==
+Content-Type: application/octet-stream
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="prova_Ordine.ext"
+MIME-Version: 1.0
+
+VEVTVCBPUkRJTkUgLSBGSUxFIFNJTVVMQVRPDQo=
+
+--===============6349073796180419749==--

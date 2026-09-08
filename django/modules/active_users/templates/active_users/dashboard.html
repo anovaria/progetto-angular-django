@@ -1,0 +1,112 @@
+{% extends 'portal/base.html' %}
+{# Descrizione del template: Dashboard utenti online — mostra in tempo reale la lista degli utenti attivi sul portale, con polling automatico ogni 30 secondi. #}
+{% block title %}Utenti Online - Portale{% endblock %}
+
+{% block page_content %}
+{# Sezione: intestazione pagina con contatore e timestamp ultimo aggiornamento #}
+<div class="p-4">
+
+  <div class="d-flex align-items-center justify-content-between mb-4">
+    <h1 class="mb-0" style="font-size:1.4rem; font-weight:600;">
+      <i class="bi bi-people-fill me-2"></i>Utenti Online
+    </h1>
+    <div class="d-flex align-items-center gap-3">
+      {# Badge che mostra il numero di utenti online, aggiornato via JS #}
+      <span class="badge bg-success fs-6" id="countBadge">—</span>
+      <span class="text-muted" style="font-size:13px;">
+        Aggiornato: <span id="lastUpdate">—</span>
+      </span>
+    </div>
+  </div>
+
+  {# Sezione: tabella utenti attivi #}
+  <div class="card shadow-sm">
+    <div class="card-body p-0">
+      <table class="table table-hover mb-0" id="usersTable">
+        <thead class="table-light">
+          <tr>
+            <th class="ps-3">Utente</th>
+            <th>Ultima pagina</th>
+            <th>IP</th>
+            <th>Inattivo da</th>
+            <th>Stato</th>
+          </tr>
+        </thead>
+        {# Il corpo della tabella viene popolato dinamicamente da JavaScript #}
+        <tbody id="usersBody">
+          <tr><td colspan="5" class="text-center text-muted py-4">Caricamento...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  {# Intervallo di polling in millisecondi (30 secondi) #}
+  const POLL_INTERVAL = 30000; // 30 secondi
+
+  {# Converte i secondi di inattività in una stringa leggibile (es. "2m 15s") #}
+  function formatIdle(seconds) {
+    if (seconds < 60) return seconds + 's';
+    if (seconds < 3600) return Math.floor(seconds / 60) + 'm ' + (seconds % 60) + 's';
+    return Math.floor(seconds / 3600) + 'h ' + Math.floor((seconds % 3600) / 60) + 'm';
+  }
+
+  {# Restituisce il badge HTML colorato in base ai secondi di inattività:
+     verde < 60s (attivo), giallo < 300s (inattivo), grigio altrimenti (offline) #}
+  function statusBadge(idleSeconds) {
+    if (idleSeconds < 60) return '<span class="badge bg-success">Attivo</span>';
+    if (idleSeconds < 300) return '<span class="badge bg-warning text-dark">Inattivo</span>';
+    return '<span class="badge bg-secondary">Offline</span>';
+  }
+
+  {# Recupera i dati dall'API e aggiorna la tabella #}
+  function load() {
+    {# Richiede tutti gli utenti degli ultimi 60 minuti, in tutti gli ambienti #}
+    fetch('/api/active-users/?minutes=60&env=all')
+      .then(r => r.json())
+      .then(data => {
+        const tbody = document.getElementById('usersBody');
+        document.getElementById('countBadge').textContent = data.count + ' online';
+        document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString('it-IT');
+
+        {# Se non ci sono utenti attivi, mostra il messaggio vuoto #}
+        if (!data.users.length) {
+          tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">Nessun utente attivo</td></tr>';
+          return;
+        }
+
+        {# Genera una riga per ogni utente attivo; il display_name viene mostrato
+           solo se diverso dallo username #}
+        tbody.innerHTML = data.users.map(u => `
+          <tr>
+            <td class="ps-3">
+              <i class="bi bi-person-circle me-1 text-primary"></i>
+              <strong>${u.username}</strong>
+              ${u.display_name && u.display_name !== u.username ? '<br><small class="text-muted">' + u.display_name + '</small>' : ''}
+            </td>
+            <td><span class="text-muted" style="font-size:13px;">${u.last_path || '—'}</span></td>
+            <td><span class="text-muted" style="font-size:13px;">${u.ip_address || '—'}</span></td>
+            <td>${formatIdle(u.idle_seconds)}</td>
+            <td>${statusBadge(u.idle_seconds)}</td>
+          </tr>
+        `).join('');
+      })
+      .catch(() => {
+        {# In caso di errore di rete, mostra un messaggio di errore nella tabella #}
+        document.getElementById('usersBody').innerHTML =
+          '<tr><td colspan="5" class="text-center text-danger py-4">Errore nel caricamento</td></tr>';
+      });
+  }
+
+  {# Caricamento iniziale al montaggio della pagina #}
+  load();
+  {# Polling periodico: ricarica la lista ogni POLL_INTERVAL millisecondi #}
+  setInterval(load, POLL_INTERVAL);
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,14 @@
+{# Descrizione del template: Partial HTML restituito dalla API cerca_fornitore.
+   Renderizza la lista dei fornitori corrispondenti alla ricerca AJAX con codice e nome.
+   Ogni elemento è cliccabile lato client per selezionare il fornitore nello slot. #}
+
+{# Sezione: Lista risultati di ricerca fornitori #}
+{% for f in fornitori %}
+{# Ogni elemento porta data-id (codice fornitore) e data-nome per la selezione via JS #}
+<div class="fornitore-item" data-id="{{ f.codice }}" data-nome="{{ f.nome }}">
+    {{ f.codice }} - {{ f.nome|truncatechars:40 }}
+</div>
+{# Messaggio mostrato quando nessun fornitore corrisponde alla ricerca #}
+{% empty %}
+<div class="p-2 text-muted">Nessun risultato</div>
+{% endfor %}

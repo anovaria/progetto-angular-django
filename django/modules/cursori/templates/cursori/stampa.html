@@ -1,0 +1,82 @@
+{% extends 'cursori/base_cursori.html' %}
+{# Descrizione del template: pagina di scansione articoli per la coda di stampa frontalini #}
+{# L'operatore scansiona gli EAN degli articoli da stampare; ogni scansione aggiunge l'articolo alla coda #}
+
+{% load cursori_tags %}
+{% block title %}Lista Articoli{% endblock %}
+{% block page_title %}Lista Articoli{% endblock %}
+
+{% block content %}
+
+{# Sezione: messaggi di feedback post-scansione (es. "+ Nome Articolo") #}
+{% if msg %}<div class="msg-ok">{{ msg }}</div>{% endif %}
+{% if errore %}<div class="msg-err">{{ errore }}</div>{% endif %}
+
+{# Sezione: form scansione EAN — invia la richiesta azione='scan' #}
+<form method="post" autocomplete="off" id="frmScan">
+    {% csrf_token %}
+    <input type="hidden" name="azione" value="scan">
+
+    <div style="margin-bottom:8px;">
+        <label class="field-lbl">Scansiona EAN / Cod. art.</label>
+        <input type="text" name="ean" class="ean-input"
+               autofocus inputmode="numeric" id="eanInput"
+               placeholder="EAN o cod. art...." autocomplete="off">
+    </div>
+    <button type="submit" class="btn btn-terminal btn-ok w-100 mb-2">AGGIUNGI</button>
+</form>
+
+{# Sezione: logica di autosubmit con tempistiche diverse per EAN corti (8 cifre) e lunghi (13 cifre) #}
+<script>
+(function(){
+    var inp = document.getElementById('eanInput');
+    var frm = document.getElementById('frmScan');
+    var timer;
+    inp.value = '';
+    inp.focus();
+    // Invio immediato su tasto Invio
+    inp.addEventListener('keydown', function(e){
+        if(e.key === 'Enter'){ e.preventDefault(); if(inp.value.trim().length > 0) frm.submit(); }
+    });
+    inp.addEventListener('input', function(){
+        clearTimeout(timer);
+        var len = inp.value.trim().length;
+        // EAN-13 (lunghezza piena): invia dopo 120ms per non bloccare scansioni veloci
+        if(len >= 13){
+            timer = setTimeout(function(){ frm.submit(); }, 120);
+        // EAN-8 o codici brevi: attende 1.2s per permettere la digitazione completa
+        } else if(len >= 8){
+            timer = setTimeout(function(){ frm.submit(); }, 1200);
+        }
+    });
+})();
+</script>
+
+{# Sezione: anteprima ridotta degli articoli già in coda (mostra solo la descrizione troncata) #}
+{# Visibile solo se la coda contiene elementi #}
+{% if coda %}
+<div class="mt-3">
+    <div style="color:#aaa; font-size:0.8rem; margin-bottom:4px;">In coda: {{ coda|length }}</div>
+    {% for item in coda %}
+    <div class="art-codart" style="padding:3px 0; border-bottom:1px solid #2a2a2a;">
+        <span>{{ item.descrizione|truncatechars:28 }}</span>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{# Sezione: azioni principali — accesso alla coda completa e ritorno al menu #}
+<div class="d-flex gap-2 mt-3">
+    <a href="{% url 'cursori:vedi_stampa' %}" class="btn btn-terminal btn-blu flex-fill">VEDI CODA</a>
+    <a href="{% url 'cursori:home' %}" class="btn btn-terminal btn-home">&#8592;</a>
+</div>
+
+{# Riposiziona il focus sul campo EAN al caricamento pagina (per permettere scansione immediata) #}
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+    var e = document.getElementById('eanInput');
+    if(e){ e.focus(); }
+});
+</script>
+
+{% endblock %}

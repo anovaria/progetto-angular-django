@@ -1,0 +1,133 @@
+{% extends 'portal/base.html' %}
+{# Descrizione del template: Layout base alternativo per il modulo Alloca Hostess, versione minimale.
+   Estende il template del portale principale, definisce stili grafici più elaborati (card, stat-card,
+   pulsanti con gradiente) e gestisce i messaggi flash. Usato dai template che richiedono uno stile
+   coerente ma non necessitano del layout completo del modulo. #}
+
+
+{% block extra_css %}
+{# Sezione: Stili CSS aggiuntivi specifici per il modulo Alloca Hostess #}
+<style>
+    :root {
+        --hostess-primary: #9c27b0;
+        --hostess-dark: #7b1fa2;
+    }
+
+    .card {
+        border: none;
+        border-radius: 12px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    }
+
+    .card-header {
+        background: white;
+        border-bottom: 1px solid #eee;
+        font-weight: 600;
+        border-radius: 12px 12px 0 0;
+    }
+
+    {# Pulsante con gradiente viola per azioni principali del modulo #}
+    .btn-hostess {
+        background: linear-gradient(135deg, var(--hostess-primary), var(--hostess-dark));
+        border: none;
+        color: white;
+        border-radius: 8px;
+        padding: 0.5rem 1.25rem;
+        transition: all 0.2s;
+    }
+
+    .btn-hostess:hover {
+        background: linear-gradient(135deg, var(--hostess-dark), #6a1b9a);
+        color: white;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(156, 39, 176, 0.3);
+    }
+
+    {# Card statistica con effetto hover per la dashboard #}
+    .stat-card {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        transition: transform 0.2s;
+    }
+
+    .stat-card:hover { transform: translateY(-2px); }
+
+    .stat-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .table th {
+        background: #f8fafc;
+        font-weight: 600;
+        color: #64748b;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 0.5px;
+    }
+
+    {# Slot visivo per l'assegnazione delle hostess: cambia stile se occupato #}
+    .hostess-slot {
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 15px;
+        background: white;
+        min-height: 100px;
+        transition: all 0.2s;
+    }
+
+    .hostess-slot:hover {
+        border-color: var(--hostess-primary);
+        box-shadow: 0 4px 12px rgba(156, 39, 176, 0.15);
+    }
+
+    .hostess-slot.occupied {
+        background: #f3e5f5;
+        border-color: var(--hostess-primary);
+    }
+
+    {# Dropdown risultati di autocompletamento (ricerca fornitore/hostess) #}
+    .autocomplete-results {
+        position: absolute;
+        z-index: 1000;
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        max-height: 300px;
+        overflow-y: auto;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .autocomplete-item {
+        padding: 10px 15px;
+        cursor: pointer;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+    .autocomplete-item:hover { background: #f3e5f5; }
+</style>
+{% endblock %}
+
+{% block page_content %}
+<div class="container-fluid py-4 px-4">
+    {# Sezione: Messaggi flash (errori, avvisi, conferme) generati dalle view Django #}
+    {% if messages %}
+    {% for message in messages %}
+    {# Ogni messaggio viene mostrato con il suo tipo (success, warning, error, ecc.) #}
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    {# Sezione: Contenuto specifico di ogni pagina figlia #}
+    {% block content %}{% endblock %}
+</div>
+{% endblock %}

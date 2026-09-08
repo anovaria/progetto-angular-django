@@ -1,0 +1,104 @@
+{% extends 'merchandiser/base_minimal.html' %}
+{# Descrizione del template: Form per la creazione e modifica di un'agenzia. Condiviso tra agenzia_add e agenzia_edit: in assenza della variabile 'agenzia' nel contesto il form è vuoto (creazione), altrimenti è precompilato (modifica). Il submit è gestito via AJAX. #}
+
+{# Il titolo cambia in base a se stiamo modificando o creando #}
+{% block title %}{% if agenzia %}Modifica{% else %}Nuova{% endif %} Agenzia{% endblock %}
+
+{% block content %}
+{# Sezione: Bottone di navigazione per tornare alla lista agenzie #}
+<div class="mb-4">
+    <a href="{% url 'merchandiser:agenzia_list' %}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left" style="font-size: 16px; vertical-align: middle;"></i>
+        Torna alla Lista
+    </a>
+</div>
+
+{# Sezione: Form dati agenzia #}
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">
+            <i class="bi bi-building" style="vertical-align: middle;"></i>
+            {% if agenzia %}Modifica Agenzia{% else %}Nuova Agenzia{% endif %}
+        </h5>
+    </div>
+    <div class="card-body">
+        <form id="agenzia-form" method="post">
+            {% csrf_token %}
+
+            <div class="mb-3">
+                <label for="descrizione" class="form-label">
+                    Descrizione <span class="text-danger">*</span>
+                </label>
+                {# maxlength=50 è validato anche lato server nella vista agenzia_add/agenzia_edit #}
+                <input type="text"
+                       class="form-control"
+                       id="descrizione"
+                       name="descrizione"
+                       maxlength="50"
+                       value="{% if agenzia %}{{ agenzia.descrizione }}{% endif %}"
+                       required>
+                <small class="text-muted">Max 50 caratteri</small>
+            </div>
+
+            <div class="mb-3">
+                <label for="nota" class="form-label">Nota</label>
+                <textarea class="form-control"
+                          id="nota"
+                          name="nota"
+                          rows="3"
+                          maxlength="100">{% if agenzia %}{{ agenzia.nota }}{% endif %}</textarea>
+                <small class="text-muted">Max 100 caratteri (opzionale)</small>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-floppy" style="font-size: 16px; vertical-align: middle;"></i>
+                    Salva
+                </button>
+                <a href="{% url 'merchandiser:agenzia_list' %}" class="btn btn-secondary">
+                    Annulla
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Intercetta il submit e lo invia via AJAX per ottenere una risposta JSON
+document.getElementById('agenzia-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    const form = this;
+    const formData = new FormData(form);
+    const submitBtn = form.querySelector('button[type="submit"]');
+
+    // Disabilita il bottone durante il salvataggio per evitare doppi invii
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Salvataggio...';
+
+    fetch(form.action || window.location.href, {
+        method: 'POST',
+        body: formData
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            // Redirect alla lista agenzie dopo il salvataggio
+            window.location.href = "{% url 'merchandiser:agenzia_list' %}";
+        } else {
+            alert(data.error || 'Errore durante il salvataggio');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="bi bi-floppy" style="font-size: 16px; vertical-align: middle;"></i> Salva';
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        alert('Errore durante il salvataggio');
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="bi bi-floppy" style="font-size: 16px; vertical-align: middle;"></i> Salva';
+    });
+});
+</script>
+{% endblock %}

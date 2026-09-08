@@ -1,0 +1,75 @@
+{% extends 'portal/base.html' %}
+{# Descrizione del template: Layout base minimalista per il modulo welfare.
+   Identico a base.html ma con stessa struttura - estende il portale principale,
+   definisce il tema CSS welfare e il blocco content. Usato come base da tutti
+   i template operativi del modulo (dashboard, cassa, contabilità, ecc.). #}
+
+
+{% block extra_css %}
+<style>
+    {# Sezione: Variabili CSS del tema welfare - colori per ogni stato del voucher #}
+    :root {
+        --welfare-primary: #6366f1;
+        --welfare-success: #10b981;
+        --welfare-warning: #f59e0b;
+        --welfare-danger: #ef4444;
+        --welfare-info: #3b82f6;
+    }
+
+    {# Sezione: Card generiche con effetto hover di sollevamento sulle card statistiche #}
+    .card { border: none; border-radius: 12px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05); }
+    .card-stat { transition: transform 0.2s; }
+    .card-stat:hover { transform: translateY(-2px); }
+
+    {# Sezione: Icone stato - sfondo e colore differenti per ogni stato del processo welfare #}
+    .stat-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; }
+    .stat-icon.pronto { background: #dbeafe; color: var(--welfare-info); }
+    .stat-icon.elaborato { background: #fef3c7; color: var(--welfare-warning); }
+    .stat-icon.consegnato { background: #d1fae5; color: var(--welfare-success); }
+    .stat-icon.inevaso { background: #fee2e2; color: var(--welfare-danger); }
+
+    {# Sezione: Badge stato - etichette colorate a pillola per visualizzare lo stato nelle tabelle #}
+    .badge-stato { padding: 0.35em 0.8em; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
+    .badge-pronto { background: #dbeafe; color: #1e40af; }
+    .badge-elaborato { background: #fef3c7; color: #92400e; }
+    .badge-consegnato { background: #d1fae5; color: #065f46; }
+    .badge-inevaso { background: #fee2e2; color: #991b1b; }
+
+    {# Sezione: Bottone welfare con gradiente viola - stile primario del modulo #}
+    .btn-welfare {
+        background: linear-gradient(135deg, var(--welfare-primary), #4f46e5);
+        border: none; color: white; border-radius: 8px; padding: 0.5rem 1.25rem;
+    }
+    .btn-welfare:hover { background: linear-gradient(135deg, #4f46e5, #4338ca); color: white; }
+
+    {# Sezione: Stili per search box, tabelle e alert #}
+    .search-box { background: white; border-radius: 12px; padding: 1.5rem; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05); }
+    .search-box input { border-radius: 8px; padding: 0.75rem 1rem; font-size: 1.1rem; }
+
+    .table-welfare { background: white; border-radius: 12px; overflow: hidden; }
+    .table-welfare th {
+        background: #f8fafc; font-weight: 600; color: #64748b;
+        text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.5px;
+    }
+
+    .alert { border-radius: 10px; border: none; }
+</style>
+{% endblock %}
+
+{% block page_content %}
+<div class="container-fluid py-4 px-4">
+    {# Sezione: Messaggi Django (success/warning/error) mostrati come alert dismissibili #}
+    {% if messages %}
+    {% for message in messages %}
+    {# Il tag del messaggio corrisponde alla classe Bootstrap dell'alert (es. success, warning) #}
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    {# Blocco content: punto di estensione per tutti i template figli del modulo welfare #}
+    {% block content %}{% endblock %}
+</div>
+{% endblock %}

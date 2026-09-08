@@ -1,0 +1,34 @@
+{% extends 'importelab/report_base.html' %}
+{% block report_body %}
+
+<div class="section">
+  <div class="small"><strong>Data Agg.:</strong> {{ data_agg|default:"" }}</div>
+</div>
+
+{% regroup rows by codfo as codfo_groups %}
+{% for cg in codfo_groups %}
+  <div class="section">
+    <div class="small mono">
+      <strong>CodFo:</strong> {{ cg.grouper|default:"" }}
+      {% if cg.list and cg.list.0.descrccom %} — {{ cg.list.0.descrccom }}{% endif %}
+    </div>
+  </div>
+
+  {% for row in cg.list %}
+    <div class="rowblock">
+      <div class="kv small mono">
+        <div><strong>CodArticolo</strong> {{ row.codart|default:"" }}</div>
+        <div><strong>CodArtFo</strong> {{ row.cod_art_fo|default:"" }}</div>
+        <div><strong>STATO</strong> {{ row.stato|default:"" }}</div>
+      </div>
+      <div class="small" style="margin-top:6px;"><strong>Descrizione Art</strong> {{ row.descrart|default:"" }}</div>
+      <div class="center" style="margin-top:10px;">
+        <span class="small mono" style="color:#777;">AGGIUNGERE</span>
+        <span class="mono" style="margin:0 10px;">—&gt;</span>
+        <span class="box mono">{{ row.ean|default:"" }}</span>
+      </div>
+    </div>
+  {% endfor %}
+{% endfor %}
+
+{% endblock %}

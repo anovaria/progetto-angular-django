@@ -1,0 +1,310 @@
+{% extends 'portal/base.html' %}
+
+{% block extra_css %}
+<style>
+.rd-wrap     { max-width:1100px; margin:0 auto; padding:20px; }
+.rd-header   { background:#2E5090; color:#fff; border-radius:8px; padding:20px 24px; margin-bottom:20px;
+               display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+.rd-title    { font-size:22px; font-weight:700; margin-bottom:4px; }
+.rd-sub      { font-size:13px; opacity:.85; }
+.rd-actions  { display:flex; gap:8px; flex-shrink:0; }
+.btn-rd      { padding:7px 14px; border-radius:4px; font-size:13px; text-decoration:none;
+               display:inline-flex; align-items:center; gap:5px; border:none; cursor:pointer; }
+.btn-white   { background:#fff; color:#2E5090; font-weight:600; }
+.btn-danger  { background:#c62828; color:#fff; }
+.btn-back    { background:rgba(255,255,255,.2); color:#fff; }
+
+.rd-grid     { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px; }
+.rd-card     { background:#fff; border-radius:8px; box-shadow:0 1px 4px rgba(0,0,0,.1); overflow:hidden; }
+.rd-card-full{ grid-column:1/-1; }
+.card-head   { background:#f5f7fa; border-bottom:1px solid #e0e0e0; padding:10px 16px;
+               font-weight:600; font-size:13px; color:#2E5090; }
+.card-body   { padding:14px 16px; }
+.kv-row      { display:flex; gap:8px; padding:4px 0; font-size:13px; border-bottom:1px solid #f5f5f5; }
+.kv-row:last-child { border-bottom:none; }
+.kv-label    { color:#666; min-width:160px; flex-shrink:0; }
+.kv-val      { color:#212529; font-weight:500; }
+
+.tbl-inner   { width:100%; border-collapse:collapse; }
+.tbl-inner th{ background:#f5f7fa; padding:7px 10px; text-align:left; font-size:11px; color:#555;
+               font-weight:600; border-bottom:1px solid #e0e0e0; white-space:nowrap; }
+.tbl-inner td{ padding:7px 10px; font-size:12px; border-bottom:1px solid #f5f5f5; }
+.tbl-inner tr:last-child td { border-bottom:none; }
+.tbl-inner .num { text-align:right; font-family:monospace; }
+.tbl-foot    { background:#e8eaf6; font-weight:700; }
+.tbl-foot td { padding:8px 10px; font-size:12px; }
+
+.eco-grid    { display:grid; grid-template-columns:1fr 1fr; gap:0; }
+.eco-row     { display:flex; justify-content:space-between; padding:7px 16px; font-size:13px; border-bottom:1px solid #f0f0f0; }
+.eco-row:last-child { border-bottom:none; }
+.eco-label   { color:#555; }
+.eco-val     { font-family:monospace; font-weight:600; color:#212529; }
+.eco-section { border-top:2px solid #e0e0e0; margin-top:4px; padding-top:4px; }
+.eco-total   { background:#e8eaf6; font-weight:700; border-radius:0 0 8px 8px; }
+.eco-total .eco-label { color:#2E5090; }
+.eco-total .eco-val   { color:#2E5090; font-size:15px; }
+.mrg-pos     { color:#2e7d32 !important; }
+.mrg-neg     { color:#c62828 !important; }
+.pretext     { white-space:pre-wrap; font-size:13px; line-height:1.6; color:#444; }
+.badge-cat   { background:#e8f5e9; color:#2e7d32; padding:3px 10px; border-radius:12px; font-size:12px; }
+.badge-diff  { padding:3px 10px; border-radius:12px; font-size:12px; }
+.diff-bassa  { background:#e3f2fd; color:#1565c0; }
+.diff-media  { background:#fff3e0; color:#e65100; }
+.diff-alta   { background:#fce4ec; color:#c62828; }
+</style>
+{% endblock %}
+
+{% block page_content %}
+<div class="rd-wrap">
+
+  <!-- Header -->
+  <div class="rd-header">
+    <div>
+      <div class="rd-title">{{ ricetta.descrizione }}</div>
+      <div class="rd-sub">
+        {% if ricetta.codice_articolo %}Cod. {{ ricetta.codice_articolo }} &nbsp;|&nbsp;{% endif %}
+        {% if ricetta.ean %}EAN {{ ricetta.ean }} &nbsp;|&nbsp;{% endif %}
+        {% if ricetta.categoria %}<span class="badge-cat">{{ ricetta.categoria }}</span> &nbsp;{% endif %}
+        {% if ricetta.difficolta %}<span class="badge-diff diff-{{ ricetta.difficolta }}">{{ ricetta.get_difficolta_display }}</span>{% endif %}
+      </div>
+    </div>
+    <div class="rd-actions">
+      <a href="{% url 'ricette:list' %}" class="btn-rd btn-back">← Lista</a>
+      <a href="{% url 'ricette:edit' ricetta.pk %}" class="btn-rd btn-white">✏️ Modifica</a>
+      <form method="post" action="{% url 'ricette:delete' ricetta.pk %}" style="display:inline"
+            onsubmit="return confirm('Eliminare questa ricetta?')">
+        {% csrf_token %}
+        <button type="submit" class="btn-rd btn-danger">🗑 Elimina</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Anagrafica + Confezione -->
+  <div class="rd-grid">
+    <div class="rd-card">
+      <div class="card-head">📋 Anagrafica</div>
+      <div class="card-body">
+        {% if ricetta.shelf_life %}
+        <div class="kv-row"><span class="kv-label">Shelf life</span><span class="kv-val">{{ ricetta.shelf_life }}</span></div>
+        {% endif %}
+        {% if ricetta.conservabilita %}
+        <div class="kv-row"><span class="kv-label">Conservazione</span><span class="kv-val">{{ ricetta.conservabilita }}</span></div>
+        {% endif %}
+        {% if ricetta.creato_da %}
+        <div class="kv-row"><span class="kv-label">Creata da</span><span class="kv-val">{{ ricetta.creato_da }}</span></div>
+        {% endif %}
+        <div class="kv-row"><span class="kv-label">Ultima modifica</span><span class="kv-val">{{ ricetta.aggiornato_il|date:"d/m/Y H:i" }}</span></div>
+      </div>
+    </div>
+
+    <div class="rd-card">
+      <div class="card-head">📦 Confezione</div>
+      <div class="card-body">
+        {% if ricetta.tipo_contenitore %}
+        <div class="kv-row"><span class="kv-label">Tipo contenitore</span><span class="kv-val">{{ ricetta.tipo_contenitore }}</span></div>
+        {% endif %}
+        {% if ricetta.dimensioni_contenitore %}
+        <div class="kv-row"><span class="kv-label">Dimensioni</span><span class="kv-val">{{ ricetta.dimensioni_contenitore }}</span></div>
+        {% endif %}
+        {% if ricetta.grammatura_media_kg %}
+        <div class="kv-row"><span class="kv-label">Grammatura media</span><span class="kv-val">{{ ricetta.grammatura_media_kg|floatformat:3 }} kg</span></div>
+        {% endif %}
+        {% if ricetta.kcal or ricetta.protidi or ricetta.lipidi or ricetta.glucidi %}
+        <div class="kv-row"><span class="kv-label">Kcal / 100g</span><span class="kv-val">{{ ricetta.kcal|default:"—" }}</span></div>
+        <div class="kv-row"><span class="kv-label">Protidi / Lipidi / Glucidi</span>
+          <span class="kv-val">{{ ricetta.protidi|default:"—" }} / {{ ricetta.lipidi|default:"—" }} / {{ ricetta.glucidi|default:"—" }} g</span></div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Materie prime -->
+  {% if ricetta.ingredienti.all %}
+  <div class="rd-card rd-card-full" style="margin-bottom:16px">
+    <div class="card-head">🥩 Materie Prime</div>
+    <div style="overflow-x:auto">
+      <table class="tbl-inner">
+        <thead>
+          <tr>
+            <th>#</th><th>Codice</th><th>Descrizione</th><th>U.M.</th>
+            <th class="num">% Scarto</th>
+            <th class="num">Peso Netto</th>
+            <th class="num">Peso Lordo</th>
+            <th class="num">P.A. s/IVA</th>
+            <th class="num">Importo</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for ing in ricetta.ingredienti.all %}
+          <tr>
+            <td>{{ forloop.counter }}</td>
+            <td style="font-family:monospace">{{ ing.codice|default:"—" }}</td>
+            <td>{{ ing.descrizione }}</td>
+            <td>{{ ing.um }}</td>
+            <td class="num">{% if ing.pct_cp_scarto %}{{ ing.pct_cp_scarto|floatformat:1 }}%{% else %}—{% endif %}</td>
+            <td class="num">{% if ing.peso_qta %}{{ ing.peso_qta|floatformat:3 }}{% else %}—{% endif %}</td>
+            <td class="num">{% if ing.peso_qta_lorda %}{{ ing.peso_qta_lorda|floatformat:3 }}{% else %}—{% endif %}</td>
+            <td class="num">{% if ing.pa_senza_iva %}€ {{ ing.pa_senza_iva|floatformat:5 }}{% else %}—{% endif %}</td>
+            <td class="num">{% if ing.importo_totale %}€ {{ ing.importo_totale|floatformat:4 }}{% else %}—{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr class="tbl-foot">
+            <td colspan="8" style="text-align:right;padding-right:10px">Totale Materie Prime</td>
+            <td class="num">€ {{ ricetta.costo_totale_mp|floatformat:4 }}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Imballaggi -->
+  {% if ricetta.imballaggi.all %}
+  <div class="rd-card rd-card-full" style="margin-bottom:16px">
+    <div class="card-head">📫 Imballaggi</div>
+    <div style="overflow-x:auto">
+      <table class="tbl-inner">
+        <thead>
+          <tr>
+            <th>#</th><th>Codice</th><th>Descrizione</th><th>U.M.</th>
+            <th class="num">Quantità</th>
+            <th class="num">P.A. s/IVA</th>
+            <th class="num">Importo</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for imb in ricetta.imballaggi.all %}
+          <tr>
+            <td>{{ forloop.counter }}</td>
+            <td style="font-family:monospace">{{ imb.codice|default:"—" }}</td>
+            <td>{{ imb.descrizione }}</td>
+            <td>{{ imb.um }}</td>
+            <td class="num">{% if imb.quantita %}{{ imb.quantita|floatformat:3 }}{% else %}—{% endif %}</td>
+            <td class="num">{% if imb.pa_senza_iva %}€ {{ imb.pa_senza_iva|floatformat:5 }}{% else %}—{% endif %}</td>
+            <td class="num">{% if imb.importo_totale %}€ {{ imb.importo_totale|floatformat:4 }}{% else %}—{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr class="tbl-foot">
+            <td colspan="6" style="text-align:right;padding-right:10px">Totale Imballaggi</td>
+            <td class="num">€ {{ ricetta.costo_totale_imballi|floatformat:4 }}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Conto Economico -->
+  <div class="rd-grid" style="margin-bottom:16px">
+    <div class="rd-card">
+      <div class="card-head">⚙️ Produzione & Lavoro</div>
+      <div class="card-body">
+        {% if ricetta.quantita_prodotta_kg %}
+        <div class="kv-row"><span class="kv-label">Quantità prodotta</span><span class="kv-val">{{ ricetta.quantita_prodotta_kg|floatformat:3 }} kg</span></div>
+        {% endif %}
+        {% if ricetta.calo_peso_pct %}
+        <div class="kv-row"><span class="kv-label">Calo peso</span><span class="kv-val">{{ ricetta.calo_peso_pct|floatformat:2 }}%</span></div>
+        {% endif %}
+        {% if ricetta.quantita_effettiva_kg %}
+        <div class="kv-row"><span class="kv-label">Quantità effettiva</span><span class="kv-val">{{ ricetta.quantita_effettiva_kg|floatformat:3 }} kg</span></div>
+        {% endif %}
+        {% if ricetta.porzione_media_kg %}
+        <div class="kv-row"><span class="kv-label">Porzione media vaschetta</span><span class="kv-val">{{ ricetta.porzione_media_kg|floatformat:3 }} kg</span></div>
+        {% endif %}
+        {% if ricetta.tempo_produzione_min %}
+        <div class="kv-row"><span class="kv-label">Tempo produzione</span><span class="kv-val">{{ ricetta.tempo_produzione_min|floatformat:0 }} min</span></div>
+        {% endif %}
+        {% if ricetta.costo_al_minuto %}
+        <div class="kv-row"><span class="kv-label">Costo al minuto</span><span class="kv-val">€ {{ ricetta.costo_al_minuto|floatformat:4 }}</span></div>
+        {% endif %}
+        {% if ricetta.costo_totale_lavoro %}
+        <div class="kv-row"><span class="kv-label">Costo totale lavoro</span><span class="kv-val">€ {{ ricetta.costo_totale_lavoro|floatformat:4 }}</span></div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="rd-card">
+      <div class="card-head">💰 Conto Economico (per kg)</div>
+      <div class="card-body" style="padding:0">
+        {% if ricetta.costo_unitario_mp is not None %}
+        <div class="eco-row"><span class="eco-label">CDV – Materie Prime</span><span class="eco-val">€ {{ ricetta.costo_unitario_mp|floatformat:4 }}</span></div>
+        {% endif %}
+        {% if ricetta.costo_unitario_imballi is not None %}
+        <div class="eco-row"><span class="eco-label">Costo Imballaggi</span><span class="eco-val">€ {{ ricetta.costo_unitario_imballi|floatformat:4 }}</span></div>
+        {% endif %}
+        {% if ricetta.costo_unitario_lavoro is not None %}
+        <div class="eco-row"><span class="eco-label">Costo Del Lavoro</span><span class="eco-val">€ {{ ricetta.costo_unitario_lavoro|floatformat:4 }}</span></div>
+        {% endif %}
+        {% if ricetta.totale_costi_per_kg %}
+        <div class="eco-row eco-section"><span class="eco-label">Totale Costi</span><span class="eco-val">€ {{ ricetta.totale_costi_per_kg|floatformat:4 }}</span></div>
+        {% endif %}
+        {% if ricetta.prezzo_senza_iva %}
+        <div class="eco-row"><span class="eco-label">Prezzo Vendita c/IVA</span><span class="eco-val">€ {{ ricetta.prezzo_vendita_iva|floatformat:2 }}</span></div>
+        <div class="eco-row"><span class="eco-label">Prezzo Vendita s/IVA</span><span class="eco-val">€ {{ ricetta.prezzo_senza_iva|floatformat:4 }}</span></div>
+        {% endif %}
+        {% if ricetta.margine_netto_per_kg is not None %}
+        <div class="eco-row eco-total">
+          <span class="eco-label">Margine Netto / kg</span>
+          <span class="eco-val {% if ricetta.margine_netto_per_kg >= 0 %}mrg-pos{% else %}mrg-neg{% endif %}">
+            € {{ ricetta.margine_netto_per_kg|floatformat:4 }}
+            {% if ricetta.margine_pct is not None %}({{ ricetta.margine_pct|floatformat:1 }}%){% endif %}
+          </span>
+        </div>
+        {% endif %}
+        {% if ricetta.food_cost_pct is not None %}
+        <div class="eco-row">
+          <span class="eco-label">Food Cost</span>
+          <span class="eco-val {% if ricetta.food_cost_pct <= 30 %}mrg-pos{% else %}mrg-neg{% endif %}">
+            {{ ricetta.food_cost_pct|floatformat:1 }}%
+          </span>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Note e preparazione -->
+  {% if ricetta.modalita_preparazione or ricetta.ingredienti_etichetta or ricetta.abbinamenti or ricetta.consigli_cottura or ricetta.note %}
+  <div class="rd-card rd-card-full" style="margin-bottom:16px">
+    <div class="card-head">📝 Note e Preparazione</div>
+    <div class="card-body" style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      {% if ricetta.ingredienti_etichetta %}
+      <div>
+        <div style="font-size:11px;font-weight:600;color:#888;margin-bottom:4px">INGREDIENTI (ETICHETTA)</div>
+        <div class="pretext">{{ ricetta.ingredienti_etichetta }}</div>
+      </div>
+      {% endif %}
+      {% if ricetta.modalita_preparazione %}
+      <div>
+        <div style="font-size:11px;font-weight:600;color:#888;margin-bottom:4px">MODALITÀ DI PREPARAZIONE</div>
+        <div class="pretext">{{ ricetta.modalita_preparazione }}</div>
+      </div>
+      {% endif %}
+      {% if ricetta.abbinamenti %}
+      <div>
+        <div style="font-size:11px;font-weight:600;color:#888;margin-bottom:4px">ABBINAMENTI E VARIANTI</div>
+        <div class="pretext">{{ ricetta.abbinamenti }}</div>
+      </div>
+      {% endif %}
+      {% if ricetta.consigli_cottura %}
+      <div>
+        <div style="font-size:11px;font-weight:600;color:#888;margin-bottom:4px">CONSIGLI DI COTTURA</div>
+        <div class="pretext">{{ ricetta.consigli_cottura }}</div>
+      </div>
+      {% endif %}
+      {% if ricetta.note %}
+      <div>
+        <div style="font-size:11px;font-weight:600;color:#888;margin-bottom:4px">ALTRE NOTE</div>
+        <div class="pretext">{{ ricetta.note }}</div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

@@ -1,0 +1,46 @@
+# --- SETTINGS SENSIBILI ---
+django/project_core/settings/dev.py
+
+# --- DJANGO / PYTHON ---
+__pycache__/
+*.py[cod]
+*$py.class
+.env
+.venv/
+venv/
+ENV/
+db.sqlite3
+media/
+staticfiles/
+
+# --- ANGULAR / NODE ---
+node_modules/
+.angular/
+dist/
+tmp/
+out-tsc/
+bazel-out/
+.pnp.*
+.pnpm-debug.log*
+
+# --- DOCS (su share di rete Z:\Progetti IT\2026\Portale) ---
+docs/
+
+# --- IDE / SYSTEM ---
+.vscode/
+.idea/
+.DS_Store
+*.swp
+Thumbs.db
+django/logs/
+django/modules/importelab/_outbox/ordine_20260312_095842.eml
+django/modules/importelab/_outbox/ordine_20260312_100224.eml
+django/modules/importelab/_outbox/ordine_20260312_100230.eml
+django/modules/importelab/_outbox/ordine_20260312_100250.eml
+django/modules/importelab/_outbox/ordine_20260312_100407.eml
+django/modules/importelab/_outbox/ordine_20260312_101016.eml
+django/modules/importelab/_outbox/ordine_20260312_101233.eml
+
+# Credenziale Oracle locale (dev) - mai committare
+.oracle_pass
+django/.oracle_pass

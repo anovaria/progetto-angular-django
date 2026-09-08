@@ -1,0 +1,95 @@
+{% extends 'portal/base.html' %}
+{# Descrizione del template: Pannello di amministrazione per l'invio di messaggi popup urgenti a tutti gli utenti del portale o a utenti specifici. Accessibile solo al gruppo ITD. Mostra il messaggio attivo in cache (se presente) con opzione di cancellazione, e un form per inviare un nuovo messaggio con titolo, testo, destinatari e durata. #}
+{% block title %}Messaggi Portale{% endblock %}
+
+{% block page_content %}
+<div class="p-4">
+
+    {# Sezione: Intestazione della pagina #}
+    <div class="d-flex justify-content-between align-items-start mb-4">
+        <div>
+            <h4 style="color:#212529; margin-bottom:4px;">
+                <i class="bi bi-megaphone align-middle me-2"></i>
+                Messaggi Portale
+            </h4>
+            <small class="text-muted">Invia un messaggio popup a tutti o a utenti specifici</small>
+        </div>
+    </div>
+
+    {# Sezione: Feedback operazione - visibile dopo invio o cancellazione di un messaggio #}
+    {% if feedback %}
+    <div class="alert alert-success">{{ feedback }}</div>
+    {% endif %}
+
+    {# Sezione: Messaggio attivo in cache - visibile solo se esiste un messaggio correntemente attivo #}
+    {% if messaggio_attivo %}
+    <div class="card mb-4 border-warning">
+        <div class="card-header bg-warning bg-opacity-10 d-flex justify-content-between align-items-center">
+            <span><i class="bi bi-broadcast me-2"></i><strong>Messaggio attivo</strong></span>
+            {# Form di cancellazione del messaggio attivo dalla cache #}
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="azione" value="cancella">
+                <button class="btn btn-sm btn-outline-danger">
+                    <i class="bi bi-x-circle me-1"></i>Cancella
+                </button>
+            </form>
+        </div>
+        <div class="card-body">
+            <p class="mb-1"><strong>Titolo:</strong> {{ messaggio_attivo.titolo }}</p>
+            <p class="mb-1"><strong>Testo:</strong> {{ messaggio_attivo.testo }}</p>
+            <p class="mb-0"><strong>Destinatari:</strong>
+                {# Se la lista destinatari è vuota, il messaggio è visibile a tutti gli utenti #}
+                {% if messaggio_attivo.destinatari %}
+                    {{ messaggio_attivo.destinatari|join:", " }}
+                {% else %}
+                    Tutti
+                {% endif %}
+            </p>
+        </div>
+    </div>
+    {% endif %}
+
+    {# Sezione: Form per la creazione e invio di un nuovo messaggio urgente #}
+    <div class="card">
+        <div class="card-header">
+            <strong><i class="bi bi-plus-circle me-2"></i>Nuovo messaggio</strong>
+        </div>
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                {# Campo hidden che indica al backend l'azione da eseguire #}
+                <input type="hidden" name="azione" value="invia">
+
+                <div class="mb-3">
+                    <label class="form-label">Titolo</label>
+                    <input type="text" name="titolo" class="form-control" required>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Testo</label>
+                    <textarea name="testo" class="form-control" rows="3" required></textarea>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Destinatari</label>
+                    {# Lasciare vuoto per inviare a tutti; altrimenti inserire username separati da virgola #}
+                    <input type="text" name="destinatari" class="form-control" placeholder="mario.rossi, luigi.bianchi (vuoto = tutti)">
+                    <small class="text-muted">Username separati da virgola. Lascia vuoto per inviare a tutti.</small>
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label">Durata (minuti)</label>
+                    {# Durata predefinita: 60 minuti. Il backend converte in secondi per la cache. #}
+                    <input type="number" name="durata" class="form-control" value="60" min="1" style="max-width:150px;">
+                </div>
+
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-send me-2"></i>Invia messaggio
+                </button>
+            </form>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

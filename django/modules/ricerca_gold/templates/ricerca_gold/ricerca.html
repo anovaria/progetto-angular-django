@@ -1,0 +1,229 @@
+{% extends 'portal/base.html' %}
+
+{% block extra_js %}
+<script>
+/* Placeholder della textarea per ogni tipo di ricerca —
+   cambia quando l'utente clicca un tab */
+const placeholders = {
+    'gold': 'Incolla i codici Gold, uno per riga',
+    'ean': 'Incolla gli EAN, uno per riga',
+    'fornitore': 'Incolla i codici articolo fornitore, uno per riga'
+};
+
+/* Gestisce il click su un tab:
+   il form invierà il tipo scelto tramite il campo hidden */
+function setTab(tipo) {
+    // 1. scrive il tipo nel campo hidden — la view lo legge da request.POST
+    document.getElementById('tipo-ricerca').value = tipo;
+    // 2. aggiorna il placeholder della textarea in base al tipo
+    document.getElementById('codici').placeholder = placeholders[tipo];
+    // 3. evidenzia il tab cliccato — toglie 'active' a tutti, lo mette a quello giusto
+    document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+    event.target.classList.add('active');
+    // 4. il filtro "Solo EAN principale" non ha senso sulla ricerca per EAN
+    //    (il codice cercato è già l'EAN esatto di quella riga): lo nasconde
+    //    e toglie la spunta per non mandarlo in POST senza che l'utente lo veda
+    const solo = document.getElementById('solo-principale-wrap');
+    if (tipo === 'ean') {
+        solo.style.display = 'none';
+        solo.querySelector('input').checked = false;
+    } else {
+        solo.style.display = '';
+    }
+}
+</script>
+{% endblock %}
+
+{% block page_content %}
+<div class="container">
+
+    <!-- SEZIONE 1: form di ricerca con i tre tab -->
+    <div class="section">
+        <!-- I tab: quello corrispondente a {{ tipo }} (dalla view) parte evidenziato,
+             così dopo una ricerca il tab scelto resta attivo -->
+        <div class="tabs">
+            <button type="button" class="tab {% if tipo == 'gold' %}active{% endif %}" onclick="setTab('gold')">Cod. Gold</button>
+            <button type="button" class="tab {% if tipo == 'ean' %}active{% endif %}" onclick="setTab('ean')">EAN</button>
+            <button type="button" class="tab {% if tipo == 'fornitore' %}active{% endif %}" onclick="setTab('fornitore')">Cod. Art. Fornitore</button>
+        </div>
+
+        <form method="post">
+            {% csrf_token %}
+            <!-- Campo nascosto valorizzato dai tab via setTab() —
+                 è così che la view sa quale campo filtrare -->
+            <input type="hidden" name="tipo_ricerca" id="tipo-ricerca" value="{{ tipo }}">
+            <!-- name="codici" corrisponde a request.POST.get("codici") nella view -->
+            <textarea name="codici" id="codici" rows="10" placeholder="Incolla i codici Gold, uno per riga"></textarea>
+            <br>
+            <!-- Filtro come in Assortimento Abbig: tiene solo la riga con l'EAN
+                 principale dell'articolo (ETICEAN=1) invece di tutte le righe EAN.
+                 Non ha effetto sulla ricerca per EAN (il codice cercato è già l'EAN esatto). -->
+            <label id="solo-principale-wrap" style="display:{% if tipo == 'ean' %}none{% else %}inline-flex{% endif %}; align-items:center; gap:6px; margin:8px 0; font-size:0.85em; cursor:pointer;">
+                <input type="checkbox" name="solo_principale" value="1" {% if solo_principale %}checked{% endif %}>
+                Solo EAN principale
+            </label>
+            <br>
+            <button type="submit" class="btn">Cerca</button>
+            <!-- Pulisci: torna alla pagina in GET — la view svuota anche la sessione -->
+            <a href="{% url 'ricerca_gold_main' %}" class="btn" style="background:#95a5a6;">Pulisci</a>
+            <!-- Export: link in GET — la view rilegge codici e tipo dalla sessione -->
+            {% if righe is not None %}
+                <a href="{% url 'ricerca_gold_export' %}" class="btn">📥 Esporta Excel</a>
+            {% endif %}
+        </form>
+    </div>
+
+    {% if righe is not None %}
+    <div class="section">
+        <div class="section-title">Risultati ({{ righe|length }})</div>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Cod. Art. Fornitore</th>
+                        <th>Cod. Art. Gold</th>
+                        <th>Cod. Fornitore</th>
+                        <th>Descrizione</th>
+                        <th>Fornitore</th>
+                        <th>CCOM</th>
+                        <th>Descr. CCOM</th>
+                        <th>EAN</th>
+                        <th>Stato</th>
+                        <th>IVA</th>
+                        <th>Prezzo Acq.</th>
+                        <th>Prezzo Vend.</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Righe nell'ordine di incollaggio: trovate normali,
+                        non trovate in rosso con il codice cercato -->
+                    {% for riga in righe %}
+                    <tr {% if not riga.trovato %}class="riga-errore"{% endif %}>
+                        {% if riga.trovato %}
+                            <td>{{ riga.art.codartfo }}</td>
+                            <td>{{ riga.art.codart }}</td>
+                            <td>{{ riga.art.codforn }}</td>
+                            <td>{{ riga.art.descrart }}</td>
+                            <td>{{ riga.art.descforn }}</td>
+                            <td>{{ riga.art.ccom }}</td>
+                            <td>{{ riga.art.descrccom }}</td>
+                            <td>{{ riga.art.ean }}</td>
+                            <td>{{ riga.art.stato }}</td>
+                            <td>{{ riga.art.iva }}</td>
+                            <td>{{ riga.art.pracq|floatformat:2 }}</td>
+                            <td>{{ riga.art.przvend|floatformat:2 }}</td>
+                        {% else %}
+                            {# Codice non trovato: 12 celle, il codice va nella colonna del campo cercato #}
+                            <td>{% if tipo == "fornitore" %}{{ riga.codice }}{% endif %}</td>
+                            <td>{% if tipo == "gold" %}{{ riga.codice }}{% endif %}</td>
+                            <td></td>
+                            <td>NON PRESENTE IN GOLD</td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td>{% if tipo == "ean" %}{{ riga.codice }}{% endif %}</td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                        {% endif %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if non_trovati %}
+    <div class="section">
+        <div class="section-title warning-title">
+            {% if tipo == "ean" %}
+                ⚠ EAN non presenti in Gold (possibili nuovi articoli da inserire)
+            {% elif tipo == "gold" %}
+                ⚠ Codici Gold non presenti
+            {% else %}
+                ⚠ Codici articolo fornitore non presenti in Gold
+            {% endif %}
+            ({{ non_trovati|length }})
+        </div>
+        <div class="table-wrap">
+            <table class="warning-table">
+                <thead>
+                    <tr>
+                        <th>{% if tipo == "ean" %}EAN{% elif tipo == "gold" %}Cod. Art. Gold{% else %}Cod. Art. Fornitore{% endif %}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in non_trovati %}
+                    <tr><td>{{ r }}</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+{% block extra_css %}
+<style>
+    /* Contenitore centrato — stessa larghezza delle altre app del portale */
+    .container { max-width: 1400px; margin: 15px auto; padding: 0 15px; }
+
+    /* Sezioni bianche con ombra — stile standard del portale */
+    .section {
+        background: white; border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        margin-bottom: 15px; padding: 15px 20px;
+    }
+    /* Titolo di sezione — viola del tema portale */
+    .section-title {
+        font-size: 1em; font-weight: 600; margin-bottom: 12px;
+        color: #6c3483; border-bottom: 2px solid #8e44ad; padding-bottom: 6px;
+    }
+
+    /* Textarea codici — monospace per allineare i codici incollati */
+    textarea {
+        width: 100%; max-width: 400px;
+        padding: 8px 10px; border: 1px solid #ccc; border-radius: 4px;
+        font-family: monospace; font-size: 0.9em;
+    }
+    textarea:focus { border-color: #8e44ad; outline: none; }
+
+    /* Bottone azione principale */
+    .btn {
+        padding: 8px 16px; border: none; border-radius: 5px;
+        font-size: 0.85em; font-weight: 500; cursor: pointer;
+        background: #8e44ad; color: white;
+    }
+    .btn:hover { background: #6c3483; }
+
+    /* Tabella risultati: scroll orizzontale e verticale,
+       intestazione sticky che resta visibile durante lo scroll */
+    .table-wrap { overflow-x: auto; max-height: 500px; overflow-y: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.85em; }
+    th {
+        background: #6c3483; color: white; padding: 7px 8px;
+        text-align: left; position: sticky; top: 0; white-space: nowrap;
+    }
+    td { padding: 5px 8px; border-bottom: 1px solid #eee; }
+    /* Righe alternate + evidenziazione al passaggio del mouse */
+    tr:hover td { background: #f4ecf7; }
+    tr:nth-child(even) td { background: #fafbfc; }
+    tr:nth-child(even):hover td { background: #f4ecf7; }
+
+    /* Righe dei codici non trovati: rosse, vincono su hover e righe alternate */
+    .riga-errore td { background: #fdecea !important; color: #c0392b; font-weight: 600; }
+
+
+    /* Tab di selezione tipo ricerca — attivo in viola, inattivi in grigio */
+    .tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+    .tab {
+        padding: 8px 16px; border: 1px solid #ccc; border-radius: 5px 5px 0 0;
+        background: #f0f0f0; cursor: pointer; font-size: 0.85em;
+    }
+    .tab.active {
+        background: #8e44ad; color: white; border-color: #8e44ad; font-weight: 600;
+    }
+</style>
+{% endblock %}

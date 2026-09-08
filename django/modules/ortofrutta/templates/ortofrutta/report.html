@@ -1,0 +1,39 @@
+{% extends "portal/base.html" %}
+{% block page_content %}
+{% include "ortofrutta/_nav.html" %}
+<div class="container mt-4">
+    <h2>Report Cassa</h2>
+    <table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Codice Articolo</th>
+            <th>Descrizione</th>
+            <th>Gest</th>
+            <th>Quantità</th>
+            <th>Prezzo Unitario</th>
+            <th>Totale</th>
+        </tr>
+    </thead>
+        <tbody>
+            {%for riga in totali%}
+                <tr>
+                    <td>{{ riga.codart }}</td>
+                    <td>{{ riga.descrart }}</td>
+                    <td>{{ riga.gest }}</td>
+                    <td>{{ riga.quantita|default_if_none:'' }}</td>
+                    <td>{{ riga.prezzo_listino }}</td>
+                    <td>{{ riga.valore|floatformat:2 }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <form method="post" action="{% url 'ortofrutta:report_pdf' %}" 
+        onsubmit="if (!confirm('Generare il report e chiudere le righe fatturate?')) 
+        return false; setTimeout(() => location.href = '{% url "ortofrutta:scansione" %}', 1500);">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-primary">Scarica PDF</button>
+    </form>
+</div>
+
+
+{% endblock %}

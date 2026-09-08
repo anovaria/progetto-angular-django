@@ -1,0 +1,113 @@
+{% extends 'merchandiser/base_minimal.html' %}
+{# Descrizione del template: Form per la creazione e modifica di un merchandiser. Viene usato sia per nuovo (senza variabile merchandiser nel contesto) sia per modifica (con merchandiser precompilato). Il submit è gestito via AJAX con risposta JSON. #}
+
+{# Il titolo cambia dinamicamente in base a se stiamo modificando o creando #}
+{% block title %}{% if merchandiser %}Modifica{% else %}Nuovo{% endif %} Merchandiser{% endblock %}
+
+{% block content %}
+{# Sezione: Intestazione con titolo contestuale #}
+<div class="card mb-4">
+    <div class="card-body">
+        <h4 class="mb-0">
+            <i class="bi bi-{% if merchandiser %}edit{% else %}add{% endif %}" style="vertical-align: middle; font-size: 28px;"></i>
+            {% if merchandiser %}Modifica Merchandiser{% else %}Nuovo Merchandiser{% endif %}
+        </h4>
+    </div>
+</div>
+
+{# Sezione: Form dati merchandiser #}
+<div class="card">
+    <div class="card-body">
+        <form id="merchandiser-form" method="post">
+            {% csrf_token %}
+
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label class="form-label">Cognome <span class="text-danger">*</span></label>
+                    <input type="text"
+                           class="form-control"
+                           name="cognome"
+                           value="{% if merchandiser %}{{ merchandiser.cognome }}{% endif %}"
+                           required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Nome</label>
+                    <input type="text"
+                           class="form-control"
+                           name="nome"
+                           value="{% if merchandiser %}{{ merchandiser.nome }}{% endif %}">
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Note</label>
+                <textarea class="form-control"
+                          name="note"
+                          rows="3">{% if merchandiser %}{{ merchandiser.note }}{% endif %}</textarea>
+            </div>
+
+            <div class="mb-3">
+                <div class="form-check">
+                    <input type="checkbox"
+                           class="form-check-input"
+                           name="attivo"
+                           id="attivo"
+                           {# Checkbox attivo spuntato per default per i nuovi record; per la modifica segue il valore corrente #}
+                           {% if not merchandiser or merchandiser.attivo %}checked{% endif %}>
+                    <label class="form-check-label" for="attivo">
+                        Attivo
+                    </label>
+                </div>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-merchandiser">
+                    <i class="bi bi-floppy" style="vertical-align: middle;"></i>
+                    Salva
+                </button>
+                <a href="{% url 'merchandiser:merchandiser_list' %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-x-circle" style="vertical-align: middle;"></i>
+                    Annulla
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Intercetta il submit del form e lo invia via AJAX per ricevere una risposta JSON
+document.getElementById('merchandiser-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    const formData = new FormData(this);
+    const btn = this.querySelector('button[type="submit"]');
+    // Disabilita il bottone durante il salvataggio per evitare doppi invii
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Salvataggio...';
+
+    fetch(this.action || window.location.href, {
+        method: 'POST',
+        body: formData
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            // Redirect alla lista dopo il salvataggio
+            window.location.href = '{% url "merchandiser:merchandiser_list" %}';
+        } else {
+            alert(data.error || 'Errore durante il salvataggio');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-floppy" style="vertical-align: middle;"></i> Salva';
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        alert('Errore durante il salvataggio');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-floppy" style="vertical-align: middle;"></i> Salva';
+    });
+});
+</script>
+{% endblock %}

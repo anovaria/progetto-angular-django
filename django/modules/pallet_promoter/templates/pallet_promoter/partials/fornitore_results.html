@@ -1,0 +1,11 @@
+{# Descrizione del template: Frammento HTML per i risultati dell'autocomplete fornitore. Restituito dalla view cerca_fornitore; ogni item porta data-id (codice) e data-nome (testo) usati da JavaScript per popolare i campi hidden. #}
+{# Sezione: lista risultati fornitore — itera sulla lista "results" passata dalla view cerca_fornitore #}
+{% for f in results %}
+{# Ogni item porta data-id=codice e data-nome=testo per essere letto dal JavaScript del chiamante #}
+<div class="fornitore-item" data-id="{{ f.id }}" data-nome="{{ f.text }}">
+    {{ f.text }}
+</div>
+{% empty %}
+{# Messaggio mostrato quando la ricerca non produce risultati (query non trovata) #}
+<div class="fornitore-item text-muted">Nessun risultato</div>
+{% endfor %}

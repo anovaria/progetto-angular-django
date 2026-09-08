@@ -1,0 +1,59 @@
+{% extends 'portal/base.html' %}
+{# Descrizione del template: Pagina principale dell'app Invenduti. Mostra le quattro opzioni di analisi disponibili come card cliccabili. #}
+
+{% block extra_css %}
+<style>
+  .opzioni-container {
+    padding: 30px;
+  }
+  .opzione-card {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 15px;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .opzione-card:hover {
+    background: #f8f9fa;
+  }
+  .opzione-titolo {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #1F4E79;
+  }
+  .btn-anteprima {
+    background-color: #1F4E79;
+    color: #fff;
+    border: none;
+    padding: 8px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    text-decoration: none;
+  }
+  .btn-anteprima:hover {
+    background-color: #163a5a;
+    color: #fff;
+  }
+</style>
+{% endblock %}
+
+{% block page_content %}
+{# Sezione: Contenitore principale con elenco opzioni #}
+<div class="opzioni-container">
+  <h4 class="mb-4">Invenduti — Selezione Opzione</h4>
+  {# Itera sulle opzioni definite nel dizionario OPZIONI del views.py #}
+  {% for key, opzione in opzioni.items %}
+  <div class="opzione-card">
+    {# Mostra il titolo dell'opzione (es. "Invenduti Deposito (E/I/S/P)") #}
+    <span class="opzione-titolo">{{ opzione.titolo }}</span>
+    {# Link che porta all'anteprima dati per l'opzione selezionata #}
+    <a href="{% url 'invenduti_anteprima' key %}" class="btn-anteprima">
+      Visualizza
+    </a>
+  </div>
+  {% endfor %}
+</div>
+{% endblock page_content %}

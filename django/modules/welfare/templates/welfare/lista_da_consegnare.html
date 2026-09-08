@@ -1,0 +1,165 @@
+{% extends "welfare/base_minimal.html" %}
+{# Descrizione del template: Lista completa dei buoni welfare in attesa di consegna (stato PRONTO).
+   Offre filtraggio per codice voucher, ordinamento multi-colonna con indicatori
+   di direzione (asc/desc) e mostra il valore totale complessivo dei buoni in attesa.
+   Ogni riga ha azioni rapide per visualizzare il dettaglio o andare direttamente alla cassa. #}
+
+{% block title %}Da Consegnare{% endblock %}
+
+{% block content %}
+{# Sezione: Intestazione con contatore badge dei voucher in attesa #}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="mb-0">
+        <i class="bi bi-inbox align-middle me-2"></i>
+        Buoni da Consegnare
+    </h4>
+    <span class="badge bg-primary fs-6">{{ richieste.count }} in attesa</span>
+</div>
+
+{# Sezione: Form filtri - mantiene i parametri sort/dir per non perdere l'ordinamento corrente #}
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            {# Campi nascosti per preservare l'ordinamento corrente durante il filtraggio #}
+            <input type="hidden" name="sort" value="{{ sort }}">
+            <input type="hidden" name="dir" value="{{ dir }}">
+            <div class="col-md-6">
+                <label class="form-label">Codice voucher</label>
+                <input type="text" name="codice" class="form-control"
+                       value="{{ filtro_codice }}" placeholder="Cerca per codice...">
+            </div>
+            <div class="col-md-6 d-flex align-items-end">
+                <button type="submit" class="btn btn-welfare me-2">
+                    <i class="bi bi-funnel align-middle"></i>
+                    Filtra
+                </button>
+                {# Reset: cancella tutti i filtri tornando alla lista non filtrata #}
+                <a href="{% url 'welfare:lista_da_consegnare' %}" class="btn btn-outline-secondary">
+                    Reset
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+{# Sezione: Tabella principale con intestazioni ordinabili #}
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover table-welfare mb-0">
+            <thead>
+                <tr>
+                    {# Colonna Voucher: header cliccabile che alterna asc/desc mantenendo il filtro codice attivo #}
+                    {# Voucher #}
+                    <th>
+                        {% if sort == 'voucher' %}
+                            {# Colonna attiva: mostra freccia direzione e inverte direzione al click #}
+                            <a href="?sort=voucher&dir={% if dir == 'asc' %}desc{% else %}asc{% endif %}{% if filtro_codice %}&codice={{ filtro_codice }}{% endif %}" class="text-decoration-none text-dark fw-bold">
+                                Voucher {% if dir == 'asc' %}<i class="bi bi-arrow-up align-middle" style="font-size:16px"></i>{% else %}<i class="bi bi-arrow-down align-middle" style="font-size:16px"></i>{% endif %}
+                            </a>
+                        {% else %}
+                            {# Colonna non attiva: mostra icona neutra, click imposta asc come default #}
+                            <a href="?sort=voucher&dir=asc{% if filtro_codice %}&codice={{ filtro_codice }}{% endif %}" class="text-decoration-none text-secondary">
+                                Voucher <i class="bi bi-chevron-expand align-middle" style="font-size:16px;opacity:0.3"></i>
+                            </a>
+                        {% endif %}
+                    </th>
+                    {# Nominativo #}
+                    <th>
+                        {% if sort == 'nominativo' %}
+                            <a href="?sort=nominativo&dir={% if dir == 'asc' %}desc{% else %}asc{% endif %}{% if filtro_codice %}&codice={{ filtro_codice }}{% endif %}" class="text-decoration-none text-dark fw-bold">
+                                Nominativo {% if dir == 'asc' %}<i class="bi bi-arrow-up align-middle" style="font-size:16px"></i>{% else %}<i class="bi bi-arrow-down align-middle" style="font-size:16px"></i>{% endif %}
+                            </a>
+                        {% else %}
+                            <a href="?sort=nominativo&dir=asc{% if filtro_codice %}&codice={{ filtro_codice }}{% endif %}" class="text-decoration-none text-secondary">
+                                Nominativo <i class="bi bi-chevron-expand align-middle" style="font-size:16px;opacity:0.3"></i>
+                            </a>
+                        {% endif %}
+                    </th>
+                    {# Mittente #}
+                    <th>Mittente</th>
+                    {# Data Richiesta #}
+                    <th>
+                        {% if sort == 'data' %}
+                            <a href="?sort=data&dir={% if dir == 'asc' %}desc{% else %}asc{% endif %}{% if filtro_codice %}&codice={{ filtro_codice }}{% endif %}" class="text-decoration-none text-dark fw-bold">
+                                Data Richiesta {% if dir == 'asc' %}<i class="bi bi-arrow-up align-middle" style="font-size:16px"></i>{% else %}<i class="bi bi-arrow-down align-middle" style="font-size:16px"></i>{% endif %}
+                            </a>
+                        {% else %}
+                            <a href="?sort=data&dir=asc{% if filtro_codice %}&codice={{ filtro_codice }}{% endif %}" class="text-decoration-none text-secondary">
+                                Data Richiesta <i class="bi bi-chevron-expand align-middle" style="font-size:16px;opacity:0.3"></i>
+                            </a>
+                        {% endif %}
+                    </th>
+                    {# Qta #}
+                    <th class="text-center">
+                        {% if sort == 'qta' %}
+                            <a href="?sort=qta&dir={% if dir == 'asc' %}desc{% else %}asc{% endif %}{% if filtro_codice %}&codice={{ filtro_codice }}{% endif %}" class="text-decoration-none text-dark fw-bold">
+                                Qta {% if dir == 'asc' %}<i class="bi bi-arrow-up align-middle" style="font-size:16px"></i>{% else %}<i class="bi bi-arrow-down align-middle" style="font-size:16px"></i>{% endif %}
+                            </a>
+                        {% else %}
+                            <a href="?sort=qta&dir=asc{% if filtro_codice %}&codice={{ filtro_codice }}{% endif %}" class="text-decoration-none text-secondary">
+                                Qta <i class="bi bi-chevron-expand align-middle" style="font-size:16px;opacity:0.3"></i>
+                            </a>
+                        {% endif %}
+                    </th>
+                    {# Totale #}
+                    <th class="text-end">
+                        {% if sort == 'totale' %}
+                            <a href="?sort=totale&dir={% if dir == 'asc' %}desc{% else %}asc{% endif %}{% if filtro_codice %}&codice={{ filtro_codice }}{% endif %}" class="text-decoration-none text-dark fw-bold">
+                                Totale {% if dir == 'asc' %}<i class="bi bi-arrow-up align-middle" style="font-size:16px"></i>{% else %}<i class="bi bi-arrow-down align-middle" style="font-size:16px"></i>{% endif %}
+                            </a>
+                        {% else %}
+                            <a href="?sort=totale&dir=asc{% if filtro_codice %}&codice={{ filtro_codice }}{% endif %}" class="text-decoration-none text-secondary">
+                                Totale <i class="bi bi-chevron-expand align-middle" style="font-size:16px;opacity:0.3"></i>
+                            </a>
+                        {% endif %}
+                    </th>
+                    <th class="text-center">Azioni</th>
+                </tr>
+            </thead>
+            <tbody>
+                {# Sezione: Righe dati - itera su tutte le richieste filtrate/ordinate dalla view #}
+                {% for r in richieste %}
+                <tr>
+                    <td><code>{{ r.num_richiesta }}</code></td>
+                    <td><strong>{{ r.nominativo }}</strong></td>
+                    <td>{{ r.nome_mittente|default:"-" }}</td>
+                    <td>{{ r.data_creazione|date:"d/m/Y" }}</td>
+                    <td class="text-center">{{ r.qta_buono }}</td>
+                    <td class="text-end"><strong>€ {{ r.totale_buono }}</strong></td>
+                    <td class="text-center">
+                        {# Azione 1: visualizza dettaglio completo del voucher #}
+                        <a href="{% url 'welfare:ricerca_voucher' %}?voucher={{ r.num_richiesta }}"
+                           class="btn btn-sm btn-outline-secondary me-1" title="Dettaglio">
+                            <i class="bi bi-eye" style="font-size:16px"></i>
+                        </a>
+                        {# Azione 2: vai direttamente alla schermata di consegna cassa #}
+                        <a href="{% url 'welfare:cassa_consegna' %}?voucher={{ r.num_richiesta }}"
+                           class="btn btn-sm btn-success" title="Consegna">
+                            <i class="bi bi-check" style="font-size:16px"></i>
+                        </a>
+                    </td>
+                </tr>
+                {# Stato vuoto: mostrato quando non ci sono buoni in attesa (queryset vuota) #}
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="text-center text-muted py-5">
+                        <i class="bi bi-box-seam d-block mb-2" style="font-size:48px"></i>
+                        Nessun buono in attesa di consegna
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {# Sezione: Footer con totali - mostrato solo se ci sono richieste nel queryset #}
+    {% if richieste %}
+    <div class="card-footer bg-white d-flex justify-content-between">
+        <span class="text-muted">Totale: {{ richieste.count }} richieste</span>
+        <span class="text-muted">
+            Valore: <strong>€ {{ totale_valore }}</strong>
+        </span>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

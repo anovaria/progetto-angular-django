@@ -1,0 +1,151 @@
+{% extends 'merchandiser/base_minimal.html' %}
+{# Descrizione del template: Lista anagrafica hostess con toggle attive/tutte, bottone creazione e azioni di modifica/disattivazione (soft delete) per ogni riga. #}
+
+{% block title %}Anagrafica Hostess{% endblock %}
+
+{% block content %}
+{# Sezione: Intestazione con titolo e pulsanti azione (nuova, filtro attive/tutte) #}
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center">
+            <h4 class="mb-0">
+                <i class="bi bi-person-badge" style="vertical-align: middle; font-size: 28px;"></i>
+                Anagrafica Hostess
+            </h4>
+            <div>
+                <a href="{% url 'merchandiser:hostess_add' %}" class="btn btn-merchandiser">
+                    <i class="bi bi-plus" style="vertical-align: middle;"></i>
+                    Nuova Hostess
+                </a>
+                {# I pulsanti Tutte/Solo Attive sono evidenziati in base al filtro corrente #}
+                <a href="?attive=0" class="btn btn-sm {% if not solo_attive %}btn-merchandiser{% else %}btn-outline-secondary{% endif %}">
+                    Tutte
+                </a>
+                <a href="?attive=1" class="btn btn-sm {% if solo_attive %}btn-merchandiser{% else %}btn-outline-secondary{% endif %}">
+                    Solo Attive
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# Sezione: Tabella elenco hostess #}
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>Nominativo</th>
+                    <th>Ruolo</th>
+                    <th>Note</th>
+                    <th style="width: 100px;">Stato</th>
+                    <th style="width: 150px;">Azioni</th>
+                </tr>
+            </thead>
+            <tbody>
+                {# Itera sull'elenco hostess filtrato dalla vista #}
+                {% for hostess in hostess_list %}
+                <tr>
+                    <td><strong>{{ hostess.nominativo }}</strong></td>
+                    <td>
+                        {# Mostra trattino se il ruolo non è compilato #}
+                        {% if hostess.ruolo %}
+                            {{ hostess.ruolo }}
+                        {% else %}
+                            <span class="text-muted">-</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {# La nota viene troncata a 50 caratteri per non allargare troppo la colonna #}
+                        {% if hostess.nota %}
+                            <small>{{ hostess.nota|truncatechars:50 }}</small>
+                        {% else %}
+                            <span class="text-muted">-</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {# Badge verde per attiva, grigio per non attiva #}
+                        {% if hostess.attiva %}
+                        <span class="badge bg-success">Attiva</span>
+                        {% else %}
+                        <span class="badge bg-secondary">Non Attiva</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{% url 'merchandiser:hostess_edit' hostess.id %}"
+                           class="btn btn-sm btn-outline-primary"
+                           title="Modifica">
+                            <i class="bi bi-pencil-square" style="font-size: 16px;"></i>
+                        </a>
+                        {# Il bottone disattiva è visibile solo per le hostess attive (soft delete) #}
+                        {% if hostess.attiva %}
+                        <button type="button"
+                                class="btn btn-sm btn-outline-danger"
+                                onclick="deleteHostess({{ hostess.id }}, '{{ hostess.nominativo }}')"
+                                title="Disattiva">
+                            <i class="bi bi-trash" style="font-size: 16px;"></i>
+                        </button>
+                        {% endif %}
+                    </td>
+                </tr>
+                {# Riga mostrata quando la lista è vuota #}
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center text-muted py-5">
+                        <i class="bi bi-person-slash" style="font-size: 48px;"></i>
+                        <p class="mt-2">
+                            {# Il messaggio cambia in base al filtro attive/tutte #}
+                            {% if solo_attive %}
+                                Nessuna hostess attiva trovata
+                            {% else %}
+                                Nessuna hostess trovata
+                            {% endif %}
+                        </p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{# Sezione: Contatore totale risultati #}
+<div class="mt-3">
+    <p class="text-muted">
+        <i class="bi bi-info-circle" style="font-size: 16px; vertical-align: middle;"></i>
+        Totale: <strong>{{ hostess_list.count }}</strong> hostess
+        {% if solo_attive %}(solo attive){% endif %}
+    </p>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Esegue il soft-delete di una hostess tramite chiamata AJAX POST
+function deleteHostess(id, nome) {
+    if (!confirm(`Sei sicuro di voler disattivare "${nome}"?`)) {
+        return;
+    }
+
+    // Sostituisce il placeholder /0/ nell'URL con l'ID reale della hostess
+    fetch(`{% url 'merchandiser:hostess_delete' 0 %}`.replace('/0/', `/${id}/`), {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}'
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Errore durante la disattivazione');
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        alert('Errore durante la disattivazione');
+    });
+}
+</script>
+{% endblock %}

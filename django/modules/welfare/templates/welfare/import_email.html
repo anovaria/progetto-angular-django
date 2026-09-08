@@ -1,0 +1,188 @@
+{% extends "welfare/base_minimal.html" %}
+{# Descrizione del template: Interfaccia admin per l'import manuale di richieste welfare da email ePassi.
+   Suddivisa in due pannelli: a sinistra il form per incollare l'HTML dell'email e avviare
+   il parsing automatico con visualizzazione del risultato; a destra la lista delle richieste
+   provvisorie in attesa di validazione con azioni di conferma/eliminazione via AJAX.
+   Include le istruzioni sul formato email atteso da ePassi. #}
+
+{% block title %}Import Email{% endblock %}
+
+{% block content %}
+{# Sezione: Intestazione pagina #}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="mb-0">
+        <i class="bi bi-envelope align-middle me-2"></i>
+        Import Email ePassi
+    </h4>
+</div>
+
+<div class="row g-4">
+    {# Sezione: Pannello sinistro - form per incollare e analizzare l'HTML dell'email #}
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-white py-3">
+                <h5 class="mb-0">Inserimento Manuale HTML</h5>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    {# Campo nascosto che identifica l'azione: avvia il parser regex sull'HTML incollato #}
+                    <input type="hidden" name="azione" value="parse_html">
+
+                    <div class="mb-3">
+                        <label class="form-label">Contenuto HTML Email</label>
+                        <textarea name="html_content" class="form-control font-monospace"
+                                  rows="12" placeholder="Incolla qui il contenuto HTML dell'email ePassi..."></textarea>
+                        <div class="form-text">
+                            Copia il corpo dell'email dalla casella di posta e incollalo qui.
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-welfare">
+                        <i class="bi bi-code align-middle me-1"></i>
+                        Analizza e Importa
+                    </button>
+                </form>
+
+                {# Sezione: Risultato parsing - mostrato solo dopo il submit del form #}
+                {% if risultato_parsing %}
+                <hr>
+                <h6>Risultato Parsing:</h6>
+                {# Caso successo: mostra i dati estratti dall'email per verifica visiva prima della validazione #}
+                {% if risultato_parsing.success %}
+                <div class="alert alert-success">
+                    <strong>Dati estratti:</strong><br>
+                    Voucher: {{ risultato_parsing.num_richiesta }}<br>
+                    Nominativo: {{ risultato_parsing.nominativo }}<br>
+                    Valore: € {{ risultato_parsing.valore_buono }}<br>
+                    Quantità: {{ risultato_parsing.quantita }}<br>
+                    Totale: € {{ risultato_parsing.totale }}
+                </div>
+                {# Caso errore: mostra il messaggio di errore del parser (campo mancante o eccezione) #}
+                {% else %}
+                <div class="alert alert-danger">
+                    <strong>Errore:</strong> {{ risultato_parsing.errore }}
+                </div>
+                {% endif %}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    {# Sezione: Pannello destro - lista richieste provvisorie in attesa di validazione #}
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Richieste da Validare</h5>
+                {# Badge con contatore delle provvisorie non ancora processate #}
+                <span class="badge bg-warning">{{ provvisorie.count }}</span>
+            </div>
+            <div class="card-body p-0">
+                {# Lista provvisorie: mostrata solo se esistono richieste da validare #}
+                {% if provvisorie %}
+                <div class="list-group list-group-flush">
+                    {# Itera su tutte le richieste provvisorie non processate, ordinate per data import discendente #}
+                    {% for p in provvisorie %}
+                    <div class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <strong>{{ p.num_richiesta }}</strong>
+                                <span class="text-muted">- {{ p.nominativo }}</span>
+                                <br>
+                                <small class="text-muted">
+                                    € {{ p.totale_buono }} | Import: {{ p.data_importazione|date:"d/m/Y H:i" }}
+                                </small>
+                                {# Messaggio di errore: mostrato solo se la validazione precedente è fallita #}
+                                {% if p.errore %}
+                                <br><small class="text-danger">{{ p.errore }}</small>
+                                {% endif %}
+                            </div>
+                            {# Pulsanti azione: validazione e eliminazione gestite via fetch API JavaScript #}
+                            <div class="btn-group">
+                                <button class="btn btn-sm btn-success"
+                                        onclick="validaProvvisoria({{ p.id }})" title="Valida">
+                                    <i class="bi bi-check" style="font-size:16px"></i>
+                                </button>
+                                <button class="btn btn-sm btn-danger"
+                                        onclick="eliminaProvvisoria({{ p.id }})" title="Elimina">
+                                    <i class="bi bi-trash" style="font-size:16px"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {# Stato vuoto: nessuna richiesta in attesa di validazione #}
+                {% else %}
+                <div class="text-center text-muted py-5">
+                    <i class="bi bi-inbox d-block mb-2" style="font-size:48px"></i>
+                    Nessuna richiesta da validare
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        {# Sezione: Card informativa sul formato email atteso dal parser ePassi #}
+        <div class="card mt-3">
+            <div class="card-body">
+                <h6><i class="bi bi-info-circle align-middle me-1"></i> Formato Email ePassi</h6>
+                <small class="text-muted">
+                    L'email deve contenere i seguenti campi:<br>
+                    • Codice richiesta: XXXXXXXX (8 cifre)<br>
+                    • Punto vendita<br>
+                    • Valore del buono<br>
+                    • Quantità<br>
+                    • Prezzo totale
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Funzione AJAX per validare una richiesta provvisoria: la sposta nell'archivio definitivo
+function validaProvvisoria(id) {
+    if (!confirm('Confermi la validazione?')) return;
+
+    // Chiamata POST all'endpoint di validazione con l'id della provvisoria
+    fetch(`/app/welfare/import/valida/${id}/`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'}
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            // Ricarica la pagina per aggiornare la lista delle provvisorie
+            alert(`Richiesta ${data.num_richiesta} validata!`);
+            location.reload();
+        } else {
+            alert('Errore: ' + (data.error || 'Sconosciuto'));
+        }
+    })
+    .catch(e => alert('Errore: ' + e));
+}
+
+// Funzione AJAX per eliminare definitivamente una richiesta provvisoria
+function eliminaProvvisoria(id) {
+    if (!confirm('Eliminare questa richiesta provvisoria?')) return;
+
+    // Chiamata POST all'endpoint di eliminazione
+    fetch(`/app/welfare/import/elimina/${id}/`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'}
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            // Ricarica la pagina per rimuovere la riga eliminata dalla lista
+            location.reload();
+        } else {
+            alert('Errore');
+        }
+    })
+    .catch(e => alert('Errore: ' + e));
+}
+</script>
+{% endblock %}

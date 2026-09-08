@@ -1,0 +1,11 @@
+{
+    "name": "portale-root",
+    "private": true,
+    "scripts": {
+        "dev": "start http://localhost:4200/ && cd django && venv\\Scripts\\python manage.py runserver 0.0.0.0:4200 --settings=project_core.settings.dev",
+        "start": "npm run dev",
+        "deploy:test": "powershell -ExecutionPolicy Bypass -Command \"Start-Process powershell -Verb RunAs -ArgumentList '-ExecutionPolicy Bypass -NoExit -File C:\\portale\\deploy\\deploy-test.ps1'\"",
+        "deploy:prod": "powershell -ExecutionPolicy Bypass -Command \"Start-Process powershell -Verb RunAs -ArgumentList '-ExecutionPolicy Bypass -NoExit -File C:\\portale\\deploy\\deploy-prod.ps1'\"",
+        "audit": "powershell -ExecutionPolicy Bypass -Command \"Start-Process powershell -Verb RunAs -ArgumentList '-ExecutionPolicy Bypass -NoExit -File C:\\portale\\deploy\\security-audit.ps1'\""
+    }
+}

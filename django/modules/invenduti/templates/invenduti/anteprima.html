@@ -1,0 +1,125 @@
+{% extends 'portal/base.html' %}
+{# Descrizione del template: Anteprima dei dati invenduti per l'opzione selezionata. Mostra la tabella con tutte le colonne definite in COLONNE nel views.py e un pulsante export Excel. #}
+{% load invenduti_tags %}
+
+{% block extra_css %}
+<style>
+  .anteprima-container {
+    padding: 20px;
+  }
+  .toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 15px;
+  }
+  .toolbar h5 {
+    color: #1F4E79;
+    margin: 0;
+  }
+  .btn-back {
+    background: #6c757d;
+    color: #fff;
+    border: none;
+    padding: 7px 16px;
+    border-radius: 5px;
+    cursor: pointer;
+    text-decoration: none;
+    margin-right: 8px;
+  }
+  .btn-back:hover {
+    background: #565e64;
+    color: #fff;
+  }
+  .btn-export {
+    background: #1F4E79;
+    color: #fff;
+    border: none;
+    padding: 7px 16px;
+    border-radius: 5px;
+    cursor: pointer;
+    text-decoration: none;
+  }
+  .btn-export:hover {
+    background: #163a5a;
+    color: #fff;
+  }
+  .totale {
+    font-size: 0.9rem;
+    color: #6c757d;
+    margin-bottom: 10px;
+  }
+  .table-wrapper {
+    overflow-x: auto;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+  }
+  thead th {
+    background: #1F4E79;
+    color: #fff;
+    padding: 8px 10px;
+    text-align: left;
+    white-space: nowrap;
+    position: sticky;
+    top: 0;
+  }
+  tbody tr:nth-child(even) {
+    background: #f2f6fc;
+  }
+  tbody tr:hover {
+    background: #dce8f5;
+  }
+  tbody td {
+    padding: 6px 10px;
+    border-bottom: 1px solid #dee2e6;
+    white-space: nowrap;
+  }
+</style>
+{% endblock %}
+
+{% block page_content %}
+<div class="anteprima-container">
+
+  {# Sezione: Toolbar con titolo, pulsante indietro e pulsante export Excel #}
+  <div class="toolbar">
+    <h5>{{ titolo }}</h5>
+    <div>
+      {# Pulsante per tornare alla selezione opzioni #}
+      <a href="{% url 'invenduti_main' %}" class="btn-back">← Indietro</a>
+      {# Pulsante per scaricare i dati in formato Excel #}
+      <a href="{% url 'invenduti_export' opzione %}" class="btn-export">⬇ Export Excel</a>
+    </div>
+  </div>
+
+  {# Contatore del numero totale di record trovati #}
+  <div class="totale">Totale record: <strong>{{ totale }}</strong></div>
+
+  {# Sezione: Tabella dati con colonne dinamiche definite in views.py #}
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr>
+          {# Intestazioni colonne: usa solo l'etichetta (secondo elemento della tupla) #}
+          {% for _, label in colonne %}
+          <th>{{ label }}</th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {# Itera le righe restituite dalla query SQL #}
+        {% for riga in righe %}
+        <tr>
+          {# Per ogni colonna, usa il filtro get_item per accedere al valore per campo #}
+          {% for campo, _ in colonne %}
+          <td>{{ riga|get_item:campo|default:'' }}</td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock page_content %}

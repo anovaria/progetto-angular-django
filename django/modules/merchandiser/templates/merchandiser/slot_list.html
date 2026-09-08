@@ -1,0 +1,302 @@
+{% extends "merchandiser/base_minimal.html" %}
+{# Descrizione del template: Lista slot con filtri per merchandiser e stato attivo/disattivato. Le righe sono colorate in verde per gli slot attivi oggi, in grigio per i disattivati. Include azioni di disattivazione (soft delete) e riattivazione via AJAX. #}
+
+{% block title %}Slot - Merchandiser{% endblock %}
+
+{% block extra_css %}
+<style>
+    .note-cell {
+        max-width: 300px;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+    }
+
+    /* Evidenzia le note con sfondo giallo per renderle visivamente distinte #}
+    .note-highlight {
+        background: #fff9c4;
+        padding: 4px 8px;
+        border-radius: 4px;
+        display: inline-block;
+        border-left: 3px solid #ffd54f;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+{# Sezione: Intestazione con titolo e bottone creazione nuovo slot #}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="mb-0">
+        <i class="bi bi-calendar-event" style="vertical-align: middle;"></i>
+        Slot Merchandiser
+    </h4>
+    <a href="{% url 'merchandiser:slot_add' %}" class="btn btn-success">
+        <i class="bi bi-plus" style="font-size: 16px; vertical-align: middle;"></i>
+        Nuovo Slot
+    </a>
+</div>
+
+{# Sezione: Form filtri (merchandiser, stato attivo) #}
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label">Cerca per nome</label>
+                <input type="text" name="cerca" class="form-control" placeholder="es. Giglio" value="{{ cerca }}">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Merchandiser</label>
+                <select name="merchandiser" class="form-select">
+                    <option value="">Tutti</option>
+                    {# Popola il dropdown con i merchandiser attivi; marca come selected quello filtrato #}
+                    {% for m in merchandiser_list %}
+                    <option value="{{ m.id }}" {% if filtro_merchandiser == m.id|stringformat:"s" %}selected{% endif %}>
+                        {{ m.nominativo }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <div class="form-check">
+                    {# Il checkbox e il campo hidden lavorano insieme: il checkbox aggiorna il valore hidden via JS #}
+                    <input type="checkbox"
+                           class="form-check-input"
+                           id="attivi-check"
+                           {% if solo_attivi %}checked{% endif %}
+                           onchange="document.getElementById('attivi-value').value = this.checked ? '1' : '0'">
+                    <input type="hidden" name="attivi" id="attivi-value" value="{% if solo_attivi %}1{% else %}0{% endif %}">
+                    <label class="form-check-label" for="attivi-check">Solo attivi</label>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-filter" style="font-size: 16px; vertical-align: middle;"></i>
+                    Filtra
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{# Sezione: Tabella elenco slot con colorazione per stato #}
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Merchandiser</th>
+                    <th>Inizio</th>
+                    <th>Fine</th>
+                    <th>Giorni</th>
+                    <th>Note</th>
+                    <th style="width: 130px;"></th>
+                </tr>
+            </thead>
+            <tbody>
+                {# Itera sull'elenco slot; la riga viene colorata in verde se lo slot è attivo oggi, in grigio se disattivato #}
+                {% for slot in slots %}
+                <tr class="{% if slot.data_inizio <= oggi and slot.data_fine >= oggi and slot.attivo %}table-success{% elif not slot.attivo %}table-secondary{% endif %}">
+                    <td>{{ slot.id }}</td>
+                    <td>
+                        <strong>{{ slot.merchandiser.nominativo }}</strong>
+                        {# Badge grigio accanto al nome se lo slot è stato disattivato #}
+                        {% if not slot.attivo %}
+                            <span class="badge bg-secondary ms-2">Disattivato</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ slot.data_inizio|date:"d/m/Y" }}</td>
+                    <td class="data-fine-cell" data-slot-id="{{ slot.id }}" data-data-fine="{{ slot.data_fine|date:'Y-m-d' }}" data-nominativo="{{ slot.merchandiser.nominativo }}">{{ slot.data_fine|date:"d/m/Y" }}</td>
+                    <td>{{ slot.giorni_attivi }}</td>
+                    <td class="note-cell">
+                        {# Le note vengono evidenziate con sfondo giallo se presenti #}
+                        {% if slot.note %}
+                            <span class="note-highlight">{{ slot.note }}</span>
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{% url 'merchandiser:slot_detail' slot.id %}"
+                           class="btn btn-sm btn-outline-primary"
+                           title="Dettaglio">
+                            <i class="bi bi-pencil-square" style="font-size: 16px;"></i>
+                        </a>
+                        <button type="button"
+                                class="btn btn-sm btn-outline-warning"
+                                onclick="apriModaleDataFine({{ slot.id }}, '{{ slot.data_fine|date:'Y-m-d' }}', '{{ slot.merchandiser.nominativo }}')"
+                                title="Modifica data fine">
+                            <i class="bi bi-calendar-x" style="font-size: 16px;"></i>
+                        </button>
+
+                        {# Per gli slot attivi mostra il bottone disattiva; per i disattivati mostra il bottone riattiva #}
+                        {% if slot.attivo %}
+                            <button type="button"
+                                    class="btn btn-sm btn-outline-danger"
+                                    onclick="deleteSlot({{ slot.id }})"
+                                    title="Disattiva">
+                                <i class="bi bi-trash" style="font-size: 16px;"></i>
+                            </button>
+                        {% else %}
+                            <button type="button"
+                                    class="btn btn-sm btn-outline-success"
+                                    onclick="restoreSlot({{ slot.id }})"
+                                    title="Riattiva">
+                                <i class="bi bi-arrow-counterclockwise" style="font-size: 16px;"></i>
+                            </button>
+                        {% endif %}
+                    </td>
+                </tr>
+                {# Riga mostrata quando non ci sono slot che corrispondono ai filtri #}
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="text-center text-muted py-4">
+                        Nessuno slot trovato
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{# Sezione: Contatore totale risultati #}
+<div class="mt-3 text-muted">
+    Totale: {{ slots|length }} slot
+</div>
+
+{# Modal modifica data fine #}
+<div class="modal fade" id="modalDataFine" tabindex="-1" aria-labelledby="modalDataFineLabel" aria-hidden="true">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalDataFineLabel">Modifica data fine</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="modal-merch-nome" class="fw-bold mb-3"></div>
+                <label class="form-label">Nuova data fine</label>
+                <input type="date" id="modal-input-data-fine" class="form-control">
+                <div id="modal-errore" class="text-danger mt-2 d-none"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                <button type="button" class="btn btn-primary" onclick="salvaDataFine()">Salva</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let slotIdCorrente = null;
+
+function apriModaleDataFine(slotId, dataFineAttuale, nomeMerch) {
+    slotIdCorrente = slotId;
+    document.getElementById('modal-merch-nome').textContent = nomeMerch;
+    document.getElementById('modal-input-data-fine').value = dataFineAttuale;
+    document.getElementById('modal-errore').classList.add('d-none');
+    new bootstrap.Modal(document.getElementById('modalDataFine')).show();
+}
+
+function salvaDataFine() {
+    const dataFine = document.getElementById('modal-input-data-fine').value;
+    const erroreDiv = document.getElementById('modal-errore');
+
+    if (!dataFine) {
+        erroreDiv.textContent = 'Inserisci una data';
+        erroreDiv.classList.remove('d-none');
+        return;
+    }
+
+    const url = `{% url 'merchandiser:slot_aggiorna_data_fine' 0 %}`.replace('/0/', `/${slotIdCorrente}/`);
+
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `data_fine=${dataFine}`
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            // Aggiorna la cella nella tabella senza ricaricare la pagina
+            document.querySelectorAll('.data-fine-cell').forEach(cell => {
+                if (parseInt(cell.dataset.slotId) === slotIdCorrente) {
+                    cell.textContent = data.data_fine_display;
+                    cell.dataset.dataFine = dataFine;
+                }
+            });
+            bootstrap.Modal.getInstance(document.getElementById('modalDataFine')).hide();
+        } else {
+            erroreDiv.textContent = data.error || 'Errore sconosciuto';
+            erroreDiv.classList.remove('d-none');
+        }
+    })
+    .catch(() => {
+        erroreDiv.textContent = 'Errore di connessione';
+        erroreDiv.classList.remove('d-none');
+    });
+}
+
+// Disattiva uno slot tramite soft delete (attivo=False) con conferma utente
+function deleteSlot(id) {
+    if (!confirm('Sei sicuro di voler disattivare questo slot?\n\nLo slot non sarà più visibile ma i dati saranno conservati.')) {
+        return;
+    }
+
+    // Sostituisce il placeholder /0/ con l'ID reale dello slot
+    const url = `{% url 'merchandiser:slot_delete' 0 %}`.replace('/0/', `/${id}/`);
+
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}'
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Errore: ' + (data.error || 'Sconosciuto'));
+        }
+    })
+    .catch(err => {
+        console.error('Errore fetch:', err);
+        alert('Errore durante la disattivazione');
+    });
+}
+
+// Riattiva uno slot precedentemente disattivato
+function restoreSlot(id) {
+    if (!confirm('Riattivare questo slot?')) {
+        return;
+    }
+
+    // Sostituisce il placeholder /0/ con l'ID reale dello slot
+    const url = `{% url 'merchandiser:slot_restore' 0 %}`.replace('/0/', `/${id}/`);
+
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}'
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Errore: ' + (data.error || 'Sconosciuto'));
+        }
+    })
+    .catch(err => {
+        console.error('Errore fetch:', err);
+        alert('Errore durante la riattivazione');
+    });
+}
+</script>
+{% endblock %}

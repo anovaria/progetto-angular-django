@@ -1,0 +1,222 @@
+{% extends "portal/base.html" %}
+
+{% block page_content %}
+<div class="container-fluid">
+    <h2 class="artnuovi-title">Articoli Nuovi</h2>
+    <p>{{ conteggio }} articoli trovati
+        <button type="button" class="btn btn-outline-secondary btn-sm no-print" onclick="window.print()">
+            <i class="bi bi-printer"></i> Stampa
+        </button>
+    </p>
+    <div class="card artnuovi-table-card">
+        <div class="card-body">
+            <table class="table table-striped table-sm table-bordered artnuovi-table">
+                    <colgroup>
+        <col style="width: 9%;">   <!-- Data Aggio -->
+        <col style="width: 7%;">   <!-- Buyer -->
+        <col style="width: 3%;">   <!-- Sett -->
+        <col style="width: 3%;">   <!-- Rep -->
+        <col style="width: 7%;">   <!-- Ccom -->
+        <col style="width: 6%;">   <!-- Descr. Ccom -->
+        <col style="width: 3%;">   <!-- Corsia -->
+        <col style="width: 3%;">   <!-- Campata -->
+        <col style="width: 3%;">   <!-- Facing -->
+        <col style="width: 15%;">   <!-- Ean Grafico -->
+        <col style="width: 6%;">   <!-- Cod. Art. -->
+        <col style="width: 12%;">  <!-- Descr. Art -->
+        <col style="width: 3%;">   <!-- Stato -->
+        <col style="width: 3%;">   <!-- Giac. PDV -->
+        <col style="width: 5%;">   <!-- Gest. Rio. -->
+        <col style="width: 4%;">   <!-- VL-901 -->
+        <col style="width: 3%;">   <!-- Pz x Crt -->
+        <col style="width: 3%;">   <!-- Giac. Dep. -->
+        <col style="width: 4%;">   <!-- Qta in Ord. -->
+        <col style="width: 8%;">   <!-- Dta Ult. Ord. -->
+        <col style="width: 8%;">   <!-- Data Cons. Prev. -->
+        <col style="width: 8%;">   <!-- Dta Ult. Ric. -->
+        <col style="width: 3%;">   <!-- Tipo EAN -->
+        <col style="width: 11%;">   <!-- EAN -->
+    </colgroup>
+                <thead>
+                    <tr>
+                        <th>Data Aggio.</th>
+                        <th>Buyer</th>
+                        <th>Sett</th>
+                        <th>Rep</th>
+                        <th>Ccom</th>
+                        <th>Descr. Ccom</th>
+                        <th>Co</th>
+                        <th>Ca</th>
+                        <th>Facing</th>
+                        <th>Barcode</th>
+                        <th>Cod. Art.</th>
+                        <th>Descr. Art</th>
+                        <th>Stato</th>
+                        <th>Giac. PDV</th>
+                        <th>Gest.Rio.</th>
+                        <th>VL-901</th>
+                        <th>Pz x Crt</th>
+                        <th>Giac. Dep.</th>
+                        <th>Qta in Ord.</th>
+                        <th>Dta Ult. Ord.</th>
+                        <th>Data Cons. Prev.</th>
+                        <th>Dta Ult. Ric.</th>
+                        <th>Tipo EAN</th>
+                        <th>EAN</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for a in articoli %}
+                    <tr>
+                        <td>{{ a.dta_aggio }}</td>
+                        <td>{{ a.buyer }}</td>
+                        <td>{{ a.settore }}</td>
+                        <td>{{ a.reparto }}</td>
+                        <td>{{ a.ccom }}</td>
+                        <td>{{ a.descr_for }}</td>
+                        <td>{{ a.corsia|default_if_none:""|floatformat:0 }}</td>
+                        <td>{{ a.campata|default_if_none:""|floatformat:0 }}</td>
+                        <td>{{ a.facing|default_if_none:""|floatformat:0 }}</td>
+                        <td>
+                            {% if a.barcode_valido %}
+                                <svg class="barcode" data-ean="{{ a.ean_13 }}"></svg>
+                            {% else %}
+                                <span class="text-muted">{{ a.ean_13 }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ a.cod_articolo }}</td>
+                        <td>{{ a.descr_articolo }}</td>
+                        <td>{{ a.stato }}</td>
+                        <td class="{% if a.giac_pdv < 5 %}table-danger fw-bold{% endif %}">{{ a.giac_pdv|default_if_none:""|floatformat:0 }}</td>
+                        <td>{{ a.gest_rio }}</td>
+                        <td>{{ a.vl }}</td>
+                        <td>{{ a.pzxcart|default_if_none:""|floatformat:0 }}</td>
+                        <td class="{% if a.giac_dep > 0 %}table-success fw-bold{% endif %}">{{ a.giac_dep|default_if_none:""|floatformat:0 }}</td>
+                        <td>{{ a.qta_in_ordine|default_if_none:""|floatformat:0 }}</td>
+                        <td>{{ a.ultimo_ordine|default_if_none:""  }}</td>
+                        <td>{{ a.data_consegna|default_if_none:""  }}</td>
+                        <td>{{ a.ultimo_ricevimento|default_if_none:""  }}</td>
+                        <td>{{ a.tipo_ean }}</td>
+                        <td>{{ a.ean }}</td>       
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>    
+    </div>        
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.barcode').forEach(function(svg) {
+            const ean = svg.dataset.ean;
+            if (ean && ean.length === 13) {
+                try {
+                    JsBarcode(svg, ean, { format: 'EAN13', width: 1.5, height: 40, displayValue: false, margin: 0 });
+                } catch (e) { console.error('Errore barcode:', ean, e); }
+            }
+        });
+    });
+</script>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .artnuovi-title {
+        position: sticky;
+        top: 64px;
+        background: #f5f5f5;
+        z-index: 20;
+        padding: 12px 0;
+        margin: 0;
+    }
+.artnuovi-table thead th {
+    background-color: #2E5090;
+    color: white;
+    position: sticky;
+    top: 127px;
+    z-index: 10;
+    transform: translateZ(0);
+    padding: 0.4rem 0.5rem;
+    white-space: normal;
+    font-size: 0.75rem;
+    line-height: 1.2;
+    vertical-align: middle;
+}
+.artnuovi-table tbody td {
+    font-size: 0.75rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.artnuovi-table tbody td:nth-child(2),   /* Buyer */
+.artnuovi-table tbody td:nth-child(6),   /* Descr. Ccom */
+.artnuovi-table tbody td:nth-child(12),  /* Descr. Art */
+.artnuovi-table tbody td:nth-child(15) { /* Gest. Rio. */
+    white-space: normal;
+}
+    .artnuovi-table td.table-success,
+    .artnuovi-table td.table-danger {
+        position: relative;
+        z-index: 0;
+    }
+    .artnuovi-table-card .card-body {
+        padding-top: 0;
+        padding-left: 0;
+        padding-right: 0;
+    }
+    .table-bordered > :not(caption) > * > * {
+        border-width: 2px;
+    }
+    .artnuovi-table {
+        table-layout: fixed;
+    }
+    .artnuovi-table th,
+    .artnuovi-table td {
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    @page {
+        size: landscape;
+    }
+
+    @media print {
+        .app-header-bar { display: none; }
+        .sidebar { display: none; }
+        .sidebar-overlay { display: none; }
+        .portal-footer { display: none; }
+        .no-print { display: none !important; }
+
+        .main-content-bg {
+            margin-left: 0 !important;
+        }
+        .card, .card-body, .artnuovi-table-card {
+            overflow: visible !important;
+            height: auto !important;
+        }
+        .artnuovi-title {
+            position: static !important;
+        }
+        .artnuovi-table thead th {
+            position: static !important;
+        }
+        .artnuovi-table {
+            page-break-inside: auto;
+        }
+        .artnuovi-table tr {
+            page-break-inside: avoid;
+        }
+        .artnuovi-table thead {
+            display: table-header-group;
+        }
+        * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+    }
+</style>
+{% endblock %}

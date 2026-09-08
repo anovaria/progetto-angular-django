@@ -1,0 +1,35 @@
+{# Descrizione del template: Frammento HTML (partial HTMX) per una singola riga testata nella griglia. Restituito dalla view assegna_testata dopo il salvataggio per aggiornare la riga nella tabella. #}
+{% load pallet_tags %}
+{# Le testate bloccate ricevono la classe testata-bloccata (sfondo rosso chiaro, pulsante modifica assente) #}
+<div class="testata-row {% if testata.bloccata %}testata-bloccata{% endif %}"
+     data-testata-id="{{ testata.id }}"
+     data-testata-locazione="{{ testata.locazione }}"
+     data-fornitore-id="{% if assegnazione and assegnazione.fornitore %}{{ assegnazione.fornitore.codice }}{% endif %}"
+     data-fornitore-nome="{% if assegnazione and assegnazione.fornitore %}{{ assegnazione.fornitore.nome }}{% endif %}">
+    <div class="testata-id">
+        {{ testata.id }}
+        {# Badge BLOCCATA visibile solo sulle testate non modificabili #}
+        {% if testata.bloccata %}
+        <span class="badge bg-danger badge-bloccata">BLOCCATA</span>
+        {% endif %}
+    </div>
+    <div class="testata-locazione">{{ testata.locazione }}</div>
+    {# Classe "assegnato" (verde) se il fornitore è valorizzato, "vuoto" altrimenti #}
+    <div class="testata-fornitore {% if assegnazione and assegnazione.fornitore %}assegnato{% else %}vuoto{% endif %}">
+        {% if assegnazione and assegnazione.fornitore %}
+        {{ assegnazione.fornitore.nome }}
+        {% else %}
+        — disponibile —
+        {% endif %}
+    </div>
+    <div class="testata-actions">
+        {# Il pulsante di modifica è nascosto per le testate bloccate #}
+        {% if not testata.bloccata %}
+        <button class="btn btn-sm btn-outline-primary btn-assegna-testata"
+                data-bs-toggle="modal"
+                data-bs-target="#modalTestata">
+            <i class="bi bi-pencil-square" style="font-size: 16px;"></i>
+        </button>
+        {% endif %}
+    </div>
+</div>

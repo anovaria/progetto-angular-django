@@ -1,0 +1,227 @@
+{% extends 'edicola/base.html' %}
+
+{% block title %}Edicola — Gestione Edicola{% endblock %}
+
+{% block content %}
+  <h1>Gestione Edicola</h1>
+
+  <section class="panel">
+    <div class="row action-row">
+      <form method="post" action="{% url 'edicola:refresh' %}" class="row">
+        {% csrf_token %}
+        <button class="btn" type="submit">Aggiorna</button>
+      </form>
+      <form method="post" action="{% url 'edicola:clear_dates' %}" class="row" onsubmit="return confirm('Vuoi davvero azzerare tutte le date?');">
+        {% csrf_token %}
+        <button class="btn secondary" type="submit">Azzera date</button>
+      </form>
+    </div>
+  </section>
+
+  <div class="cards">
+    <div class="card">
+      <div class="card-label">Record in tabella</div>
+      <div class="card-value">{{ total }}</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Giacenze negative</div>
+      <div class="card-value">{{ neg }}</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Data di aggiornamento</div>
+      <div class="card-value">{% if updated_dtaaggio %}{{ updated_dtaaggio }}{% else %}—{% endif %}</div>
+    </div>
+  </div>
+
+  <section class="panel">
+    <form method="get" class="filters" id="filters-form">
+      <input type="text" name="q" id="search-input" value="{{ q }}" placeholder="Cerca (cod. art., EAN, descrizione, stato...)" autocomplete="off" />
+
+      <label class="chk"><input type="checkbox" name="main" value="1" {% if only_main %}checked{% endif %}> solo EAN Princ. = 1</label>
+      <label class="chk"><input type="checkbox" name="neg" value="1" {% if only_neg %}checked{% endif %}> solo giacenze &lt; 0</label>
+      <label class="chk"><input type="checkbox" id="filter-data" name="hasdate" value="1" {% if only_has_date %}checked{% endif %}> solo articoli con Data</label>
+
+      <button class="btn" type="submit">Filtra</button>
+      <a class="btn secondary" href="{% url 'edicola:dashboard' %}">Reset</a>
+    </form>
+
+    <div class="muted">Totale visualizzato: {{ page_obj.paginator.count }} record</div>
+    <div class="muted note-temporary">Prezzo V. è temporaneo e un nuovo “Aggiorna” lo sovrascrive. La Data invece viene mantenuta fino a quando non usi “Azzera date”.</div>
+
+    <div class="table-wrap">
+      <div class="scrollbox">
+        <table class="tbl">
+          <thead>
+            <tr>
+              <th>Cod. Art.</th>
+              <th>Descrizione Articolo</th>
+              <th>EAN Princ.</th>
+              <th>EAN</th>
+              <th>Stato</th>
+              <th>Giacenza</th>
+              <th>Prezzo V.</th>
+              <th>Data</th>
+            </tr>
+          </thead>
+          <tbody id="articoli-tbody">
+            {% for r in page_obj.object_list %}
+              <tr class="{% if r.codart in codart_green and r.eanprinc == 1 %}row-green {% endif %}{% if r.eanprinc|stringformat:'s' == '1' or r.eanprinc|stringformat:'s'|lower == 'true' %}row-main {% endif %}{% if r.data %}row-has-date{% endif %}">
+                <td class="mono">{{ r.codart }}</td>
+                <td class="descr-cell">{{ r.descrart }}</td>
+                <td class="mono">{{ r.eanprinc }}</td>
+                <td class="mono">{{ r.ean }}</td>
+                <td>{{ r.stato }}</td>
+                <td class="mono {% if r.giacenza_pdv is not None and r.giacenza_pdv < 0 %}cell-red{% endif %}">
+                  {% if r.giacenza_pdv is not None %}{{ r.giacenza_pdv }}{% endif %}
+                </td>
+                <td class="mono edit-cell">
+                  <input
+                    type="text"
+                    value="{% if r.prezzovend is not None %}{{ r.prezzovend }}{% endif %}"
+                    class="inline-input inline-input-price autosave-field"
+                    placeholder="—"
+                    data-row-id="{{ r.id }}"
+                    data-field="prezzovend"
+                    data-initial-value="{% if r.prezzovend is not None %}{{ r.prezzovend }}{% endif %}"
+                  />
+                </td>
+                <td class="mono edit-cell">
+                  <input
+                    type="datetime-local"
+                    value="{% if r.data %}{{ r.data|date:'Y-m-d\\TH:i' }}{% endif %}"
+                    class="inline-input inline-input-date autosave-field"
+                    data-row-id="{{ r.id }}"
+                    data-field="data"
+                    data-initial-value="{% if r.data %}{{ r.data|date:'Y-m-d\\TH:i' }}{% endif %}"
+                  />
+                </td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="8" class="muted">Nessun record</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    (function() {
+      const filtersForm = document.getElementById('filters-form');
+      const searchInput = document.getElementById('search-input');
+      const tbody = document.getElementById('articoli-tbody');
+      const totalLabel = document.querySelector('.muted');
+      const filterData = document.getElementById('filter-data');
+      const rows = tbody ? Array.from(tbody.querySelectorAll('tr')) : [];
+      const initialOnlyWithData = {% if only_has_date %}true{% else %}false{% endif %};
+
+      function normalize(value) {
+        return (value || '')
+          .toString()
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[̀-ͯ]/g, '')
+          .trim();
+      }
+
+      function applyClientFilter() {
+        if (!searchInput || !tbody) return;
+        const query = normalize(searchInput.value);
+        const onlyWithData = !!(filterData && filterData.checked);
+        let visible = 0;
+
+        rows.forEach(function(row) {
+          if (row.children.length === 1 && row.textContent.includes('Nessun record')) {
+            return;
+          }
+          if (!row.dataset.searchText) {
+            row.dataset.searchText = normalize(row.textContent.replace(/\s+/g, ' '));
+          }
+          const matchesQuery = !query || row.dataset.searchText.includes(query);
+          const dateInput = row.querySelector('input[data-field="data"]');
+          const hasData = !!(dateInput && dateInput.value && dateInput.value.trim() !== '');
+          const matchesData = !onlyWithData || hasData;
+          const match = matchesQuery && matchesData;
+          row.style.display = match ? '' : 'none';
+          if (match) visible += 1;
+        });
+
+        if (totalLabel) {
+          totalLabel.textContent = 'Totale visualizzato: ' + visible + ' record';
+        }
+      }
+
+      if (searchInput) {
+        searchInput.addEventListener('input', applyClientFilter);
+      }
+      applyClientFilter();
+
+      function getCookie(name) {
+        const cookieValue = document.cookie
+          .split('; ')
+          .find(row => row.startsWith(name + '='));
+        return cookieValue ? decodeURIComponent(cookieValue.split('=')[1]) : '';
+      }
+
+      const csrfToken = getCookie('csrftoken');
+      const autosaveUrl = "{% url 'edicola:autosave_note' %}";
+
+      async function autosaveField(input) {
+        const currentValue = input.value.trim();
+        const initialValue = (input.dataset.initialValue || '').trim();
+
+        if (currentValue === initialValue || input.dataset.saving === '1') {
+          return;
+        }
+
+        input.dataset.saving = '1';
+        input.classList.remove('save-error', 'save-ok');
+
+        const body = new URLSearchParams({
+          row_id: input.dataset.rowId,
+          field: input.dataset.field,
+          value: input.value
+        });
+
+        try {
+          const response = await fetch(autosaveUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+              'X-CSRFToken': csrfToken,
+              'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: body.toString()
+          });
+
+          const data = await response.json();
+          if (!response.ok || !data.ok) {
+            throw new Error((data && data.error) ? data.error : 'Errore di salvataggio');
+          }
+
+          input.dataset.initialValue = currentValue;
+          input.classList.add('save-ok');
+          window.setTimeout(() => input.classList.remove('save-ok'), 1200);
+        } catch (error) {
+          input.classList.add('save-error');
+          window.setTimeout(() => input.classList.remove('save-error'), 2500);
+          window.alert(error.message || 'Errore di salvataggio');
+        } finally {
+          input.dataset.saving = '0';
+        }
+      }
+
+      document.querySelectorAll('.autosave-field').forEach(function(input) {
+        input.addEventListener('blur', function() {
+          autosaveField(input);
+        });
+
+        if (input.type === 'datetime-local') {
+          input.addEventListener('change', function() {
+            autosaveField(input);
+          });
+        }
+      });
+    })();
+  </script>
+{% endblock %}

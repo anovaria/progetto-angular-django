@@ -1,0 +1,110 @@
+{# Descrizione del template: Pagina standalone per la stampa dei barcode PLU. Non estende il template base per mantenere una pagina pulita ottimizzata per la stampa. Mostra una griglia di card con PLU, descrizione e barcode EAN13 generato da JsBarcode. La toolbar fissa è nascosta in modalità stampa. #}
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<title>Stampa Barcode PLU</title>
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body { font-family: Arial, sans-serif; background: white; }
+
+    {# Toolbar fissa in cima alla pagina, nascosta in stampa tramite @media print #}
+    .toolbar {
+        display: flex; align-items: center; gap: 12px;
+        padding: 10px 16px; background: #2E5090; color: white;
+        position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    }
+    .toolbar h4 { font-size: 15px; flex: 1; }
+    .toolbar button {
+        padding: 6px 16px; border: none; border-radius: 4px; cursor: pointer;
+        font-size: 13px; font-weight: 600;
+    }
+    .btn-print { background: #4CAF50; color: white; }
+    .btn-back  { background: rgba(255,255,255,0.2); color: white; }
+
+    {# Griglia responsive: le card si adattano alla larghezza disponibile con minimo 200px #}
+    .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 8px;
+        padding: 70px 12px 12px; /* padding-top compensa la toolbar fissa */
+    }
+
+    {# Card singola barcode: page-break-inside evita che venga spezzata su due pagine in stampa #}
+    .card {
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        padding: 8px 6px 4px;
+        text-align: center;
+        page-break-inside: avoid;
+        break-inside: avoid;
+    }
+
+    .card .plu    { font-size: 10px; color: #666; margin-bottom: 2px; }
+    .card .descr  { font-size: 11px; font-weight: 600; margin-bottom: 4px;
+                    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .card svg     { width: 100%; height: 60px; }
+    .card .ean    { font-size: 10px; color: #444; margin-top: 2px; }
+
+    @media print {
+        /* Nasconde la toolbar durante la stampa */
+        .toolbar { display: none; }
+        /* Rimuove il padding-top aggiunto per compensare la toolbar fissa */
+        .grid { padding-top: 0; }
+        body { background: white; }
+    }
+</style>
+</head>
+<body>
+
+{# Sezione: Toolbar fissa con titolo, contatore articoli e pulsanti chiudi/stampa #}
+<div class="toolbar">
+    <h4>Stampa Barcode — {{ articoli|length }} articoli
+        {# Indica se i risultati sono stati filtrati (parametri GET presenti) #}
+        {% if filters %}
+        (filtrati)
+        {% endif %}
+    </h4>
+    {# Chiude la finestra/tab aperta con target="_blank" dalla pagina lista #}
+    <button class="btn-back" onclick="window.close()">✕ Chiudi</button>
+    <button class="btn-print" onclick="window.print()">🖨 Stampa</button>
+</div>
+
+{# Sezione: Griglia di card barcode — una card per ogni articolo PLU #}
+<div class="grid">
+    {# Itera gli articoli passati dalla vista plu_stampa con gli stessi filtri della lista #}
+    {% for art in articoli %}
+    <div class="card">
+        <div class="plu">PLU {{ art.plu }}</div>
+        {# La descrizione è troncata con CSS text-overflow; il testo completo è nel title del tooltip #}
+        <div class="descr" title="{{ art.descrizione }}">{{ art.descrizione }}</div>
+        {# SVG vuoto: il barcode EAN13 viene generato dal codice JavaScript sottostante #}
+        <svg class="barcode" data-ean="{{ art.ean_formatted }}"></svg>
+        <div class="ean">{{ art.codArticolo }}</div>
+    </div>
+    {% endfor %}
+</div>
+
+{# JsBarcode: libreria per generare barcode EAN13 come SVG inline lato client #}
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+<script>
+// Genera i barcode EAN13 per tutti gli elementi SVG con classe "barcode"
+document.querySelectorAll('.barcode').forEach(function(svg) {
+    var ean = svg.dataset.ean;
+    // Controlla che l'EAN abbia esattamente 13 cifre prima di tentare la generazione
+    if (ean && ean.length === 13) {
+        try {
+            JsBarcode(svg, ean, {
+                format: 'EAN13',
+                width: 1.8,
+                height: 55,
+                displayValue: false,
+                margin: 2
+            });
+        } catch(e) {}  // Ignora silenziosamente EAN non validi (es. codici non numerici)
+    }
+});
+</script>
+</body>
+</html>

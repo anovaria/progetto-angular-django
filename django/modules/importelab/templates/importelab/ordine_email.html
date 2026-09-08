@@ -1,0 +1,56 @@
+{% extends 'importelab/base_minimal.html' %}
+{% block content %}
+
+<h2>Invio ordine via Outlook</h2>
+
+<p class="muted">
+  L'allegato è il file reale: <code>Ordine.ext</code> (nome configurabile con <code>ORDER_EXT_FILENAME</code>).<br>
+  Se il file non esiste ancora, l'app lo genera automaticamente leggendo i dati da GoldReport (<code>dbo_t_OrdiniRossetto</code>).<br>
+  La cartella di riferimento è quella configurata in <code>ELAB_SOURCE_DIR</code> (cartella di lavoro).
+</p>
+
+{% if last_batch %}
+  <p style="margin: 0.5rem 0;">
+    <strong>Ultimo batch:</strong> {{ last_batch.filename }} ({{ last_batch.uploaded_at }})<br>
+    <strong>Cartella sorgente configurata:</strong> <code>{{ source_dir }}</code><br>
+    <strong>Cartella batch (server-side):</strong> <code>{{ last_batch.import_dir }}</code><br>
+    <strong>Allegato:</strong> <code>{{ attachment_path }}</code>
+    <br>
+    <strong>Stato ordine:</strong>
+    {% if attachment_exists %}
+      <span style="color:#0a6;">presente</span>
+    {% else %}
+      <span style="color:#a00;">non presente (verrà generato al momento dell'invio)</span>
+    {% endif %}
+  </p>
+{% endif %}
+
+{% if message %}
+  <div style="padding:0.75rem; border:1px solid #cce5ff; background:#eef7ff; margin:1rem 0;">
+    {{ message }}
+  </div>
+{% endif %}
+
+{% if error %}
+  <div style="padding:0.75rem; border:1px solid #f5c6cb; background:#fff0f1; margin:1rem 0;">
+    <strong>Errore:</strong> {{ error }}
+  </div>
+{% endif %}
+
+<form method="post" style="margin: 1.25rem 0;">
+  {% csrf_token %}
+  <label style="display:block; margin: 0 0 0.75rem 0;">
+    <input type="checkbox" name="force_regen" value="1" checked>
+    <strong>Rigenera ordine</strong> anche se esiste già (consigliato)
+    <div class="muted" style="margin-left: 1.4rem;">Se deselezioni, verrà riusato il file ordine esistente (se presente).</div>
+  </label>
+  <button type="submit" style="padding: 0.6rem 1rem;">
+    Genera file email (.eml) con allegato
+  </button>
+</form>
+
+<p>
+  <a href="{% url 'importelab:dashboard' %}?skip_sync=1">← Torna alla dashboard</a>
+</p>
+
+{% endblock %}

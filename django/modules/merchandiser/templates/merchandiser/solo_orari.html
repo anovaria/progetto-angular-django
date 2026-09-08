@@ -1,0 +1,396 @@
+{% extends "merchandiser/base_minimal.html" %}
+{# Descrizione del template: Vista semplificata per la registrazione delle timbrature dal Punto Info. Mostra tutti gli slot attivi per la data selezionata con navigazione giorno precedente/successivo. Le date diverse da oggi sono in sola lettura (campi disabilitati). Ogni riga ha un pannello espandibile con i dettagli dello slot. Il doppio click sui campi orario inserisce l'ora corrente. #}
+{% load merch_tags %}
+
+{% block title %}Registrazione Orari - Punto Info{% endblock %}
+
+{% block extra_css %}
+<style>
+    .date-selector {
+        background: white;
+        padding: 15px 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    .date-selector h5 { margin: 0; }
+
+    /* Barra filtro "solo compilati" con badge contatore */
+    .filter-bar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.88em;
+        color: #555;
+        cursor: pointer;
+        user-select: none;
+    }
+    .filter-bar input[type="checkbox"] {
+        width: 16px;
+        height: 16px;
+        accent-color: #ff5722;
+        cursor: pointer;
+    }
+    .filter-bar .count-badge {
+        background: #ff5722;
+        color: white;
+        border-radius: 10px;
+        padding: 1px 8px;
+        font-size: 0.8em;
+        font-weight: 600;
+    }
+
+    .orari-grid {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        overflow: hidden;
+    }
+    .orari-table { width: 100%; margin: 0; }
+    .orari-table th {
+        background: #ff5722;
+        color: white;
+        padding: 12px 8px;
+        text-align: center;
+        font-weight: 600;
+    }
+    .orari-table th:first-child { text-align: left; padding-left: 15px; }
+    .orari-table td {
+        padding: 8px;
+        border-bottom: 1px solid #eee;
+        text-align: center;
+        vertical-align: middle;
+    }
+    .orari-table td:first-child { text-align: left; padding-left: 15px; }
+    .orari-table input[type="time"] {
+        width: 80px;
+        padding: 4px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        text-align: center;
+        cursor: pointer;
+    }
+    .orari-table input[type="time"]:focus { border-color: #ff5722; outline: none; }
+    /* Campo orario con valore evidenziato in giallo */
+    .orari-table input[type="time"].has-value { background: #fff9c4; border-color: #fbc02d; }
+    .merchandiser-name { font-weight: 600; }
+    .btn-salva-riga { min-width: 40px; }
+    .btn-salva-riga .bi, .btn-expand .bi { font-size: 18px; }
+    .btn-expand {
+        min-width: 36px;
+        padding: 4px 8px;
+        border: none;
+        background: #f5f5f5;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .btn-expand:hover { background: #e0e0e0; }
+    /* Bottone espandi diventa arancione e ruota l'icona quando il pannello è aperto */
+    .btn-expand.expanded { background: #ff5722; color: white; }
+    .btn-expand .bi { transition: transform 0.2s; }
+    .btn-expand.expanded .bi { transform: rotate(45deg); }
+    /* Riga dettaglio slot: nascosta di default, mostrata via JS */
+    .detail-row { display: none; background: #fafafa; }
+    .detail-row.show { display: table-row; }
+    .detail-row td { padding: 12px 15px; border-bottom: 2px solid #ff5722; }
+    .detail-content { display: flex; flex-wrap: wrap; gap: 20px; align-items: center; }
+    .detail-item { display: flex; align-items: center; gap: 8px; }
+    .detail-item .label { font-size: 0.75em; color: #666; text-transform: uppercase; font-weight: 600; }
+    .detail-item .value { font-size: 0.9em; color: #333; }
+    .giorni-badge { display: inline-flex; gap: 3px; }
+    .giorno {
+        width: 22px; height: 22px; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 0.7em; font-weight: 600;
+        background: #e0e0e0; color: #999;
+    }
+    /* Giorno attivo nello slot evidenziato in arancione */
+    .giorno.attivo { background: #ff5722; color: white; }
+    .note-box { background: #fff9c4; padding: 6px 10px; border-radius: 4px; font-size: 0.85em; max-width: 400px; }
+    .actions-cell { white-space: nowrap; }
+    .actions-cell .btn { margin-left: 4px; }
+
+    /* Riga nascosta dal filtro "solo compilati" */
+    .main-row.filtered-out { display: none; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    {# Sezione: Intestazione pagina #}
+    <h4 class="mb-4">
+        <i class="bi bi-clock" style="vertical-align: middle;"></i>
+        Registrazione Orari Merchandiser
+    </h4>
+
+    {# Sezione: Selettore data con navigazione giorno precedente/successivo e filtro compilati #}
+    <div class="date-selector">
+        <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+            {# Link navigazione al giorno precedente #}
+            <a href="?data={{ data_prec|date:'Y-m-d' }}" class="btn btn-sm btn-outline-secondary" title="Giorno precedente">
+                <i class="bi bi-chevron-left"></i>
+            </a>
+            <h5 style="margin:0;">
+                <i class="bi bi-calendar-date" style="vertical-align: middle; margin-right: 10px;"></i>
+                {{ data|date:"l d F Y"|upper }}
+            </h5>
+            {# Link navigazione al giorno successivo #}
+            <a href="?data={{ data_succ|date:'Y-m-d' }}" class="btn btn-sm btn-outline-secondary" title="Giorno successivo">
+                <i class="bi bi-chevron-right"></i>
+            </a>
+            {# Badge "Sola lettura" mostrato se la data selezionata non è oggi #}
+            {% if is_readonly %}
+            <span class="badge bg-warning text-dark" style="font-size:0.85rem;">
+                <i class="bi bi-eye" style="vertical-align:middle;"></i> Sola lettura
+            </span>
+            {% endif %}
+        </div>
+        {# Checkbox filtro: nasconde le righe senza orari compilati; il badge mostra il conteggio #}
+        <label class="filter-bar">
+            <input type="checkbox" id="chk-solo-compilati" onchange="filtraOrari(this)">
+            Solo con orari compilati
+            <span class="count-badge" id="badge-compilati">0</span>
+        </label>
+    </div>
+
+    {# Sezione: Tabella orari - una riga principale per slot, con riga dettaglio espandibile #}
+    <div class="orari-grid">
+        <table class="orari-table table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th style="width: 40px;"></th>
+                    <th>Merchandiser</th>
+                    <th>I.1</th>
+                    <th>U.1</th>
+                    <th>I.2</th>
+                    <th>U.2</th>
+                    <th>I.Extra</th>
+                    <th>U.Extra</th>
+                    <th style="width: 100px;"></th>
+                </tr>
+            </thead>
+            <tbody>
+                {# Itera su tutti gli slot attivi per la data selezionata #}
+                {% for item in slot_orari %}
+                {# data-has-orari è usato dal filtro JS per determinare se nascondere la riga #}
+                <tr class="main-row" data-slot="{{ item.slot.id }}" data-data="{{ data|date:'Y-m-d' }}"
+                    data-has-orari="{% if item.ingresso.ingresso_1 or item.ingresso.uscita_1 or item.ingresso.ingresso_2 or item.ingresso.uscita_2 or item.ingresso.ingresso_extra or item.ingresso.uscita_extra %}1{% else %}0{% endif %}">
+                    <td>
+                        {# Bottone + per espandere/collassare il pannello dettaglio dello slot #}
+                        <button type="button" class="btn-expand" onclick="toggleDetail(this, {{ item.slot.id }})">
+                            <i class="bi bi-plus"></i>
+                        </button>
+                    </td>
+                    <td>
+                        <div class="merchandiser-name">{{ item.slot.merchandiser.nominativo }}</div>
+                    </td>
+                    {# I campi orario sono disabilitati se la data non è oggi (sola lettura) #}
+                    {# Il doppio click inserisce l'ora corrente e salva automaticamente (solo se non è readonly) #}
+                    <td><input type="time" name="ingresso_1" value="{% if item.ingresso.ingresso_1 %}{{ item.ingresso.ingresso_1|time:'H:i' }}{% endif %}" {% if not is_readonly %}ondblclick="setCurrentTime(this)"{% else %}disabled{% endif %}></td>
+                    <td><input type="time" name="uscita_1" value="{% if item.ingresso.uscita_1 %}{{ item.ingresso.uscita_1|time:'H:i' }}{% endif %}" {% if not is_readonly %}ondblclick="setCurrentTime(this)"{% else %}disabled{% endif %}></td>
+                    <td><input type="time" name="ingresso_2" value="{% if item.ingresso.ingresso_2 %}{{ item.ingresso.ingresso_2|time:'H:i' }}{% endif %}" {% if not is_readonly %}ondblclick="setCurrentTime(this)"{% else %}disabled{% endif %}></td>
+                    <td><input type="time" name="uscita_2" value="{% if item.ingresso.uscita_2 %}{{ item.ingresso.uscita_2|time:'H:i' }}{% endif %}" {% if not is_readonly %}ondblclick="setCurrentTime(this)"{% else %}disabled{% endif %}></td>
+                    <td><input type="time" name="ingresso_extra" value="{% if item.ingresso.ingresso_extra %}{{ item.ingresso.ingresso_extra|time:'H:i' }}{% endif %}" {% if not is_readonly %}ondblclick="setCurrentTime(this)"{% else %}disabled{% endif %}></td>
+                    <td><input type="time" name="uscita_extra" value="{% if item.ingresso.uscita_extra %}{{ item.ingresso.uscita_extra|time:'H:i' }}{% endif %}" {% if not is_readonly %}ondblclick="setCurrentTime(this)"{% else %}disabled{% endif %}></td>
+                    <td class="actions-cell">
+                        {# Il bottone salva è nascosto in modalità sola lettura #}
+                        {% if not is_readonly %}
+                        <button type="button" class="btn btn-sm btn-success btn-salva-riga" onclick="salvaRiga(this)">
+                            <i class="bi bi-floppy"></i>
+                        </button>
+                        {% endif %}
+                    </td>
+                </tr>
+                {# Riga dettaglio espandibile: mostra info complete dello slot (periodo, giorni, fornitore, note) #}
+                <tr class="detail-row" id="detail-{{ item.slot.id }}">
+                    <td colspan="9">
+                        <div class="detail-content">
+                            <div class="detail-item">
+                                <span class="label">Dal:</span>
+                                <span class="value">{{ item.slot.data_inizio|date:"d/m/Y" }}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="label">Al:</span>
+                                <span class="value">{{ item.slot.data_fine|date:"d/m/Y" }}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="label">Giorni:</span>
+                                {# Badge circolari per ogni giorno della settimana; arancione se attivo per questo slot #}
+                                <div class="giorni-badge">
+                                    <span class="giorno {% if item.slot.lun %}attivo{% endif %}">L</span>
+                                    <span class="giorno {% if item.slot.mar %}attivo{% endif %}">M</span>
+                                    <span class="giorno {% if item.slot.mer %}attivo{% endif %}">M</span>
+                                    <span class="giorno {% if item.slot.gio %}attivo{% endif %}">G</span>
+                                    <span class="giorno {% if item.slot.ven %}attivo{% endif %}">V</span>
+                                    <span class="giorno {% if item.slot.sab %}attivo{% endif %}">S</span>
+                                    <span class="giorno {% if item.slot.dom %}attivo{% endif %}">D</span>
+                                </div>
+                            </div>
+                            <div class="detail-item">
+                                <span class="label">Fornitore:</span>
+                                <span class="value">
+                                    {# Mostra il primo fornitore assegnato allo slot; "-" se non ce ne sono #}
+                                    {% if item.slot.fornitori.all %}
+                                        {% with item.slot.fornitori.first.fornitore as forn %}
+                                            {% if forn %}{{ forn.nome }}{% else %}-{% endif %}
+                                        {% endwith %}
+                                    {% else %}-{% endif %}
+                                </span>
+                            </div>
+                            {# Le note dello slot vengono mostrate solo se valorizzate #}
+                            {% if item.slot.note %}
+                            <div class="detail-item">
+                                <span class="label">Note:</span>
+                                <div class="note-box">{{ item.slot.note }}</div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {# Riga mostrata se non ci sono slot attivi per la data selezionata #}
+                {% empty %}
+                <tr>
+                    <td colspan="9" class="text-center text-muted py-4">
+                        Nessuno slot attivo per questa data
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {# Sezione: Legenda e istruzioni d'uso #}
+    <div class="mt-3 text-muted">
+        <i class="bi bi-info-circle" style="font-size: 16px; vertical-align: middle;"></i>
+        Slot attivi: {{ slot_orari|length }} | Doppio click sui campi orario per inserire l'ora corrente | Click su <strong>+</strong> per dettagli
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Evidenzia in giallo i campi orario già valorizzati al caricamento della pagina
+    document.querySelectorAll('.orari-table input[type="time"]').forEach(function(input) {
+        if (input.value) input.classList.add('has-value');
+    });
+    // Aggiunge la classe has-value quando l'utente modifica manualmente un campo orario
+    document.querySelector('.orari-table').addEventListener('input', function(e) {
+        if (e.target.type === 'time') e.target.classList.add('has-value');
+    });
+
+    // Conta e aggiorna il badge contatore degli slot con orari compilati
+    var count = document.querySelectorAll('.main-row[data-has-orari="1"]').length;
+    document.getElementById('badge-compilati').textContent = count;
+});
+
+// Filtra la tabella mostrando solo le righe con orari compilati (o tutte se il filtro è disattivato)
+function filtraOrari(chk) {
+    var soloCompilati = chk.checked;
+    document.querySelectorAll('.main-row').forEach(function(row) {
+        var hasOrari = row.getAttribute('data-has-orari') === '1';
+        var slotId = row.dataset.slot;
+        var detailRow = document.getElementById('detail-' + slotId);
+
+        if (soloCompilati && !hasOrari) {
+            row.classList.add('filtered-out');
+            // Chiude anche il pannello dettaglio se era aperto
+            if (detailRow) detailRow.classList.remove('show');
+        } else {
+            row.classList.remove('filtered-out');
+        }
+    });
+}
+
+// Espande/collassa il pannello dettaglio di uno slot; chiude tutti gli altri pannelli aperti
+function toggleDetail(btn, slotId) {
+    var detailRow = document.getElementById('detail-' + slotId);
+    var isExpanded = detailRow.classList.contains('show');
+    // Chiude tutti i pannelli prima di aprire quello selezionato
+    document.querySelectorAll('.detail-row.show').forEach(function(row) { row.classList.remove('show'); });
+    document.querySelectorAll('.btn-expand.expanded').forEach(function(b) { b.classList.remove('expanded'); });
+    if (!isExpanded) {
+        detailRow.classList.add('show');
+        btn.classList.add('expanded');
+    }
+}
+
+// Imposta l'ora corrente nel campo e triggera il salvataggio automatico della riga
+function setCurrentTime(input) {
+    var now = new Date();
+    var hours = String(now.getHours()).padStart(2, '0');
+    var minutes = String(now.getMinutes()).padStart(2, '0');
+    input.value = hours + ':' + minutes;
+    input.focus();
+    // Auto-salva dopo aver impostato l'ora corrente con doppio click
+    var btn = input.closest('tr').querySelector('.btn-salva-riga');
+    salvaRiga(btn);
+}
+
+// Salva gli orari di una singola riga via AJAX POST senza ricaricare la pagina
+function salvaRiga(btn) {
+    var row = btn.closest('tr');
+    var slotId = row.dataset.slot;
+    var data = row.dataset.data;
+
+    // Raccoglie tutti i valori orario dalla riga
+    var formData = new FormData();
+    formData.append('slot_id', slotId);
+    formData.append('data', data);
+    formData.append('ingresso_1', row.querySelector('[name="ingresso_1"]').value);
+    formData.append('uscita_1', row.querySelector('[name="uscita_1"]').value);
+    formData.append('ingresso_2', row.querySelector('[name="ingresso_2"]').value);
+    formData.append('uscita_2', row.querySelector('[name="uscita_2"]').value);
+    formData.append('ingresso_extra', row.querySelector('[name="ingresso_extra"]').value);
+    formData.append('uscita_extra', row.querySelector('[name="uscita_extra"]').value);
+    formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+    btn.disabled = true;
+    var icon = btn.querySelector('.bi');
+    icon.className = 'bi bi-hourglass-split';
+
+    fetch("{% url 'merchandiser:salva_orario' %}", { method: 'POST', body: formData })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            icon.className = 'bi bi-check-lg';
+            btn.classList.replace('btn-success', 'btn-primary');
+            // Aggiorna has-value e determina se la riga ha orari compilati per il filtro
+            var hasOrari = false;
+            row.querySelectorAll('input[type="time"]').forEach(function(input) {
+                if (input.value) { input.classList.add('has-value'); hasOrari = true; }
+                else input.classList.remove('has-value');
+            });
+            // Aggiorna data-has-orari e il badge contatore
+            row.setAttribute('data-has-orari', hasOrari ? '1' : '0');
+            var count = document.querySelectorAll('.main-row[data-has-orari="1"]').length;
+            document.getElementById('badge-compilati').textContent = count;
+            // Riapplica il filtro se era attivo per aggiornare la visibilità della riga
+            var chk = document.getElementById('chk-solo-compilati');
+            if (chk && chk.checked) filtraOrari(chk);
+            setTimeout(function() {
+                icon.className = 'bi bi-floppy';
+                btn.classList.replace('btn-primary', 'btn-success');
+                btn.disabled = false;
+            }, 1500);
+        } else {
+            alert('Errore: ' + (data.error || 'Salvataggio fallito'));
+            icon.className = 'bi bi-floppy';
+            btn.disabled = false;
+        }
+    })
+    .catch(function(err) {
+        console.error(err);
+        alert('Errore durante il salvataggio');
+        icon.className = 'bi bi-floppy';
+        btn.disabled = false;
+    });
+}
+</script>
+{% endblock %}

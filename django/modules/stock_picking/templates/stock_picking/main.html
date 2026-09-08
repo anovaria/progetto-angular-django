@@ -1,0 +1,260 @@
+{% extends 'portal/base.html' %}
+{# Descrizione del template: Pagina di consultazione paginata dello stock picking (V_StockArticoli). Richiede almeno un filtro attivo prima di eseguire la query. I filtri (magazzino, stati, VL) sono caricati dinamicamente via fetch al caricamento della pagina. Gli stati sono selezionabili tramite pill-checkbox multipli. I risultati sono paginati con PAGE_SIZE righe per pagina e possono essere esportati in Excel. #}
+
+{% block extra_css %}
+<style>
+  .sp-container { padding: 16px 20px; }
+  .sp-toolbar {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 14px; flex-wrap: wrap; gap: 8px;
+  }
+  .sp-toolbar h5 { color: #1F4E79; margin: 0; font-size: 1.1rem; }
+  .sp-filters {
+    background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px;
+    padding: 12px 16px; margin-bottom: 14px;
+    display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end;
+  }
+  .sp-filters .fg { display: flex; flex-direction: column; gap: 3px; }
+  .sp-filters label { font-size: 0.75rem; color: #6c757d; font-weight: 600; }
+  .sp-filters input, .sp-filters select {
+    padding: 5px 8px; border: 1px solid #ced4da; border-radius: 4px;
+    font-size: 0.85rem; min-width: 100px;
+  }
+  .btn-p  { background:#1F4E79; color:#fff; border:none; padding:6px 16px; border-radius:4px; cursor:pointer; font-size:0.85rem; text-decoration:none; }
+  .btn-p:hover { background:#163a5a; color:#fff; }
+  .btn-s  { background:#6c757d; color:#fff; border:none; padding:6px 16px; border-radius:4px; cursor:pointer; font-size:0.85rem; text-decoration:none; }
+  .btn-s:hover { background:#565e64; color:#fff; }
+  .btn-e  { background:#198754; color:#fff; border:none; padding:6px 16px; border-radius:4px; cursor:pointer; font-size:0.85rem; text-decoration:none; }
+  .btn-e:hover { background:#157347; color:#fff; }
+  .totale { font-size:0.85rem; color:#6c757d; margin-bottom:8px; }
+  .table-wrapper { overflow-x:auto; max-height:65vh; border:1px solid #dee2e6; border-radius:4px; }
+  table { width:100%; border-collapse:collapse; font-size:0.82rem; }
+  thead th {
+    background:#1F4E79; color:#fff; padding:7px 9px;
+    text-align:left; white-space:nowrap; position:sticky; top:0; z-index:1;
+  }
+  tbody tr:nth-child(even) { background:#f2f6fc; }
+  tbody tr:hover { background:#dce8f5; }
+  tbody td { padding:5px 9px; border-bottom:1px solid #dee2e6; white-space:nowrap; }
+  td.num { text-align:right; }
+  {# Classi CSS per colorare lo stato articolo: A=verde(attivo), E=rosso(esaurito), K=grigio(cancellato), S=arancio(sospeso) #}
+  .stato-A { color:#198754; font-weight:600; }
+  .stato-E { color:#dc3545; font-weight:600; }
+  .stato-K { color:#6c757d; font-weight:600; }
+  .stato-S { color:#fd7e14; font-weight:600; }
+  .paginazione { display:flex; align-items:center; gap:4px; margin-top:12px; flex-wrap:wrap; }
+  .paginazione a, .paginazione span {
+    padding:4px 10px; border:1px solid #dee2e6; border-radius:4px;
+    font-size:0.82rem; text-decoration:none; color:#1F4E79;
+  }
+  .paginazione .active { background:#1F4E79; color:#fff; border-color:#1F4E79; }
+  .paginazione a:hover { background:#e9f0f8; }
+  {# Stili per i pill-checkbox degli stati: il checkbox HTML è nascosto, la label funge da bottone toggle #}
+  .stati-checks { display:flex; flex-wrap:wrap; gap:6px; }
+  .stati-checks input[type="checkbox"] { display:none; }
+  .stati-checks label {
+    display:inline-block; padding:4px 12px; border-radius:20px;
+    border:1.5px solid #ced4da; background:#fff;
+    font-size:0.8rem; font-weight:600; color:#6c757d;
+    cursor:pointer; user-select:none; transition:all 0.12s;
+  }
+  .stati-checks label:hover { border-color:#1F4E79; color:#1F4E79; }
+  {# Classe .sel applicata via JS quando il checkbox è selezionato #}
+  .stati-checks label.sel { background:#1F4E79; color:#fff; border-color:#1F4E79; }
+</style>
+{% endblock %}
+
+{% block page_content %}
+<div class="sp-container">
+  {# Sezione: intestazione con titolo e bottone export (visibile solo dopo una ricerca con risultati) #}
+  <div class="sp-toolbar">
+    <h5>Stock Picking — V_StockArticoli</h5>
+    {# Il bottone Export Excel è visibile solo se la ricerca è stata eseguita e ha prodotto risultati #}
+    {% if cerca and ha_filtri and totale %}
+    <a href="{% url 'stock_picking_export' %}?{{ query_string }}" class="btn-e">&#11015; Export Excel</a>
+    {% endif %}
+  </div>
+
+  {# Sezione: form di filtro #}
+  <form method="get">
+    <div class="sp-filters">
+      {# Filtro magazzino: opzioni caricate dinamicamente via JS, ma preserva il valore corrente subito #}
+      <div class="fg">
+        <label>Mag</label>
+        <select name="mag" id="sel-mag">
+          <option value="">— Tutti —</option>
+          {# Pre-popola il valore selezionato prima che arrivi la risposta fetch #}
+          {% if params.mag %}<option value="{{ params.mag }}" selected>{{ params.mag }}</option>{% endif %}
+        </select>
+      </div>
+      {# Filtro stato: pill-checkbox multipli caricati dinamicamente via JS #}
+      <div class="fg">
+        <label>Stato</label>
+        <div class="stati-checks" id="stati-checks">
+          {# Testo "caricamento..." sostituito dal JS con i pill-checkbox effettivi #}
+          <span style="font-size:0.75rem;color:#aaa;">caricamento...</span>
+        </div>
+      </div>
+      {# Filtro VL: opzioni caricate dinamicamente via JS #}
+      <div class="fg">
+        <label>VL</label>
+        <select name="vl" id="sel-vl">
+          <option value="">— Tutti —</option>
+          {# Pre-popola il valore selezionato prima che arrivi la risposta fetch #}
+          {% if params.vl %}<option value="{{ params.vl }}" selected>{{ params.vl }}</option>{% endif %}
+        </select>
+      </div>
+      <div class="fg">
+        <label>Giac. Dep. min</label>
+        <input type="number" name="giac_min" value="{{ params.giac_min|default:'' }}" placeholder="es. 0" style="min-width:80px;">
+      </div>
+      <div class="fg">
+        <label>Giac. Dep. max</label>
+        <input type="number" name="giac_max" value="{{ params.giac_max|default:'' }}" placeholder="es. 100" style="min-width:80px;">
+      </div>
+      <div class="fg">
+        <label>Cod. Articolo</label>
+        <input type="text" name="codart" value="{{ params.codart|default:'' }}" placeholder="es. 424338">
+      </div>
+      <div class="fg">
+        <label>Descrizione</label>
+        <input type="text" name="descr" value="{{ params.descr|default:'' }}" placeholder="cerca...">
+      </div>
+      <div class="fg" style="justify-content:flex-end;">
+        <label>&nbsp;</label>
+        <div style="display:flex;gap:6px;">
+          <button type="submit" class="btn-p">Cerca</button>
+          {# Reset: torna alla URL base senza parametri, cancellando tutti i filtri #}
+          <a href="{% url 'stock_picking_main' %}" class="btn-s">Reset</a>
+        </div>
+      </div>
+      {# Campo hidden 'cerca' necessario per distinguere il submit del form dalla navigazione diretta #}
+      <input type="hidden" name="cerca" value="1">
+    </div>
+  </form>
+
+  {# Sezione: eventuale messaggio di errore di connessione al database #}
+  {% if errore %}
+  <div style="padding:16px;background:#f8d7da;border:1px solid #f5c2c7;border-radius:6px;color:#842029;margin-bottom:12px;">
+    <strong>Errore:</strong> {{ errore }}
+  </div>
+  {% endif %}
+
+  {# Sezione: stato vuoto (nessuna ricerca eseguita o filtri non attivi) #}
+  {% if not cerca or not ha_filtri %}
+  <div style="padding:40px;text-align:center;color:#6c757d;font-size:0.95rem;">
+    Seleziona almeno un filtro e premi <strong>Cerca</strong> per visualizzare i dati.
+  </div>
+  {% else %}
+  {# Sezione: risultati con contatore e tabella #}
+  <div class="totale">
+    Totale record: <strong>{{ totale }}</strong>
+    &nbsp;|&nbsp; Pagina {{ page_num }} di {{ num_pages }}
+  </div>
+
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr>
+          {# Intestazioni generate dinamicamente dalla lista COLONNE della view #}
+          {% for _, label in colonne %}<th>{{ label }}</th>{% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {# Itera le righe della pagina corrente restituite dalla query paginata #}
+        {% for riga in righe %}
+        <tr>
+          <td>{{ riga.MAG|default:'' }}</td>
+          <td>{{ riga.PICKSTATICO|default:'' }}</td>
+          <td class="num">{{ riga.CODART|default:'' }}</td>
+          <td>{{ riga.DESCR|default:'' }}</td>
+          <td class="num">{{ riga.SOGLIA|default:'' }}</td>
+          <td class="num">{{ riga.QTASAT|default:'' }}</td>
+          <td>{{ riga.DATAINV|default:'' }}</td>
+          <td>{{ riga.CODATTRI|default:'' }}</td>
+          {# La classe CSS stato-A/E/K/S è costruita dinamicamente per colorare lo stato #}
+          <td class="stato-{{ riga.STATO }}">{{ riga.STATO|default:'' }}</td>
+          <td>{{ riga.VL|default:'' }}</td>
+          <td class="num">{{ riga.GIACENZADEPOSITO|default:'' }}</td>
+        </tr>
+        {# Messaggio mostrato quando la ricerca non produce risultati #}
+        {% empty %}
+        <tr><td colspan="{{ colonne|length }}" style="text-align:center;padding:20px;color:#6c757d;">Nessun risultato</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {# Sezione: paginazione (visibile solo se ci sono più pagine) #}
+  {% if num_pages > 1 %}
+  <div class="paginazione">
+    {# Link alla pagina precedente (visibile solo se non siamo alla prima) #}
+    {% if page_num > 1 %}
+    <a href="?{{ query_string }}&page={{ page_num|add:'-1' }}">&laquo; Prec</a>
+    {% endif %}
+    {# Mostra solo le pagine nell'intervallo page_range (±3 dalla pagina corrente) #}
+    {% for p in page_range %}
+      {% if p == page_num %}<span class="active">{{ p }}</span>
+      {% else %}<a href="?{{ query_string }}&page={{ p }}">{{ p }}</a>
+      {% endif %}
+    {% endfor %}
+    {# Link alla pagina successiva (visibile solo se non siamo all'ultima) #}
+    {% if page_num < num_pages %}
+    <a href="?{{ query_string }}&page={{ page_num|add:'1' }}">Succ &raquo;</a>
+    {% endif %}
+  </div>
+  {% endif %}
+  {% endif %}
+</div>
+{% endblock page_content %}
+
+{% block extra_js %}
+<script>
+{# Carica dinamicamente i valori dei filtri (mag, stati, vl) tramite fetch all'API filtri_json #}
+(function() {
+  const selMag      = document.getElementById('sel-mag');
+  const statiChecks = document.getElementById('stati-checks');
+  const selVl       = document.getElementById('sel-vl');
+  // Valori correnti passati dal template per ripristinare la selezione dopo il submit
+  const curMag      = "{{ params.mag|default:'' }}";
+  const curVl       = "{{ params.vl|default:'' }}";
+  // Lista stati selezionati (serializzata in JSON dalla view per evitare problemi di escape)
+  const selStati    = {{ stati_json }};
+
+  fetch("{% url 'stock_picking_filtri' %}")
+    .then(r => r.json())
+    .then(data => {
+      // Aggiunge le opzioni mag saltando quella già pre-selezionata (per evitare duplicati)
+      data.mags.forEach(v => {
+        if (v === curMag) return;
+        selMag.appendChild(new Option(v, v));
+      });
+
+      // Costruisce i pill-checkbox per gli stati: checkbox HTML nascosto + label styled
+      statiChecks.innerHTML = '';
+      data.stati.forEach(v => {
+        const cb = document.createElement('input');
+        cb.type    = 'checkbox';
+        cb.name    = 'stato';
+        cb.value   = v;
+        // Ripristina la selezione precedente confrontando con la lista stati dal server
+        cb.checked = selStati.includes(v);
+        const lbl = document.createElement('label');
+        if (cb.checked) lbl.classList.add('sel');
+        lbl.appendChild(cb);
+        lbl.appendChild(document.createTextNode(v));
+        // Al cambio di stato del checkbox, aggiunge/rimuove la classe .sel sulla label
+        cb.addEventListener('change', () => lbl.classList.toggle('sel', cb.checked));
+        statiChecks.appendChild(lbl);
+      });
+
+      // Aggiunge le opzioni VL saltando quella già pre-selezionata
+      data.vls.forEach(v => {
+        if (v === curVl) return;
+        selVl.appendChild(new Option(v, v));
+      });
+    })
+    .catch(() => { statiChecks.innerHTML = ''; });
+})();
+</script>
+{% endblock %}

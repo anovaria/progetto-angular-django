@@ -1,0 +1,82 @@
+{% extends 'portal/base.html' %}
+{# Descrizione del template: Pagina di visualizzazione dei record di picking negativi (t_PickingNegativi). Mostra tutti i record con quantità negative in una tabella scorrevole e offre l'esportazione in Excel. #}
+
+{% block extra_css %}
+<style>
+  .pn-container { padding: 16px 20px; }
+  .pn-toolbar {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 14px; flex-wrap: wrap; gap: 8px;
+  }
+  .pn-toolbar h5 { color: #1F4E79; margin: 0; font-size: 1.1rem; }
+  .btn-e  { background:#198754; color:#fff; border:none; padding:6px 16px; border-radius:4px; cursor:pointer; font-size:0.85rem; text-decoration:none; }
+  .btn-e:hover { background:#157347; color:#fff; }
+  .totale { font-size:0.85rem; color:#6c757d; margin-bottom:8px; }
+  .table-wrapper { overflow-x:auto; border:1px solid #dee2e6; border-radius:4px; }
+  table { width:100%; border-collapse:collapse; font-size:0.82rem; }
+  thead th {
+    background:#1F4E79; color:#fff; padding:7px 9px;
+    text-align:left; white-space:nowrap; position:sticky; top:0; z-index:1;
+  }
+  tbody tr:nth-child(even) { background:#f2f6fc; }
+  tbody tr:hover { background:#dce8f5; }
+  tbody td { padding:5px 9px; border-bottom:1px solid #dee2e6; white-space:nowrap; }
+  td.num { text-align:right; }
+  {# Le celle QTA_PEZZI e QTA_COLLI usano la classe neg per evidenziare in rosso le quantità negative #}
+  td.neg { color:#dc3545; font-weight:600; text-align:right; }
+</style>
+{% endblock %}
+
+{% block page_content %}
+<div class="pn-container">
+  {# Sezione: intestazione con titolo e bottone export #}
+  <div class="pn-toolbar">
+    <h5>Picking Negativi — t_PickingNegativi</h5>
+    <a href="{% url 'picking_negativi_export' %}" class="btn-e">&#11015; Export Excel</a>
+  </div>
+
+  {# Sezione: eventuale messaggio di errore di connessione al database #}
+  {% if errore %}
+  <div style="padding:16px;background:#f8d7da;border:1px solid #f5c2c7;border-radius:6px;color:#842029;margin-bottom:12px;">
+    <strong>Errore:</strong> {{ errore }}
+  </div>
+  {% endif %}
+
+  {# Contatore totale record presenti nella tabella #}
+  <div class="totale">Totale record: <strong>{{ totale }}</strong></div>
+
+  {# Sezione: tabella dei picking negativi #}
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr>
+          {# Intestazioni generate dinamicamente dalla lista COLONNE della view #}
+          {% for _, label in colonne %}<th>{{ label }}</th>{% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {# Itera le righe restituite dalla query SQL #}
+        {% for riga in righe %}
+        <tr>
+          <td class="num">{{ riga.ID|default:'' }}</td>
+          <td>{{ riga.DTAAGGIO|default:'' }}</td>
+          <td>{{ riga.DataCreazione|default:'' }}</td>
+          <td class="num">{{ riga.DEPOSITO|default:'' }}</td>
+          <td class="num">{{ riga.PRODOTTO|default:'' }}</td>
+          <td>{{ riga.VARIANTE|default:'' }}</td>
+          <td>{{ riga.DESCRIZIONE|default:'' }}</td>
+          <td class="num">{{ riga.IMBALLO|default:'' }}</td>
+          {# QTA_PEZZI e QTA_COLLI: classe neg per evidenziare in rosso le quantità negative #}
+          <td class="neg">{{ riga.QTA_PEZZI|default:'' }}</td>
+          <td class="neg">{{ riga.QTA_COLLI|default:'' }}</td>
+          <td>{{ riga.INDIRIZZO_PICKING|default:'' }}</td>
+        </tr>
+        {# Messaggio mostrato quando non ci sono record nella tabella #}
+        {% empty %}
+        <tr><td colspan="{{ colonne|length }}" style="text-align:center;padding:20px;color:#6c757d;">Nessun record presente</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock page_content %}

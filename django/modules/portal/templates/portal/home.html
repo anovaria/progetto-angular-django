@@ -1,0 +1,17 @@
+{% extends 'portal/base.html' %}
+{# Descrizione del template: Homepage del portale autenticato. Mostra un messaggio di benvenuto personalizzato con il nome utente e un invito a selezionare un'applicazione dal menu laterale. Il contenuto viene visualizzato direttamente sullo sfondo del portale (nessuna card). #}
+
+{% block title %}Home - Portale Gros Cidac{% endblock %}
+
+{# Rimuove la classe 'app-content' per mostrare il contenuto direttamente sullo sfondo fotografico #}
+{% block main_content_class %}{% endblock %}
+
+{% block page_content %}
+{# Sezione: Area di benvenuto con testo in overlay sullo sfondo #}
+<div class="p-4" style="max-width: 860px;">
+    {# Il nome utente viene letto dalla sessione tramite il context processor del portale #}
+    <h1 style="color: #fff; margin-bottom: 20px; text-shadow: 0 1px 4px rgba(0,0,0,0.4);">Benvenuto, {{ portal_user.username }}!</h1>
+    <p style="color: rgba(255,255,255,0.85); margin-bottom: 30px; text-shadow: 0 1px 3px rgba(0,0,0,0.3);">Seleziona un'applicazione dal menu laterale.</p>
+
+</div>
+{% endblock page_content %}

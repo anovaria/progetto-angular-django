@@ -1,0 +1,21 @@
+{# Descrizione del template: Layout base minimale per pagine standalone (senza sidebar né header del portale). Usato per pagine come il login che non richiedono la struttura completa del portale. Include solo Bootstrap 5 e i blocchi CSS/JS extra. #}
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Portale{% endblock %}</title>
+    {# Sezione: Font Material Icons di Google e Bootstrap 5 #}
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    {# Blocco per CSS aggiuntivi specifici delle pagine figlie #}
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+{# Blocco principale: ogni pagina figlia inserisce qui il proprio contenuto #}
+{% block page_content %}{% endblock %}
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+{# Blocco per script JavaScript aggiuntivi delle pagine figlie #}
+{% block extra_js %}{% endblock %}
+</body>
+</html>

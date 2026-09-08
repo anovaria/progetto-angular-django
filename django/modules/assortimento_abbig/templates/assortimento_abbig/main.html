@@ -1,0 +1,395 @@
+{% extends 'portal/base.html' %}
+
+{% block extra_css %}
+<style>
+  .assortimento-container {
+    padding: 20px;
+  }
+  .assortimento-container h4 {
+    color: #1F4E79;
+    margin-bottom: 20px;
+  }
+  .filtri-bar {
+    display: flex;
+    align-items: flex-end;
+    gap: 15px;
+    flex-wrap: wrap;
+    background: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 15px 20px;
+    margin-bottom: 20px;
+  }
+  .stampa-bar {
+    display: flex;
+    align-items: flex-end;
+    gap: 15px;
+    margin-bottom: 20px;
+  }
+  .filtro-gruppo label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #1F4E79;
+    margin-bottom: 4px;
+  }
+  .filtro-gruppo select {
+    min-width: 140px;
+    max-width: 420px;
+    padding: 6px 10px;
+    border: 1px solid #ced4da;
+    border-radius: 5px;
+    font-size: 0.9rem;
+  }
+  .filtro-gruppo input[type="number"] {
+    width: 80px;
+    padding: 6px 10px;
+    border: 1px solid #ced4da;
+    border-radius: 5px;
+    font-size: 0.9rem;
+  }
+  .btn-stampa {
+    background: #1F4E79;
+    color: #fff;
+    border: none;
+    padding: 8px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    text-decoration: none;
+    font-size: 0.9rem;
+  }
+  .btn-stampa:hover {
+    background: #163a5a;
+    color: #fff;
+  }
+  .btn-fondo {
+    background: #6c757d;
+    color: #fff;
+    border: none;
+    padding: 8px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.9rem;
+  }
+  .btn-fondo:hover {
+    background: #565e64;
+  }
+  .btn-export {
+    background: #1d6f42;
+    color: #fff;
+    border: none;
+    padding: 8px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.9rem;
+  }
+  .btn-export:hover {
+    background: #155232;
+  }
+  tr.gruppo-linea td {
+    background: #e3ecf6;
+    color: #1F4E79;
+    font-weight: 700;
+    border-bottom: 1px solid #b8cce4;
+  }
+  .col-sel {
+    width: 30px;
+    text-align: center;
+  }
+  .btn-visualizza {
+    background: #1F4E79;
+    color: #fff;
+    border: none;
+    padding: 8px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.9rem;
+  }
+  .btn-visualizza:hover {
+    background: #163a5a;
+  }
+  .totale {
+    font-size: 0.9rem;
+    color: #6c757d;
+    margin-bottom: 10px;
+  }
+  .table-wrapper {
+    overflow-x: auto;
+    max-height: 70vh;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+  }
+  thead th {
+    background: #1F4E79;
+    color: #fff;
+    padding: 8px 10px;
+    text-align: left;
+    white-space: nowrap;
+    position: sticky;
+    top: 0;
+  }
+  tbody tr:nth-child(even) {
+    background: #f2f6fc;
+  }
+  tbody tr:hover {
+    background: #dce8f5;
+  }
+  tbody td {
+    padding: 6px 10px;
+    border-bottom: 1px solid #dee2e6;
+    white-space: nowrap;
+  }
+</style>
+{% endblock %}
+
+{% block page_content %}
+<div class="assortimento-container">
+  <h4>Assortimento Abbigliamento</h4>
+
+  <form method="get" class="filtri-bar" id="filtri-form">
+    <div class="filtro-gruppo">
+      <label for="sel-rep">Reparto *</label>
+      <select name="rep" id="sel-rep" required>
+        <option value="">— Seleziona —</option>
+        {% for r in reparti %}
+        <option value="{{ r }}" {% if r == sel.rep %}selected{% endif %}>{{ r }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="filtro-gruppo">
+      <label for="sel-codforn">Fornitore</label>
+      <select name="codforn" id="sel-codforn">
+        <option value="">— Tutti —</option>
+        {% for f in fornitori %}
+        <option value="{{ f }}" {% if f == sel.codforn %}selected{% endif %}>{{ f }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="filtro-gruppo">
+      <label for="sel-ccom">CCOM</label>
+      <select name="ccom" id="sel-ccom">
+        <option value="">— Tutti —</option>
+        {% for c in ccom_list %}
+        <option value="{{ c.cod }}" {% if c.cod == sel.ccom %}selected{% endif %}>{{ c.cod }} — {{ c.descr }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <input type="hidden" name="mostra" value="1">
+    <button type="submit" class="btn-visualizza">Visualizza</button>
+  </form>
+
+  {% if righe is not None %}
+  <div class="stampa-bar">
+    <div class="filtro-gruppo">
+      <label for="sel-linea">Linea</label>
+      <select name="linea" id="sel-linea" form="filtri-form">
+        <option value="">— Tutte —</option>
+        {% for l in linee %}
+        <option value="{{ l }}" {% if l == sel.linea %}selected{% endif %}>{{ l }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="filtro-gruppo">
+      <label for="sel-tcol">Collezione</label>
+      <select name="tcol" id="sel-tcol" form="filtri-form">
+        <option value="">— Tutte —</option>
+        {% for t in collezioni %}
+        <option value="{{ t }}" {% if t == sel.tcol %}selected{% endif %}>{{ t }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="filtro-gruppo">
+      <label for="inp-righe-note" title="Righe vuote aggiunte dopo ogni articolo per le annotazioni a mano">Righe note</label>
+      <input type="number" id="inp-righe-note" name="righe_note" form="stampa-form" min="0" max="10" value="1">
+    </div>
+
+    <button type="button" class="btn-fondo" id="btn-fondo" title="Sposta gli articoli selezionati in fondo alla lista">⬇ Sposta in fondo i selezionati</button>
+
+    <form method="post" action="{% url 'assortimento_abbig_stampa' %}" target="_blank" id="stampa-form">
+      {% csrf_token %}
+      <input type="hidden" name="rep" value="{{ sel.rep }}">
+      <input type="hidden" name="codforn" value="{{ sel.codforn }}">
+      <input type="hidden" name="ccom" value="{{ sel.ccom }}">
+      <input type="hidden" name="linea" value="{{ sel.linea }}">
+      <input type="hidden" name="tcol" value="{{ sel.tcol }}">
+      <input type="hidden" name="fondo" id="inp-fondo" value="">
+      <button type="submit" class="btn-stampa">🖨 Anteprima stampa</button>
+      <button type="submit" class="btn-export"
+              formaction="{% url 'assortimento_abbig_export' %}"
+              formtarget="_self">⬇ Export Excel</button>
+    </form>
+  </div>
+  {% endif %}
+
+  {% if righe is not None %}
+  <div class="totale">Totale articoli: <strong>{{ totale }}</strong></div>
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr>
+          <th class="col-sel"></th>
+          {% for _, label in colonne %}
+          <th>{{ label }}</th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody id="tbody-articoli">
+        {% for g in gruppi %}
+        <tr class="gruppo-linea" data-linea="{{ g.linea }}">
+          <td class="col-sel"><input type="checkbox" class="sel-linea" title="Seleziona tutti gli articoli della linea"></td>
+          <td colspan="{{ colonne|length }}">{{ g.linea }}</td>
+        </tr>
+        {% for riga in g.righe %}
+        <tr data-codart="{{ riga.6 }}" data-linea="{{ g.linea }}">
+          <td class="col-sel"><input type="checkbox" class="sel-art"></td>
+          {% for val in riga %}
+          <td>{{ val }}</td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+        {% empty %}
+        <tr><td colspan="{{ colonne|length|add:1 }}">Nessun articolo trovato per i filtri selezionati.</td></tr>
+        {% endfor %}
+      </tbody>
+      <tbody id="tbody-fondo"></tbody>
+    </table>
+  </div>
+  {% endif %}
+</div>
+{% endblock page_content %}
+
+{% block extra_js %}
+<script>
+  // Filtri a cascata: al cambio di Reparto si ricaricano Fornitori e CCOM,
+  // al cambio di Fornitore si ricaricano i CCOM. Chiamate AJAX senza reload.
+  (function () {
+    const selRep = document.getElementById('sel-rep');
+    const selForn = document.getElementById('sel-codforn');
+    const selCcom = document.getElementById('sel-ccom');
+    const selLinea = document.getElementById('sel-linea');
+    const selTcol = document.getElementById('sel-tcol');
+    const urlForn = "{% url 'assortimento_abbig_fornitori' %}";
+    const urlCcom = "{% url 'assortimento_abbig_ccom' %}";
+    const urlAttr = "{% url 'assortimento_abbig_attributi' %}";
+
+    function ripopola(select, opzioni, placeholder) {
+      select.innerHTML = '';
+      const opt0 = document.createElement('option');
+      opt0.value = '';
+      opt0.textContent = placeholder;
+      select.appendChild(opt0);
+      opzioni.forEach(function (o) {
+        const opt = document.createElement('option');
+        opt.value = o.value;
+        opt.textContent = o.label;
+        select.appendChild(opt);
+      });
+    }
+
+    async function caricaFornitori() {
+      if (!selRep.value) { ripopola(selForn, [], '— Tutti —'); return; }
+      const resp = await fetch(urlForn + '?rep=' + encodeURIComponent(selRep.value));
+      const data = await resp.json();
+      ripopola(selForn, data.fornitori.map(f => ({ value: f, label: f })), '— Tutti —');
+    }
+
+    async function caricaCcom() {
+      if (!selRep.value) { ripopola(selCcom, [], '— Tutti —'); return; }
+      let url = urlCcom + '?rep=' + encodeURIComponent(selRep.value);
+      if (selForn.value) url += '&codforn=' + encodeURIComponent(selForn.value);
+      const resp = await fetch(url);
+      const data = await resp.json();
+      ripopola(selCcom, data.ccom.map(c => ({ value: c.cod, label: c.cod + ' — ' + c.descr })), '— Tutti —');
+    }
+
+    // Linea e Collezione compaiono solo dopo "Visualizza" (sotto, accanto
+    // ad Anteprima stampa): se presenti, si aggiornano in cascata e al
+    // cambio riapplicano subito i filtri ricaricando la pagina.
+    async function caricaAttributi() {
+      if (!selLinea || !selTcol) return;
+      if (!selRep.value) {
+        ripopola(selLinea, [], '— Tutte —');
+        ripopola(selTcol, [], '— Tutte —');
+        return;
+      }
+      let url = urlAttr + '?rep=' + encodeURIComponent(selRep.value);
+      if (selForn.value) url += '&codforn=' + encodeURIComponent(selForn.value);
+      if (selCcom.value) url += '&ccom=' + encodeURIComponent(selCcom.value);
+      const resp = await fetch(url);
+      const data = await resp.json();
+      ripopola(selLinea, data.linee.map(l => ({ value: l, label: l })), '— Tutte —');
+      ripopola(selTcol, data.collezioni.map(t => ({ value: t, label: t })), '— Tutte —');
+    }
+
+    selRep.addEventListener('change', async function () {
+      await Promise.all([caricaFornitori(), caricaCcom(), caricaAttributi()]);
+    });
+    selForn.addEventListener('change', async function () {
+      await Promise.all([caricaCcom(), caricaAttributi()]);
+    });
+    selCcom.addEventListener('change', caricaAttributi);
+
+    const form = document.getElementById('filtri-form');
+    [selLinea, selTcol].forEach(function (sel) {
+      if (!sel) return;
+      sel.addEventListener('change', function () { form.submit(); });
+    });
+
+    // Sposta in fondo: gli articoli selezionati vengono spostati in coda
+    // alla tabella e i loro codici accumulati nel campo hidden 'fondo'
+    // del form di stampa, così l'ordine arriva anche al report stampato.
+    // Se viene spostata un'intera linea, si sposta anche la sua riga di
+    // intestazione. Il checkbox sull'intestazione seleziona tutta la linea.
+    const btnFondo = document.getElementById('btn-fondo');
+    const tbodyArticoli = document.getElementById('tbody-articoli');
+    const tbodyFondo = document.getElementById('tbody-fondo');
+    const inpFondo = document.getElementById('inp-fondo');
+    if (btnFondo && tbodyArticoli && tbodyFondo && inpFondo) {
+      const codartFondo = [];
+
+      tbodyArticoli.addEventListener('change', function (e) {
+        if (!e.target.classList.contains('sel-linea')) return;
+        const linea = e.target.closest('tr').dataset.linea;
+        tbodyArticoli.querySelectorAll('tr[data-codart]').forEach(function (tr) {
+          if (tr.dataset.linea === linea) {
+            tr.querySelector('.sel-art').checked = e.target.checked;
+          }
+        });
+      });
+
+      btnFondo.addEventListener('click', function () {
+        Array.from(tbodyArticoli.querySelectorAll('tr.gruppo-linea')).forEach(function (hdr) {
+          const linea = hdr.dataset.linea;
+          const righe = Array.from(tbodyArticoli.querySelectorAll('tr[data-codart]'))
+            .filter(function (tr) { return tr.dataset.linea === linea; });
+          const selezionate = righe.filter(function (tr) {
+            return tr.querySelector('.sel-art').checked;
+          });
+          if (!selezionate.length) return;
+          if (selezionate.length === righe.length) {
+            tbodyFondo.appendChild(hdr);
+          }
+          const hcb = hdr.querySelector('.sel-linea');
+          if (hcb) hcb.checked = false;
+          selezionate.forEach(function (tr) {
+            tr.querySelector('.sel-art').checked = false;
+            tbodyFondo.appendChild(tr);
+            if (!codartFondo.includes(tr.dataset.codart)) {
+              codartFondo.push(tr.dataset.codart);
+            }
+          });
+        });
+        inpFondo.value = codartFondo.join(',');
+      });
+    }
+  })();
+</script>
+{% endblock extra_js %}

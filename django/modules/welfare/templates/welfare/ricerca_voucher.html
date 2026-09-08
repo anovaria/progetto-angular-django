@@ -1,0 +1,162 @@
+{% extends "welfare/base_minimal.html" %}
+{# Descrizione del template: Pagina di ricerca voucher welfare.
+   Permette la ricerca per numero codice a 8 cifre (Eudaimon).
+   Mostra il dettaglio completo della richiesta trovata con stato,
+   dati beneficiario, valore e composizione dei tagli buono.
+   Gestisce tre stati: risultato trovato, nessun risultato, nessuna ricerca. #}
+
+{% block title %}Ricerca Voucher{% endblock %}
+
+{% block content %}
+{# Sezione: Intestazione pagina #}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="mb-0">
+        <i class="bi bi-search align-middle me-2"></i>
+        Ricerca Voucher
+    </h4>
+    <button onclick="history.back()" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left me-1"></i>Indietro
+    </button>
+</div>
+
+{# Sezione: Form di ricerca - invia il numero voucher come parametro GET 'voucher' #}
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-8">
+                <label class="form-label">Numero Voucher</label>
+                {# Il campo viene pre-popolato con l'ultimo valore cercato per comodità #}
+                <input type="text" name="voucher" class="form-control form-control-lg"
+                       value="{{ num_voucher }}" placeholder="Es. 00577148" autofocus>
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+                <button type="submit" class="btn btn-welfare btn-lg w-100">
+                    <i class="bi bi-search align-middle me-1"></i>
+                    Cerca
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{# Sezione: Risultato ricerca - mostrato solo se la view ha trovato la richiesta #}
+{% if richiesta %}
+<div class="card">
+    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">
+            <i class="bi bi-receipt align-middle me-2"></i>
+            Dettaglio Richiesta
+        </h5>
+        {# Badge stato: la classe CSS viene costruita dinamicamente dal valore dello stato (es. badge-consegnato) #}
+        <span class="badge-stato badge-{{ richiesta.stato|lower }}">
+            {{ richiesta.stato }}
+        </span>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            {# Colonna sinistra: dati identificativi della richiesta #}
+            <div class="col-md-6">
+                <table class="table table-borderless">
+                    <tr>
+                        <th class="text-muted" style="width:40%">Numero Voucher:</th>
+                        <td><code class="fs-5">{{ richiesta.num_richiesta }}</code></td>
+                    </tr>
+                    <tr>
+                        <th class="text-muted">Nominativo:</th>
+                        <td><strong>{{ richiesta.nominativo }}</strong></td>
+                    </tr>
+                    <tr>
+                        <th class="text-muted">Mittente:</th>
+                        <td>{{ richiesta.nome_mittente|default:"-" }}</td>
+                    </tr>
+                    <tr>
+                        <th class="text-muted">Data Richiesta:</th>
+                        <td>{{ richiesta.data_creazione|date:"d/m/Y H:i" }}</td>
+                    </tr>
+                </table>
+            </div>
+            {# Colonna destra: dati economici del voucher #}
+            <div class="col-md-6">
+                <table class="table table-borderless">
+                    <tr>
+                        <th class="text-muted" style="width:40%">Valore Buono:</th>
+                        <td>€ {{ richiesta.valore_buono }}</td>
+                    </tr>
+                    <tr>
+                        <th class="text-muted">Quantità:</th>
+                        <td>{{ richiesta.qta_buono }}</td>
+                    </tr>
+                    <tr>
+                        <th class="text-muted">Totale:</th>
+                        <td><strong class="fs-4 text-success">€ {{ richiesta.totale_buono }}</strong></td>
+                    </tr>
+                    {# Dati consegna: mostrati solo se il voucher è già stato consegnato #}
+                    {% if richiesta.stato == 'CONSEGNATO' %}
+                    <tr>
+                        <th class="text-muted">Consegnato il:</th>
+                        <td>{{ richiesta.data_consegna|date:"d/m/Y H:i" }}</td>
+                    </tr>
+                    <tr>
+                        <th class="text-muted">Da:</th>
+                        <td>{{ richiesta.utente_consegna }}</td>
+                    </tr>
+                    {% endif %}
+                </table>
+            </div>
+        </div>
+
+        {# Sezione: Composizione tagli buono - mostrata solo se i dettagli sono stati registrati in cassa #}
+        {% if dettagli %}
+        <hr>
+        <h6 class="text-muted mb-3">Composizione Buoni</h6>
+        <div class="row g-2">
+            {# Ogni taglio mostra quantità, valore nominale e subtotale #}
+            {% for d in dettagli %}
+            <div class="col-auto">
+                <div class="badge bg-light text-dark border p-2">
+                    <strong>{{ d.quantita }}x</strong> € {{ d.taglio.valore_nominale }}
+                    <span class="text-muted ms-1">= € {{ d.totale }}</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+
+    {# Footer con link alla cassa: visibile solo per voucher PRONTO e utenti con ruolo cassa (2) o admin (99) #}
+    {% if richiesta.stato == 'PRONTO' and ruolo.id_ruolo in '2,99' %}
+    <div class="card-footer bg-white">
+        <a href="{% url 'welfare:cassa_consegna' %}?voucher={{ richiesta.num_richiesta }}"
+           class="btn btn-welfare">
+            <i class="bi bi-cash-stack align-middle me-1"></i>
+            Vai a Consegna
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+{# Sezione: Nessun risultato - mostrato quando la ricerca non ha trovato il voucher inserito #}
+{% elif num_voucher %}
+<div class="card">
+    <div class="card-body text-center py-5">
+        <i class="bi bi-x-circle text-muted" style="font-size:64px"></i>
+        <h5 class="mt-3">Voucher non trovato</h5>
+        <p class="text-muted">
+            Nessuna richiesta trovata con numero <code>{{ num_voucher }}</code>
+        </p>
+    </div>
+</div>
+
+{# Sezione: Stato iniziale - mostrato quando la pagina viene aperta senza aver ancora cercato #}
+{% else %}
+<div class="card">
+    <div class="card-body text-center py-5">
+        <i class="bi bi-upc-scan text-muted" style="font-size:64px"></i>
+        <h5 class="mt-3">Inserisci un numero voucher</h5>
+        <p class="text-muted">
+            Digita il codice a 8 cifre della richiesta ePassi
+        </p>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

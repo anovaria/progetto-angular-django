@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <title>Assortimento Abbig — Rep {{ rep }}{% if codforn %} / Forn {{ codforn }}{% endif %}{% if ccom %} / CCOM {{ ccom }}{% endif %}</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      margin: 20px;
+      color: #212529;
+    }
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 15px;
+    }
+    .btn-stampa {
+      background: #1F4E79;
+      color: #fff;
+      border: none;
+      padding: 9px 24px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 0.95rem;
+    }
+    .btn-stampa:hover { background: #163a5a; }
+    .btn-chiudi {
+      background: #6c757d;
+      color: #fff;
+      border: none;
+      padding: 9px 24px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 0.95rem;
+    }
+    .btn-chiudi:hover { background: #565e64; }
+    .report-header h3 {
+      color: #1F4E79;
+      margin: 0 0 4px 0;
+    }
+    .report-header .sottotitolo {
+      font-size: 0.9rem;
+      color: #495057;
+      margin-bottom: 12px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+    }
+    thead th {
+      background: #1F4E79;
+      color: #fff;
+      padding: 6px 8px;
+      text-align: left;
+      white-space: nowrap;
+      border: 1px solid #1F4E79;
+    }
+    td {
+      padding: 5px 8px;
+      border: 1px solid #b0b0b0;
+      white-space: nowrap;
+    }
+    td.descr { white-space: normal; }
+    /* Colori alternati per blocco articolo (riga dati + righe note) */
+    tbody.blocco-alt td { background: #dce8f5; }
+    tr.riga-nota td { height: 24px; }
+    /* Intestazione di gruppo per linea */
+    tbody.gruppo-linea td {
+      background: #e3ecf6;
+      color: #1F4E79;
+      font-weight: 700;
+      border: 1px solid #b0b0b0;
+      border-bottom: 2px solid #444;
+    }
+    /* Riga di separazione in grassetto tra un articolo e il successivo */
+    tbody.blocco-art tr:last-child td { border-bottom: 2px solid #444; }
+    /* Impostazioni pagina di stampa: margini e piè di pagina con SOLO
+       il numero di pagina ("1 di 2"). I riquadri top/bottom definiti
+       vuoti sostituiscono intestazioni e piè di default del browser
+       (URL, data, titolo). Richiede Chrome/Edge 131+. */
+    @page {
+      margin: 10mm 8mm 14mm 8mm;
+      @top-left { content: ""; }
+      @top-center { content: ""; }
+      @top-right { content: ""; }
+      @bottom-left { content: ""; }
+      @bottom-center {
+        content: counter(page) " di " counter(pages);
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 9pt;
+        color: #212529;
+      }
+      @bottom-right { content: ""; }
+    }
+    @media print {
+      body { margin: 0; zoom: 85%; } /* scala 85% come il vecchio layout Excel */
+      .toolbar { display: none; }
+      table { font-size: 9pt; }
+      thead { display: table-header-group; } /* intestazione ripetuta su ogni pagina */
+      tbody { page-break-inside: avoid; }    /* non spezzare il blocco articolo+note */
+      /* Forza la stampa degli sfondi (blocchi alternati e gruppi linea) */
+      tbody.blocco-alt td {
+        background: #dce8f5 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      tbody.gruppo-linea td {
+        background: #e3ecf6 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="toolbar">
+    <button class="btn-stampa" onclick="window.print()">🖨 Stampa</button>
+    <button class="btn-chiudi" onclick="window.close()">Chiudi</button>
+  </div>
+
+  <div class="report-header">
+    <h3>Assortimento Abbigliamento — Reparto {{ rep }}</h3>
+    <div class="sottotitolo">
+      {% if codforn %}Fornitore: <strong>{{ codforn }}</strong>{% endif %}
+      {% if ccom %} &nbsp;|&nbsp; CCOM: <strong>{{ ccom }}</strong>{% if descr_ccom %} — {{ descr_ccom }}{% endif %}{% endif %}
+      {% if linea %} &nbsp;|&nbsp; Linea: <strong>{{ linea }}</strong>{% endif %}
+      {% if tcol %} &nbsp;|&nbsp; Collezione: <strong>{{ tcol }}</strong>{% endif %}
+      &nbsp;|&nbsp; Articoli: <strong>{{ totale }}</strong>
+      &nbsp;|&nbsp; {% now "d/m/Y H:i" %}
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        {% for _, label in colonne %}
+        <th>{{ label }}</th>
+        {% endfor %}
+      </tr>
+    </thead>
+    {% for b in blocchi %}
+    {% if b.tipo == 'linea' %}
+    <tbody class="gruppo-linea">
+      <tr><td colspan="{{ n_colonne }}">{{ b.label }}</td></tr>
+    </tbody>
+    {% else %}
+    <tbody class="blocco-art{% if b.alt %} blocco-alt{% endif %}">
+      <tr>
+        {% for val in b.valori %}
+        <td {% if forloop.counter == 8 %}class="descr"{% endif %}>{{ val }}</td>
+        {% endfor %}
+      </tr>
+      {% for _ in range_note %}
+      <tr class="riga-nota">
+        {% for _ in colonne %}<td>&nbsp;</td>{% endfor %}
+      </tr>
+      {% endfor %}
+    </tbody>
+    {% endif %}
+    {% empty %}
+    <tbody>
+      <tr><td colspan="{{ n_colonne }}">Nessun articolo trovato per i filtri selezionati.</td></tr>
+    </tbody>
+    {% endfor %}
+  </table>
+
+</body>
+</html>

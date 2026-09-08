@@ -1,0 +1,79 @@
+{% extends 'cursori/base_cursori.html' %}
+{# Descrizione del template: pagina di consultazione dettaglio articolo tramite scansione EAN #}
+{# L'operatore scansiona un barcode EAN e visualizza i dati dell'articolo (sola lettura) #}
+
+{% block title %}Dettaglio Articolo{% endblock %}
+{% block page_title %}Dettaglio{% endblock %}
+
+{% block content %}
+
+{# Sezione: form di input EAN — gestisce sia la scansione con pistola che la digitazione manuale #}
+<form method="post" autocomplete="off">
+    {% csrf_token %}
+    <input type="hidden" name="azione" value="scan">
+    <div style="margin-bottom:10px;">
+        <label class="field-lbl">Scansiona EAN / Cod. art.</label>
+        <input type="text" name="ean" class="ean-input" value=""
+               autofocus inputmode="numeric" placeholder="EAN o cod. art...."
+               autocomplete="off" id="eanInput">
+    </div>
+    <button type="submit" class="btn btn-terminal btn-ok w-100">CERCA</button>
+</form>
+
+{# Sezione: script per gestione automatica della scansione EAN con pistola barcode #}
+<script>
+(function(){
+    var inp = document.getElementById('eanInput');
+    var frm = inp.closest('form');
+    var timer;
+    inp.value = '';
+    inp.focus();
+    // Invio immediato premendo Invio (tastiera o pistola)
+    inp.addEventListener('keydown', function(e){
+        if(e.key === 'Enter'){ e.preventDefault(); if(inp.value.trim().length > 0) frm.submit(); }
+    });
+    // Invio automatico dopo 300ms se vengono inserite almeno 8 cifre (pistola barcode rapida)
+    inp.addEventListener('input', function(){
+        clearTimeout(timer);
+        if(inp.value.trim().length >= 8){
+            timer = setTimeout(function(){ frm.submit(); }, 300);
+        }
+    });
+})();
+</script>
+
+{# Se il server ha restituito un errore (EAN non valido o non trovato), lo mostra #}
+{% if errore %}
+    <div class="msg-err mt-3">{{ errore }}</div>
+{% endif %}
+
+{# Se l'articolo è stato trovato, ne mostra i dati completi nella card #}
+{% if articolo %}
+<div class="art-card mt-3">
+    <div class="art-descr">{{ articolo.descrizione }}</div>
+    <div class="art-codart">CdArt: {{ articolo.codart }} &nbsp;|&nbsp; EAN: {{ articolo.ean }}</div>
+    {# Sezione: badge con i dati principali dell'articolo (stato, prezzo, giacenze, posizionamento) #}
+    <div class="art-fields mt-2">
+        <div class="field-row mb-1">
+            <div class="field-badge">Stato <span>{{ articolo.stato }}</span></div>
+            <div class="field-badge">Prezzo <span>{{ articolo.prezzo_vend }}</span></div>
+            <div class="field-badge">G.PDV <span>{{ articolo.giac_pdv }}</span></div>
+            <div class="field-badge">G.Dep <span>{{ articolo.giac_dep }}</span></div>
+        </div>
+        <div class="field-row">
+            <div class="field-badge">PzXCart <span>{{ articolo.pz_xcrt }}</span></div>
+            <div class="field-badge">Rio <span>{{ articolo.tipo_riordino }}</span></div>
+            <div class="field-badge">Co <span>{{ articolo.corsia }}</span></div>
+            <div class="field-badge">Ca <span>{{ articolo.campata }}</span></div>
+            <div class="field-badge">Fa <span>{{ articolo.facing }}</span></div>
+            <div class="field-badge">Min <span>{{ articolo.minimo }}</span></div>
+            <div class="field-badge">Max <span>{{ articolo.massimo }}</span></div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="mt-3">
+    <a href="{% url 'cursori:home' %}" class="btn btn-terminal btn-home">&#8592; Menu</a>
+</div>
+{% endblock %}

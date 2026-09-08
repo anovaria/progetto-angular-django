@@ -1,0 +1,61 @@
+{% extends 'portal/base.html' %}
+{% load static %}
+{% load rio_tags %}
+
+{% block title %}Proposte Ordine Fornitori — {% block page_title %}{% endblock %}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .rio-header {
+        background: white;
+        border-bottom: 1px solid #dee2e6;
+        padding: 16px 24px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    .rio-header h4 { margin: 0; color: #2E5090; font-weight: 700; }
+    .rio-header .breadcrumb { margin: 0; font-size: 13px; }
+    .rio-body { padding: 24px; }
+    .rio-test-banner {
+        background: #fff3cd;
+        border-bottom: 2px solid #ffc107;
+        padding: 6px 24px;
+        font-size: 13px;
+        font-weight: 600;
+        color: #664d03;
+    }
+    /* Stato "invio reale a Gold" (dry-run OFF): banner verde "operativo". */
+    .rio-live-banner {
+        background: #d1e7dd;
+        border-bottom-color: #198754;
+        color: #0f5132;
+    }
+</style>
+{% block module_css %}{% endblock %}
+{% endblock %}
+
+{% block page_content %}
+{% rio_banner_info as rio %}
+{% if rio.dry_run or rio.env == 'test' %}
+<div class="rio-test-banner{% if not rio.dry_run %} rio-live-banner{% endif %}">
+    <i class="bi {% if rio.dry_run %}bi-shield-check{% else %}bi-broadcast{% endif %} me-2"></i>
+    {% if rio.env == 'test' %}AMBIENTE DI TEST — {% endif %}{% if rio.dry_run %}modalità DRY-RUN: le proposte NON vengono inviate alla Dashboard (solo CSV){% else %}le proposte d'ordine vengono inviate realmente alla Dashboard{% endif %}
+</div>
+{% endif %}
+<div class="rio-header">
+    <i class="bi bi-truck fs-4 text-primary"></i>
+    <div>
+        <h4>Proposte Ordine Fornitori{% if rio.env == 'test' %} <span class="badge bg-warning text-dark ms-2" style="font-size:12px;">TEST</span>{% endif %}</h4>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-0">
+                <li class="breadcrumb-item"><a href="{% url 'rio-fornitori-new:home' %}">Ricerca</a></li>
+                {% block breadcrumb_extra %}{% endblock %}
+            </ol>
+        </nav>
+    </div>
+</div>
+<div class="rio-body">
+    {% block rio_content %}{% endblock %}
+</div>
+{% endblock %}

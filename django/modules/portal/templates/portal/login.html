@@ -1,0 +1,114 @@
+{# Descrizione del template: Pagina di login del portale. Mostra un form centrato con username e password per l'autenticazione LDAP. Gestisce la visualizzazione di eventuali messaggi di errore. Non estende base.html perché è una pagina standalone senza sidebar. #}
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Portale Gros Cidac</title>
+    {# Sezione: Stili inline per la pagina di login (nessuna dipendenza da CSS esterni) #}
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: url('/static/images/sfondo.jpg') center center / cover no-repeat;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .login-container {
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .login-header img { height: 60px; margin-bottom: 15px; }
+        .login-header h1 { color: #2E5090; font-size: 24px; margin-bottom: 5px; }
+        .login-header p { color: #666; font-size: 14px; }
+
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; color: #333; font-weight: 500; }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 16px;
+        }
+
+        .form-group input:focus { outline: none; border-color: #2E5090; }
+
+        .error-message {
+            background: #ffebee;
+            color: #c62828;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-login {
+            width: 100%;
+            padding: 14px;
+            background: #2E5090;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        .btn-login:hover { background: #1a3a6e; }
+    </style>
+</head>
+<body>
+    {# Sezione: Contenitore centrale del form di login #}
+    <div class="login-container">
+        {# Sezione: Header con logo e titolo #}
+        <div class="login-header">
+            {# Il logo viene nascosto via JS se il file immagine non esiste #}
+            <img src="/static/images/LOGO-CIDAC.png" alt="Gros Cidac" onerror="this.style.display='none'">
+            <h1>Portale Intranet</h1>
+            <p>Accedi con le tue credenziali di rete</p>
+        </div>
+
+        {# Sezione: Messaggio di errore - visibile solo se il login è fallito #}
+        {% if error %}
+        <div class="error-message">
+            <i class="bi bi-exclamation-circle"></i>
+            {{ error }}
+        </div>
+        {% endif %}
+
+        {# Sezione: Form di autenticazione LDAP con protezione CSRF #}
+        <form method="post">
+            {% csrf_token %}
+            <div class="form-group">
+                <label for="username">Username</label>
+                {# autofocus posiziona automaticamente il cursore sul campo username al caricamento #}
+                <input type="text" id="username" name="username" placeholder="nome.cognome" required autofocus autocomplete="username">
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" placeholder="••••••••" required autocomplete="current-password">
+            </div>
+            <button type="submit" class="btn-login">Accedi</button>
+        </form>
+    </div>
+</body>
+</html>

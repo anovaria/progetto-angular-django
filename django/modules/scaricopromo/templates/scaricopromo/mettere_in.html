@@ -1,0 +1,400 @@
+{% extends 'portal/base.html' %}
+{# Descrizione del template: Form per inserire articoli nelle tabelle "Mettere in X". Replica m_MettereA/E/F/K dell'applicazione Access. Supporta inserimento singolo, bulk da CCOM e incolla da Excel. #}
+
+{% block extra_css %}
+<style>
+    .container { max-width: 900px; margin: 20px auto; padding: 0 20px; }
+    .section { background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 20px; padding: 20px; }
+    .section-title { font-size: 1.1em; font-weight: 600; margin-bottom: 15px; color: #1a5276; }
+
+    .form-row { display: flex; gap: 10px; margin-bottom: 8px; align-items: flex-end; }
+    .form-group { flex: 1; }
+    .form-group label { display: block; font-size: 0.85em; color: #666; margin-bottom: 4px; }
+    .form-group input { width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 0.95em; }
+    .form-group input:focus { outline: none; border-color: #2e86c1; box-shadow: 0 0 0 2px rgba(46,134,193,0.15); }
+    .form-group input.valid   { border-color: #27ae60; box-shadow: 0 0 0 2px rgba(39,174,96,0.15); }
+    .form-group input.invalid { border-color: #e74c3c; box-shadow: 0 0 0 2px rgba(231,76,60,0.15); }
+
+    .codart-feedback {
+        font-size: 0.82em; margin-top: 4px; min-height: 18px; padding-left: 2px;
+    }
+    .codart-feedback.ok  { color: #1e8449; }
+    .codart-feedback.err { color: #c0392b; }
+    .codart-feedback.loading { color: #888; }
+
+    .btn { padding: 8px 18px; border: none; border-radius: 4px; font-size: 0.9em; cursor: pointer; transition: all 0.2s; }
+    .btn-primary { background: #2e86c1; color: white; }
+    .btn-primary:hover:not(:disabled) { background: #1a5276; }
+    .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-danger { background: #e74c3c; color: white; font-size: 0.8em; padding: 4px 10px; }
+    .btn-danger:hover { background: #c0392b; }
+    .btn-success { background: #27ae60; color: white; }
+    .btn-success:hover { background: #1e8449; }
+    .btn-back { background: #95a5a6; color: white; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; }
+    .btn-back:hover { background: #7f8c8d; }
+
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th { background: #1a5276; color: white; padding: 8px 12px; text-align: left; }
+    td { padding: 6px 12px; border-bottom: 1px solid #eee; }
+    tr:hover td { background: #eaf2f8; }
+
+    .actions-bar { display: flex; justify-content: space-between; align-items: center; margin-top: 15px; }
+
+    .alert-error { background: #fdecea; border: 1px solid #e74c3c; color: #c0392b;
+        border-radius: 4px; padding: 8px 14px; font-size: 0.9em; margin-bottom: 10px; }
+
+    .toast { position: fixed; top: 80px; right: 20px; padding: 15px 25px; border-radius: 8px; color: white; font-weight: 500; box-shadow: 0 4px 12px rgba(0,0,0,0.2); z-index: 1001; transform: translateX(120%); transition: transform 0.3s; }
+    .toast.show { transform: translateX(0); }
+    .toast.success { background: #27ae60; }
+    .toast.warning { background: #f39c12; }
+    .toast.error   { background: #e74c3c; }
+
+    #ccom-dropdown {
+        display: none; position: absolute; top: 100%; left: 0;
+        min-width: 370px; max-height: 260px; overflow-y: auto;
+        background: white; border: 1px solid #c5d3ee; border-radius: 4px;
+        z-index: 1500; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    #ccom-dropdown.show { display: block; }
+    .ccom-opt { padding: 7px 12px; cursor: pointer; font-size: 0.88em; border-bottom: 1px solid #f0f4fb; }
+    .ccom-opt:hover { background: #eaf2f8; }
+    .ccom-opt mark { background: #fff3cd; border-radius: 2px; padding: 0 1px; }
+</style>
+{% endblock %}
+
+{% block page_content %}
+<div class="container">
+
+    {# Sezione: Form inserimento articolo #}
+    <div class="section">
+        <div class="section-title">Aggiungi Articolo</div>
+
+        {# Messaggio di errore se il codice articolo non è stato trovato nel DB #}
+        {% if errore_codart %}
+        <div class="alert-error">✗ {{ errore_codart }}</div>
+        {% endif %}
+
+        {# Inserimento singolo (modalità principale): validazione AJAX real-time #}
+        <form id="form-inserimento" method="post" action="{% url 'scaricopromo:mettere_in' stato %}">
+            {% csrf_token %}
+            <div class="form-group" style="max-width:400px;">
+                <label for="codart">Codice Articolo</label>
+                <input type="text" id="codart" name="codart"
+                       placeholder="Codice articolo o barcode..."
+                       autocomplete="off" autofocus
+                       value="{{ codart_input|default:'' }}"
+                       oninput="onCodartInput(this.value)">
+                {# Feedback visivo AJAX: loading / ok (verde) / err (rosso) #}
+                <div class="codart-feedback" id="codart-feedback"></div>
+            </div>
+            <div style="margin-top:10px;">
+                {# Il pulsante è disabilitato finché il codice non è stato validato via AJAX #}
+                <button type="submit" id="btn-aggiungi" class="btn btn-primary" disabled>
+                    ➕ Aggiungi
+                </button>
+            </div>
+        </form>
+
+        {# Pannello caricamento per CCOM: visibile solo per gli stati A e I #}
+        {% if has_ccom %}
+        <div style="margin-top:18px; padding-top:16px; border-top:1px solid #eee;">
+            <label style="display:block; font-size:0.85em; color:#666; margin-bottom:4px;">
+                Oppure carica tutti gli articoli di un CCOM
+            </label>
+            <div style="position:relative; max-width:400px; margin-bottom:4px;">
+                <input type="hidden" id="ccom-bulk-val">
+                {# Campo testo con dropdown autocomplete per la selezione CCOM #}
+                <input type="text" id="ccom-bulk" autocomplete="off"
+                       placeholder="Cerca CCOM o descrizione..."
+                       oninput="filtraCcom(this.value)" onfocus="filtraCcom(this.value)">
+                <div id="ccom-dropdown"></div>
+            </div>
+            <div style="margin-top:10px;">
+                {# Il pulsante è disabilitato finché non viene selezionato un CCOM valido #}
+                <button id="btn-carica-ccom" class="btn btn-success" onclick="caricaDaCcom()" disabled>
+                    ⬇ Carica articoli CCOM
+                </button>
+            </div>
+        </div>
+        {% endif %}
+
+        {# Pannello inserimento massivo da incolla Excel (disponibile per tutti gli stati) #}
+        <div style="margin-top:18px; padding-top:16px; border-top:1px solid #eee;">
+            <label style="display:block; font-size:0.85em; color:#666; margin-bottom:4px;">
+                Oppure incolla i codici da Excel (uno per riga)
+            </label>
+            <textarea id="incolla-codici" rows="5" autocomplete="off"
+                      placeholder="Copia le celle da Excel e incolla qui..."
+                      style="width:100%; max-width:400px; padding:8px; border:1px solid #ddd; border-radius:4px; font-size:0.85em; font-family:monospace; resize:vertical;"></textarea>
+            <div style="margin-top:8px; display:flex; gap:10px; align-items:center;">
+                <button id="btn-incolla" class="btn btn-primary" onclick="incollacodici()">
+                    📋 Inserisci codici
+                </button>
+                <span id="incolla-feedback" style="font-size:0.85em;"></span>
+            </div>
+        </div>
+    </div>
+
+    {# Sezione: Lista articoli già inseriti nella tabella MettereInX #}
+    <div class="section">
+        <div class="section-title">Articoli Inseriti</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Codice Articolo</th>
+                    <th>Descrizione</th>
+                    {# Colonna CCOM visibile solo per gli stati A e I #}
+                    {% if has_ccom %}<th>Cod. Commerciale</th>{% endif %}
+                    <th style="width:80px;">Azioni</th>
+                </tr>
+            </thead>
+            <tbody>
+                {# Itera gli articoli presenti nella tabella MettereInX #}
+                {% for art in articoli %}
+                <tr>
+                    <td>{{ art.codart }}</td>
+                    <td style="color:#555;">{{ art.descrizione }}</td>
+                    {% if has_ccom %}<td>{{ art.ccom }}</td>{% endif %}
+                    <td>
+                        {# Pulsante eliminazione singolo articolo #}
+                        <form method="post" action="{% url 'scaricopromo:elimina_articolo' stato art.pk %}" style="display:inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-danger" onclick="return confirm('Eliminare?')">✕</button>
+                        </form>
+                    </td>
+                </tr>
+                {% empty %}
+                {# Messaggio stato vuoto con colspan dinamico in base a has_ccom #}
+                <tr><td colspan="{% if has_ccom %}4{% else %}3{% endif %}" style="text-align:center; padding:20px; color:#999;">Nessun articolo inserito</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="actions-bar">
+            <a href="{% url 'scaricopromo:attributi' %}" class="btn btn-back">← Torna agli Attributi</a>
+
+            {# Il pulsante "Elabora e Valida" è visibile solo per lo stato A con articoli #}
+            {% if stato == 'A' and count > 0 %}
+            <button class="btn btn-success" onclick="validaA()">
+                ✅ Elabora e Valida
+            </button>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const URL_VERIFICA_CODART = "{% url 'scaricopromo:api_verifica_codart' %}";
+
+let debounceCodeTimer = null;
+let codartValidato = false;
+
+// Mostra una notifica toast temporanea
+function showToast(msg, type) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast ' + type + ' show';
+    setTimeout(() => t.classList.remove('show'), 5000);
+}
+
+// Abilita/disabilita il pulsante Aggiungi in base alla validità del codice
+function aggiornaBtnAggiungi() {
+    document.getElementById('btn-aggiungi').disabled = !codartValidato;
+}
+
+// Aggiorna stile visivo e testo feedback (ok/err/loading/vuoto)
+function setFeedback(inputEl, fbEl, stato, testo) {
+    // stato: 'ok' | 'err' | 'loading' | ''
+    inputEl.className = stato === 'ok' ? 'valid' : stato === 'err' ? 'invalid' : '';
+    fbEl.className = 'codart-feedback' + (stato ? ' ' + stato : '');
+    fbEl.textContent = testo;
+}
+
+// Handler input: debounce 400ms + chiamata AJAX per verifica codice
+function onCodartInput(val) {
+    clearTimeout(debounceCodeTimer);
+    codartValidato = false;
+    aggiornaBtnAggiungi();
+
+    const input = document.getElementById('codart');
+    const fb    = document.getElementById('codart-feedback');
+    val = val.trim();
+
+    if (!val) { setFeedback(input, fb, '', ''); return; }
+
+    setFeedback(input, fb, 'loading', 'Ricerca in corso...');
+
+    // Attende 400ms dall'ultimo tasto prima di eseguire la ricerca
+    debounceCodeTimer = setTimeout(() => {
+        const valRichiesto = val;
+        fetch(URL_VERIFICA_CODART + '?codart=' + encodeURIComponent(val))
+            .then(r => r.json())
+            .then(data => {
+                // Scarta la risposta se l'utente ha già cambiato il valore nel frattempo
+                if (input.value.trim().toUpperCase() !== valRichiesto.toUpperCase()) return;
+                if (data.found) {
+                    setFeedback(input, fb, 'ok',
+                        '✓ ' + data.codart + (data.descrizione ? ' — ' + data.descrizione : ''));
+                    codartValidato = true;
+                } else {
+                    setFeedback(input, fb, 'err', '✗ ' + (data.message || 'Articolo non trovato'));
+                    codartValidato = false;
+                }
+                aggiornaBtnAggiungi();
+            })
+            .catch(() => setFeedback(input, fb, 'err', '✗ Errore di connessione'));
+    }, 400);
+}
+
+{# Sezione: Logica CCOM (solo per stati A e I) #}
+{% if has_ccom %}
+const URL_CARICA_CCOM = "{% url 'scaricopromo:api_carica_da_ccom' stato %}";
+{# Lista CCOM serializzata in JSON dal context Django per il dropdown autocomplete #}
+const CCOM_LIST = [{% for c in ccom_list %}{"v":"{{ c.ccom }}","l":"{{ c.ccom }} - {{ c.descrccom|escapejs }}"},{% endfor %}];
+let ccomValidatoPerBulk = false;
+
+// Filtra la lista CCOM in base al testo digitato e mostra il dropdown
+function filtraCcom(q) {
+    const dd = document.getElementById('ccom-dropdown');
+    const ql = q.toLowerCase();
+    const items = ql ? CCOM_LIST.filter(c => c.l.toLowerCase().includes(ql)) : CCOM_LIST;
+    if (!items.length) {
+        dd.innerHTML = '<div class="ccom-opt" style="color:#999;">Nessun risultato</div>';
+    } else if (ql) {
+        const re = new RegExp('(' + q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
+        dd.innerHTML = items.map(c =>
+            `<div class="ccom-opt" onclick="selezionaCcom('${c.v}',\`${c.l.replace(/`/g,'&#96;')}\`)">${c.l.replace(re, '<mark>$1</mark>')}</div>`
+        ).join('');
+    } else {
+        dd.innerHTML = items.map(c =>
+            `<div class="ccom-opt" onclick="selezionaCcom('${c.v}',\`${c.l.replace(/`/g,'&#96;')}\`)">${c.l}</div>`
+        ).join('');
+    }
+    dd.classList.add('show');
+}
+
+// Seleziona un CCOM dal dropdown e abilita il pulsante carica
+function selezionaCcom(val, label) {
+    document.getElementById('ccom-bulk-val').value = val;
+    document.getElementById('ccom-bulk').value = label;
+    document.getElementById('ccom-dropdown').classList.remove('show');
+    ccomValidatoPerBulk = true;
+    document.getElementById('btn-carica-ccom').disabled = false;
+}
+
+// Chiude il dropdown CCOM cliccando fuori
+document.addEventListener('click', e => {
+    if (!e.target.closest('#ccom-bulk') && !e.target.closest('#ccom-dropdown')) {
+        document.getElementById('ccom-dropdown').classList.remove('show');
+    }
+});
+
+// Chiama api_carica_da_ccom per caricare tutti gli articoli del CCOM selezionato
+function caricaDaCcom() {
+    const ccom = document.getElementById('ccom-bulk-val').value.trim();
+    if (!ccom || !ccomValidatoPerBulk) return;
+
+    const btn = document.getElementById('btn-carica-ccom');
+    btn.disabled = true;
+    btn.textContent = 'Caricamento...';
+
+    fetch(URL_CARICA_CCOM, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ccom }),
+    })
+    .then(r => r.json())
+    .then(data => {
+        btn.disabled = false;
+        btn.textContent = '⬇ Carica articoli CCOM';
+        if (data.success) {
+            showToast(data.message, data.count > 0 ? 'success' : 'warning');
+            // Ricarica la pagina per mostrare i nuovi articoli nella lista
+            window.location.reload();
+        } else {
+            showToast(data.message, 'error');
+        }
+    })
+    .catch(() => {
+        btn.disabled = false;
+        btn.textContent = '⬇ Carica articoli CCOM';
+        showToast('Errore di connessione', 'error');
+    });
+}
+{% endif %}
+
+// Chiama api_incolla_codici con il testo dal textarea
+function incollacodici() {
+    const testo = document.getElementById('incolla-codici').value.trim();
+    if (!testo) return;
+    const btn = document.getElementById('btn-incolla');
+    const fb  = document.getElementById('incolla-feedback');
+    btn.disabled = true;
+    fb.style.color = '#888';
+    fb.textContent = 'Elaborazione in corso...';
+
+    fetch("{% url 'scaricopromo:api_incolla_codici' stato %}", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ testo }),
+    })
+    .then(r => r.json())
+    .then(data => {
+        btn.disabled = false;
+        if (data.success) {
+            let msg = data.message;
+            fb.style.color = data.inseriti > 0 ? '#1e8449' : '#888';
+            fb.textContent = msg;
+            // Mostra toast aggiuntivo per i codici non trovati
+            if (data.non_trovati && data.non_trovati.length > 0) {
+                showToast('Non trovati: ' + data.non_trovati.join(', '), 'warning');
+            }
+            if (data.inseriti > 0) {
+                document.getElementById('incolla-codici').value = '';
+                // Ricarica dopo 800ms per mostrare i nuovi articoli
+                setTimeout(() => window.location.reload(), 800);
+            }
+        } else {
+            fb.style.color = '#c0392b';
+            fb.textContent = data.message;
+        }
+    })
+    .catch(() => {
+        btn.disabled = false;
+        fb.style.color = '#c0392b';
+        fb.textContent = 'Errore di connessione';
+    });
+}
+
+// Blocca submit se codart non validato (doppia sicurezza lato client)
+document.getElementById('form-inserimento').addEventListener('submit', function(e) {
+    if (!codartValidato) {
+        e.preventDefault();
+        showToast('Verifica il codice articolo prima di aggiungere', 'warning');
+    }
+});
+
+// Chiama azione_valida_a e apre il report "Non posso mettere" se ci sono avvertimenti
+function validaA() {
+    fetch("{% url 'scaricopromo:azione_valida_a' %}", { method: 'POST', headers: { 'X-CSRFToken': document.cookie.split(';').map(c=>c.trim()).find(c=>c.startsWith('csrftoken='))?.split('=')[1]||'' } })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                if (data.has_warnings) {
+                    showToast(data.message, 'warning');
+                    // Apre il report in nuova finestra se ci sono articoli non processabili
+                    window.open("{% url 'scaricopromo:report_non_posso' %}", '_blank');
+                } else {
+                    showToast(data.message, 'success');
+                }
+                setTimeout(() => window.location.href = "{% url 'scaricopromo:attributi' %}", 2500);
+            }
+        })
+        .catch(() => showToast('Errore di connessione', 'error'));
+}
+</script>
+{% endblock %}

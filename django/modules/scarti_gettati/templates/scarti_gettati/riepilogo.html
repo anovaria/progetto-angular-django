@@ -1,0 +1,132 @@
+{% extends 'portal/base.html' %}
+{# Riepilogo totali scarti e gettato per articolo, filtrabile per data. #}
+
+{% block title %}Scarti Gettati — Riepilogo{% endblock %}
+
+{% block extra_css %}
+<style>
+  .sg-container { padding: 24px; }
+  .card-riepilogo {
+    background: #fff;
+    border-radius: 10px;
+    padding: 20px 24px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+  .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px; }
+  .toolbar h5 { color: #2E5090; font-weight: 700; margin: 0; }
+  .table thead th {
+    background: #2E5090;
+    color: #fff;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    font-weight: 600;
+    padding: 8px 10px;
+  }
+  .table tbody td { font-size: 0.88rem; vertical-align: middle; padding: 7px 10px; }
+  .table tbody tr:hover { background: #f0f6ff; }
+  .table tfoot td { font-weight: 700; background: #e3f2fd; }
+  .totale-badge {
+    background: #e3f2fd;
+    color: #1976d2;
+    padding: 5px 14px;
+    border-radius: 20px;
+    font-weight: 700;
+    font-size: 0.9rem;
+  }
+</style>
+{% endblock %}
+
+{% block page_content %}
+<div class="sg-container">
+  <div class="card-riepilogo">
+
+    <div class="toolbar">
+      <h5><i class="bi bi-bar-chart-line"></i> Riepilogo scarti</h5>
+      <div class="d-flex gap-2 align-items-center flex-wrap">
+        <a href="{% url 'scarti_gettati_index' %}" class="btn btn-sm btn-outline-secondary">
+          <i class="bi bi-arrow-left"></i> Inserimento
+        </a>
+        <a href="{% url 'scarti_gettati_export' %}?data={{ data_sel|date:'Y-m-d' }}"
+           class="btn btn-sm btn-success">
+          <i class="bi bi-file-earmark-excel"></i> Esporta Excel
+        </a>
+      </div>
+    </div>
+
+    {# Filtro data #}
+    <form method="GET" class="d-flex align-items-end gap-2 mb-3">
+      <div>
+        <label class="form-label fw-semibold mb-1" for="inputData">Data</label>
+        <input type="date" name="data" id="inputData" class="form-control form-control-sm"
+               value="{{ data_sel|date:'Y-m-d' }}" style="max-width:180px">
+      </div>
+      <button type="submit" class="btn btn-sm btn-primary">
+        <i class="bi bi-search"></i> Visualizza
+      </button>
+    </form>
+
+    <p class="text-muted" style="font-size:0.85rem">
+      Dati del {{ data_sel|date:"d/m/Y" }}
+    </p>
+
+    {% if righe %}
+    {% with tot=righe|length %}
+    <div class="table-responsive">
+      <table class="table table-bordered table-sm">
+        <thead>
+          <tr>
+            <th>CodArticolo</th>
+            <th>Descrizione Articolo</th>
+            <th>EAN</th>
+            <th class="text-end">tot Kg</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in righe %}
+          <tr>
+            <td>{{ r.codart }}</td>
+            <td>{{ r.descrart }}</td>
+            <td>{{ r.ean_principale }}</td>
+            <td class="text-end">{{ r.tot_kg|floatformat:3 }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="3" class="text-end">Totale</td>
+            <td class="text-end">
+              {% with somma=0 %}
+              {{ righe|length }}
+              {% endwith %}
+              {# calcolato lato template #}
+            </td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+    <div class="mt-2">
+      <span class="totale-badge" id="totBadge">Caricamento...</span>
+    </div>
+    {% endwith %}
+    {% else %}
+    <p class="text-muted"><i class="bi bi-inbox"></i> Nessun dato per il {{ data_sel|date:"d/m/Y" }}.</p>
+    {% endif %}
+
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Calcola il totale lato client e aggiorna badge e ultima riga tfoot
+document.addEventListener('DOMContentLoaded', function () {
+  const celle = document.querySelectorAll('tbody td:last-child');
+  let tot = 0;
+  celle.forEach(c => { tot += parseFloat(c.textContent.trim().replace(',', '.')) || 0; });
+  const badge = document.getElementById('totBadge');
+  if (badge) badge.textContent = 'Totale: ' + tot.toFixed(3) + ' kg';
+  const tfootTd = document.querySelector('tfoot tr td:last-child');
+  if (tfootTd) tfootTd.textContent = tot.toFixed(3) + ' kg';
+});
+</script>
+{% endblock %}

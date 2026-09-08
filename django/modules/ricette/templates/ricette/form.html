@@ -1,0 +1,625 @@
+{% extends 'portal/base.html' %}
+{% load l10n %}
+
+{% block extra_css %}
+<style>
+.rf-wrap     { max-width:1100px; margin:0 auto; padding:20px; }
+.rf-header   { background:#2E5090; color:#fff; border-radius:8px; padding:16px 24px; margin-bottom:20px;
+               display:flex; align-items:center; justify-content:space-between; }
+.rf-title    { font-size:20px; font-weight:700; }
+.rf-actions  { display:flex; gap:8px; }
+.btn-rf      { padding:7px 16px; border-radius:4px; font-size:13px; text-decoration:none; cursor:pointer;
+               display:inline-flex; align-items:center; gap:5px; border:none; font-weight:600; }
+.btn-save    { background:#4CAF50; color:#fff; }
+.btn-save:hover { background:#388E3C; }
+.btn-back    { background:rgba(255,255,255,.2); color:#fff; }
+
+.tabs        { display:flex; gap:0; border-bottom:2px solid #e0e0e0; margin-bottom:16px; }
+.tab-btn     { padding:9px 18px; font-size:13px; font-weight:500; cursor:pointer; border:none;
+               background:none; color:#666; border-bottom:2px solid transparent; margin-bottom:-2px; }
+.tab-btn.active { color:#2E5090; border-bottom-color:#2E5090; font-weight:700; }
+.tab-pane    { display:none; }
+.tab-pane.active { display:block; }
+
+.rf-card     { background:#fff; border-radius:8px; box-shadow:0 1px 4px rgba(0,0,0,.1);
+               overflow:hidden; margin-bottom:16px; }
+.rf-card-head{ background:#f5f7fa; border-bottom:1px solid #e0e0e0; padding:10px 16px;
+               font-weight:600; font-size:13px; color:#2E5090; }
+.rf-card-body{ padding:16px; }
+
+.form-grid   { display:grid; grid-template-columns:1fr 1fr; gap:12px 20px; }
+.form-grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px 20px; }
+.form-grid-4 { display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:12px 20px; }
+.span2       { grid-column:span 2; }
+.span3       { grid-column:span 3; }
+.span4       { grid-column:span 4; }
+.fgroup      { display:flex; flex-direction:column; gap:4px; }
+.fgroup label{ font-size:12px; font-weight:500; color:#555; }
+.fgroup input, .fgroup select, .fgroup textarea {
+  padding:7px 10px; border:1px solid #ddd; border-radius:4px; font-size:13px;
+  font-family:inherit; width:100%; box-sizing:border-box;
+}
+.fgroup input:focus, .fgroup select:focus, .fgroup textarea:focus {
+  outline:none; border-color:#2E5090; box-shadow:0 0 0 2px rgba(46,80,144,.12);
+}
+.fgroup textarea { resize:vertical; min-height:80px; }
+
+/* Tabella dinamica ingredienti/imballaggi */
+.dyn-table   { width:100%; border-collapse:collapse; }
+.dyn-table th{ background:#f5f7fa; padding:7px 8px; text-align:left; font-size:11px;
+               color:#555; font-weight:600; border-bottom:1px solid #ddd; white-space:nowrap; }
+.dyn-table td{ padding:4px 6px; border-bottom:1px solid #f5f5f5; vertical-align:middle; }
+.dyn-table input { padding:5px 7px; border:1px solid #ddd; border-radius:3px; font-size:12px;
+                   width:100%; box-sizing:border-box; }
+.dyn-table input:focus { outline:none; border-color:#2E5090; }
+.btn-add-row { margin-top:10px; padding:6px 14px; background:#e3f2fd; color:#1565c0; border:1px solid #90caf9;
+               border-radius:4px; cursor:pointer; font-size:12px; font-weight:500; }
+.btn-add-row:hover { background:#bbdefb; }
+.btn-del-row { background:#fce4ec; color:#c62828; border:1px solid #ef9a9a; border-radius:3px;
+               padding:3px 8px; cursor:pointer; font-size:11px; }
+.btn-del-row:hover { background:#ffcdd2; }
+
+/* Autocomplete */
+.ac-drop     { position:fixed; background:#fff;
+               border:1px solid #ddd; border-radius:4px;
+               box-shadow:0 4px 12px rgba(0,0,0,.2); z-index:9999; max-height:260px;
+               overflow-y:auto; display:none; }
+.ac-item     { padding:8px 10px; cursor:pointer; border-bottom:1px solid #f5f5f5; }
+.ac-item:last-child { border-bottom:none; }
+.ac-item:hover, .ac-item.selected { background:#e3f2fd; }
+.ac-item-main{ font-size:12px; font-weight:600; color:#212529; }
+.ac-item-sub { font-size:11px; color:#888; }
+
+/* Preview conto economico */
+.eco-preview { background:#fff; border-radius:8px; box-shadow:0 1px 4px rgba(0,0,0,.1);
+               margin-bottom:16px; overflow:hidden; }
+.eco-prev-head { background:#1565c0; color:#fff; padding:10px 16px; font-weight:600; font-size:13px; }
+.eco-prev-body { padding:12px 16px; display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px 24px; }
+.eco-kv      { display:flex; flex-direction:column; }
+.eco-kv-label{ font-size:11px; color:#888; }
+.eco-kv-val  { font-size:15px; font-weight:700; color:#212529; font-family:monospace; }
+.eco-kv-val.pos { color:#2e7d32; }
+.eco-kv-val.neg { color:#c62828; }
+</style>
+{% endblock %}
+
+{% block page_content %}
+<div class="rf-wrap">
+<form method="post">
+  <div class="rf-header">
+    <div class="rf-title">{% if ricetta %}✏️ Modifica: {{ ricetta.descrizione }}{% else %}➕ Nuova Ricetta{% endif %}</div>
+    <div class="rf-actions">
+      <a href="{% if ricetta %}{% url 'ricette:detail' ricetta.pk %}{% else %}{% url 'ricette:list' %}{% endif %}"
+         class="btn-rf btn-back">← Annulla</a>
+      <button type="submit" class="btn-rf btn-save">💾 Salva</button>
+    </div>
+  </div>
+
+  {% csrf_token %}
+  <input type="hidden" name="ingredienti_json" id="ingredienti_json">
+  <input type="hidden" name="imballaggi_json" id="imballaggi_json">
+
+    <!-- Tab navigation -->
+    <div class="tabs">
+      <button type="button" class="tab-btn active" data-tab="anagrafica">📋 Anagrafica</button>
+      <button type="button" class="tab-btn" data-tab="ingredienti">🥩 Materie Prime</button>
+      <button type="button" class="tab-btn" data-tab="imballaggi">📦 Imballaggi</button>
+      <button type="button" class="tab-btn" data-tab="produzione">⚙️ Produzione</button>
+      <button type="button" class="tab-btn" data-tab="note">📝 Note</button>
+    </div>
+
+    <!-- TAB: Anagrafica -->
+    <div class="tab-pane active" id="tab-anagrafica">
+      <div class="rf-card">
+        <div class="rf-card-head">Dati prodotto</div>
+        <div class="rf-card-body">
+          <div class="form-grid">
+            <div class="fgroup">
+              <label>Codice Articolo</label>
+              <input name="codice_articolo" value="{{ ricetta.codice_articolo|default:'' }}">
+            </div>
+            <div class="fgroup">
+              <label>Descrizione *</label>
+              <input name="descrizione" value="{{ ricetta.descrizione|default:'' }}" required>
+            </div>
+            <div class="fgroup">
+              <label>Categoria</label>
+              <input name="categoria" value="{{ ricetta.categoria|default:'' }}" placeholder="es. secondo piatto">
+            </div>
+            <div class="fgroup">
+              <label>Difficoltà</label>
+              <select name="difficolta">
+                <option value="bassa" {% if ricetta and ricetta.difficolta == 'bassa' %}selected{% endif %}>Bassa</option>
+                <option value="media" {% if not ricetta or ricetta.difficolta == 'media' %}selected{% endif %}>Media</option>
+                <option value="alta"  {% if ricetta and ricetta.difficolta == 'alta'  %}selected{% endif %}>Alta</option>
+              </select>
+            </div>
+            <div class="fgroup">
+              <label>EAN</label>
+              <input name="ean" value="{{ ricetta.ean|default:'' }}">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="rf-card">
+        <div class="rf-card-head">Confezione alla vendita</div>
+        <div class="rf-card-body">
+          <div class="form-grid">
+            <div class="fgroup">
+              <label>Tipo Contenitore</label>
+              <input name="tipo_contenitore" value="{{ ricetta.tipo_contenitore|default:'' }}" placeholder="es. alluminio, plastica">
+            </div>
+            <div class="fgroup">
+              <label>Dimensioni</label>
+              <input name="dimensioni_contenitore" value="{{ ricetta.dimensioni_contenitore|default:'' }}" placeholder="es. 21x14,5">
+            </div>
+            <div class="fgroup">
+              <label>Grammatura media (kg)</label>
+              <input name="grammatura_media_kg" type="text" inputmode="decimal" value="{{ ricetta.grammatura_media_kg|unlocalize|default:'' }}">
+            </div>
+            <div class="fgroup">
+              <label>Shelf life</label>
+              <input name="shelf_life" value="{{ ricetta.shelf_life|default:'' }}" placeholder="es. 48h da preincarto">
+            </div>
+            <div class="fgroup span2">
+              <label>Conservabilità</label>
+              <input name="conservabilita" value="{{ ricetta.conservabilita|default:'' }}" placeholder="es. Tra +0° e +4°C">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="rf-card">
+        <div class="rf-card-head">Informazioni Nutrizionali (per 100g)</div>
+        <div class="rf-card-body">
+          <div class="form-grid-4">
+            <div class="fgroup">
+              <label>Kcal</label>
+              <input name="kcal" type="text" inputmode="decimal" value="{{ ricetta.kcal|unlocalize|default:'' }}">
+            </div>
+            <div class="fgroup">
+              <label>Protidi (g)</label>
+              <input name="protidi" type="text" inputmode="decimal" value="{{ ricetta.protidi|unlocalize|default:'' }}">
+            </div>
+            <div class="fgroup">
+              <label>Lipidi (g)</label>
+              <input name="lipidi" type="text" inputmode="decimal" value="{{ ricetta.lipidi|unlocalize|default:'' }}">
+            </div>
+            <div class="fgroup">
+              <label>Glucidi (g)</label>
+              <input name="glucidi" type="text" inputmode="decimal" value="{{ ricetta.glucidi|unlocalize|default:'' }}">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: Ingredienti -->
+    <div class="tab-pane" id="tab-ingredienti">
+      <div class="rf-card">
+        <div class="rf-card-head">🥩 Materie Prime — cerca per codice o descrizione nel catalogo</div>
+        <div class="rf-card-body" style="overflow-x:auto">
+          <table class="dyn-table" id="tbl-ingredienti">
+            <thead>
+              <tr>
+                <th style="width:90px">Codice</th>
+                <th>Descrizione</th>
+                <th style="width:50px">U.M.</th>
+                <th style="width:80px">% Scarto</th>
+                <th style="width:100px">Peso Netto</th>
+                <th style="width:110px">P.A. s/IVA (€)</th>
+                <th style="width:110px">Importo (€)</th>
+                <th style="width:36px"></th>
+              </tr>
+            </thead>
+            <tbody id="tbody-ingredienti"></tbody>
+          </table>
+          <button type="button" class="btn-add-row" onclick="addIngrediente()">＋ Aggiungi riga</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: Imballaggi -->
+    <div class="tab-pane" id="tab-imballaggi">
+      <div class="rf-card">
+        <div class="rf-card-head">📦 Imballaggi</div>
+        <div class="rf-card-body" style="overflow-x:auto">
+          <table class="dyn-table" id="tbl-imballaggi">
+            <thead>
+              <tr>
+                <th style="width:90px">Codice</th>
+                <th>Descrizione</th>
+                <th style="width:50px">U.M.</th>
+                <th style="width:110px">Quantità</th>
+                <th style="width:110px">P.A. s/IVA (€)</th>
+                <th style="width:110px">Importo (€)</th>
+                <th style="width:36px"></th>
+              </tr>
+            </thead>
+            <tbody id="tbody-imballaggi"></tbody>
+          </table>
+          <button type="button" class="btn-add-row" onclick="addImballo()">＋ Aggiungi riga</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: Produzione -->
+    <div class="tab-pane" id="tab-produzione">
+      <div class="rf-card">
+        <div class="rf-card-head">⚙️ Dati di Produzione</div>
+        <div class="rf-card-body">
+          <div class="form-grid">
+            <div class="fgroup">
+              <label>Quantità Prodotta (kg)</label>
+              <input name="quantita_prodotta_kg" id="inp-qtaprod" type="text" inputmode="decimal"
+                     value="{{ ricetta.quantita_prodotta_kg|unlocalize|default:'' }}" oninput="recalc()">
+            </div>
+            <div class="fgroup">
+              <label>Calo Peso (%)</label>
+              <input name="calo_peso_pct" id="inp-calo" type="text" inputmode="decimal"
+                     value="{{ ricetta.calo_peso_pct|unlocalize|default:'' }}" oninput="recalc()">
+            </div>
+            <div class="fgroup">
+              <label>Porzione Media Vaschetta (kg)</label>
+              <input name="porzione_media_kg" type="text" inputmode="decimal"
+                     value="{{ ricetta.porzione_media_kg|unlocalize|default:'' }}">
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="rf-card">
+        <div class="rf-card-head">👷 Costo del Lavoro</div>
+        <div class="rf-card-body">
+          <div class="form-grid">
+            <div class="fgroup">
+              <label>Tempo di Produzione (min)</label>
+              <input name="tempo_produzione_min" id="inp-tempo" type="text" inputmode="decimal"
+                     value="{{ ricetta.tempo_produzione_min|unlocalize|default:'' }}" oninput="recalc()">
+            </div>
+            <div class="fgroup">
+              <label>Costo al Minuto (€)</label>
+              <input name="costo_al_minuto" id="inp-costomin" type="text" inputmode="decimal"
+                     value="{{ ricetta.costo_al_minuto|unlocalize|default:'' }}" oninput="recalc()">
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="rf-card">
+        <div class="rf-card-head">💰 Prezzo di Vendita</div>
+        <div class="rf-card-body">
+          <div class="form-grid-3">
+            <div class="fgroup">
+              <label>Prezzo Vendita c/IVA (€)</label>
+              <input name="prezzo_vendita_iva" id="inp-prezzoiva" type="text" inputmode="decimal"
+                     value="{{ ricetta.prezzo_vendita_iva|unlocalize|default:'' }}" oninput="recalc()">
+            </div>
+            <div class="fgroup">
+              <label>Aliquota IVA (%)</label>
+              <input name="aliquota_iva" id="inp-iva" type="text" inputmode="decimal"
+                     value="{{ ricetta.aliquota_iva|unlocalize|default:'10' }}" oninput="recalc()">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Preview conto economico live -->
+      <div class="eco-preview">
+        <div class="eco-prev-head">📊 Anteprima Conto Economico (si aggiorna in tempo reale)</div>
+        <div class="eco-prev-body">
+          <div class="eco-kv"><span class="eco-kv-label">Costo MP / kg</span><span class="eco-kv-val" id="eco-mp">—</span></div>
+          <div class="eco-kv"><span class="eco-kv-label">Costo Imballi / kg</span><span class="eco-kv-val" id="eco-imb">—</span></div>
+          <div class="eco-kv"><span class="eco-kv-label">Costo Lavoro / kg</span><span class="eco-kv-val" id="eco-cdl">—</span></div>
+          <div class="eco-kv"><span class="eco-kv-label">Totale Costi / kg</span><span class="eco-kv-val" id="eco-tot">—</span></div>
+          <div class="eco-kv"><span class="eco-kv-label">Prezzo s/IVA / kg</span><span class="eco-kv-val" id="eco-prz">—</span></div>
+          <div class="eco-kv"><span class="eco-kv-label">Margine Netto</span><span class="eco-kv-val" id="eco-mrg">—</span></div>
+          <div class="eco-kv"><span class="eco-kv-label">Food Cost</span><span class="eco-kv-val" id="eco-fc">—</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: Note -->
+    <div class="tab-pane" id="tab-note">
+      <div class="rf-card">
+        <div class="rf-card-head">📝 Testi</div>
+        <div class="rf-card-body" style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <div class="fgroup">
+            <label>Ingredienti (Etichetta)</label>
+            <textarea name="ingredienti_etichetta" rows="4">{{ ricetta.ingredienti_etichetta|default:'' }}</textarea>
+          </div>
+          <div class="fgroup">
+            <label>Modalità di Preparazione</label>
+            <textarea name="modalita_preparazione" rows="4">{{ ricetta.modalita_preparazione|default:'' }}</textarea>
+          </div>
+          <div class="fgroup">
+            <label>Abbinamenti e Varianti</label>
+            <textarea name="abbinamenti" rows="4">{{ ricetta.abbinamenti|default:'' }}</textarea>
+          </div>
+          <div class="fgroup">
+            <label>Consigli di Cottura</label>
+            <textarea name="consigli_cottura" rows="4">{{ ricetta.consigli_cottura|default:'' }}</textarea>
+          </div>
+          <div class="fgroup" style="grid-column:span 2">
+            <label>Altre Note</label>
+            <textarea name="note" rows="3">{{ ricetta.note|default:'' }}</textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+
+</form>
+</div>
+
+<script>
+// ── Dati iniziali dal server ──────────────────────────────────────────────────
+const INIT_INGREDIENTI = {{ ingredienti_json|safe }};
+const INIT_IMBALLAGGI  = {{ imballaggi_json|safe }};
+const API_URL = "{% url 'ricette:api_articoli' %}";
+
+// ── Tab ───────────────────────────────────────────────────────────────────────
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+// ── Ingredienti ──────────────────────────────────────────────────────────────
+let ingRows = [];
+
+function addIngrediente(data = {}) {
+  ingRows.push(data);
+  renderIngredienti();
+}
+
+function removeIngrediente(idx) {
+  ingRows.splice(idx, 1);
+  renderIngredienti();
+}
+
+function renderIngredienti() {
+  const tbody = document.getElementById('tbody-ingredienti');
+  tbody.innerHTML = '';
+  ingRows.forEach((row, i) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><input value="${esc(row.codice||'')}" oninput="ingRows[${i}].codice=this.value"></td>
+      <td>
+        <input value="${esc(row.descrizione||'')}" placeholder="cerca articolo…"
+               oninput="ingRows[${i}].descrizione=this.value;acSearch(this,${i},'ing')"
+               onfocus="acSearch(this,${i},'ing')" autocomplete="off">
+        <div class="ac-drop" id="ac-ing-${i}"></div>
+      </td>
+      <td><input value="${esc(row.um||'kg')}" style="width:48px" oninput="ingRows[${i}].um=this.value"></td>
+      <td><input type="text" inputmode="decimal" value="${row.pct_cp_scarto||''}" style="width:72px"
+                 oninput="ingRows[${i}].pct_cp_scarto=this.value;calcIngRow(${i})"></td>
+      <td><input type="text" inputmode="decimal" value="${row.peso_qta||''}" style="width:90px"
+                 oninput="ingRows[${i}].peso_qta=this.value;calcIngRow(${i})"></td>
+      <td><input type="text" inputmode="decimal" value="${row.pa_senza_iva||''}" style="width:100px"
+                 oninput="ingRows[${i}].pa_senza_iva=this.value;calcIngRow(${i})"></td>
+      <td><input readonly id="ing-imp-${i}" value="${fmtEur(calcIngImporto(row))}" style="background:#f9f9f9;width:100px"></td>
+      <td><button type="button" class="btn-del-row" onclick="removeIngrediente(${i})">✕</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+  serializeJSON();
+  recalc();
+}
+
+function calcIngImporto(row) {
+  const peso = flt(row.peso_qta);
+  const pct  = flt(row.pct_cp_scarto);
+  const pa   = flt(row.pa_senza_iva);
+  if (!peso || !pa) return null;
+  const lorda = pct > 0 ? peso / (1 - pct / 100) : peso;
+  return lorda * pa;
+}
+
+function calcIngRow(idx) {
+  const imp = document.getElementById(`ing-imp-${idx}`);
+  if (imp) imp.value = fmtEur(calcIngImporto(ingRows[idx])) || '';
+  serializeJSON();
+  recalc();
+}
+
+// ── Imballaggi ────────────────────────────────────────────────────────────────
+let imbRows = [];
+
+function addImballo(data = {}) {
+  imbRows.push(data);
+  renderImballaggi();
+}
+
+function removeImballo(idx) {
+  imbRows.splice(idx, 1);
+  renderImballaggi();
+}
+
+function renderImballaggi() {
+  const tbody = document.getElementById('tbody-imballaggi');
+  tbody.innerHTML = '';
+  imbRows.forEach((row, i) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><input value="${esc(row.codice||'')}" oninput="imbRows[${i}].codice=this.value"></td>
+      <td>
+        <input value="${esc(row.descrizione||'')}" placeholder="cerca articolo…"
+               oninput="imbRows[${i}].descrizione=this.value;acSearch(this,${i},'imb')"
+               onfocus="acSearch(this,${i},'imb')" autocomplete="off">
+        <div class="ac-drop" id="ac-imb-${i}"></div>
+      </td>
+      <td><input value="${esc(row.um||'pz')}" style="width:48px" oninput="imbRows[${i}].um=this.value"></td>
+      <td><input type="text" inputmode="decimal" value="${row.quantita||''}" style="width:100px"
+                 oninput="imbRows[${i}].quantita=this.value;calcImbRow(${i})"></td>
+      <td><input type="text" inputmode="decimal" value="${row.pa_senza_iva||''}" style="width:100px"
+                 oninput="imbRows[${i}].pa_senza_iva=this.value;calcImbRow(${i})"></td>
+      <td><input readonly id="imb-imp-${i}" value="${fmtEur(calcImbImporto(row))}" style="background:#f9f9f9;width:100px"></td>
+      <td><button type="button" class="btn-del-row" onclick="removeImballo(${i})">✕</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+  serializeJSON();
+  recalc();
+}
+
+function calcImbImporto(row) {
+  const q  = flt(row.quantita);
+  const pa = flt(row.pa_senza_iva);
+  return q && pa ? q * pa : null;
+}
+
+function calcImbRow(idx) {
+  const imp = document.getElementById(`imb-imp-${idx}`);
+  if (imp) imp.value = fmtEur(calcImbImporto(imbRows[idx])) || '';
+  serializeJSON();
+  recalc();
+}
+
+// ── Autocomplete ──────────────────────────────────────────────────────────────
+let acTimers = {};
+
+function acSearch(input, idx, type) {
+  const q = input.value.trim();
+  const dropId = `ac-${type}-${idx}`;
+  clearTimeout(acTimers[dropId]);
+  if (q.length < 2) { closeAc(dropId); return; }
+  acTimers[dropId] = setTimeout(() => fetchAc(q, idx, type, dropId), 280);
+}
+
+function fetchAc(q, idx, type, dropId) {
+  fetch(`${API_URL}?q=${encodeURIComponent(q)}`)
+    .then(r => r.json())
+    .then(data => renderAc(data.results, idx, type, dropId));
+}
+
+function renderAc(results, idx, type, dropId) {
+  const drop = document.getElementById(dropId);
+  if (!drop) return;
+  if (!results.length) { drop.style.display = 'none'; return; }
+
+  // Trova l'input associato per calcolare la posizione
+  const input = drop.previousElementSibling;
+  if (input) {
+    const rect = input.getBoundingClientRect();
+    drop.style.top    = (rect.bottom + window.scrollY) + 'px';
+    drop.style.left   = (rect.left   + window.scrollX) + 'px';
+    drop.style.width  = Math.max(rect.width, 320) + 'px';
+  }
+
+  drop.innerHTML = results.map(r =>
+    `<div class="ac-item" onclick="selectAc(${JSON.stringify(r).replace(/"/g,"&quot;")},${idx},'${type}')">
+      <div class="ac-item-main">${r.codart} – ${r.descrart}</div>
+      <div class="ac-item-sub">${r.reparto||''} › ${r.famiglia||''} &nbsp;|&nbsp; PA: €${r.pa.toFixed(5)}</div>
+    </div>`
+  ).join('');
+  drop.style.display = 'block';
+  document.addEventListener('click', e => { if (!drop.contains(e.target)) drop.style.display = 'none'; }, {once: true});
+}
+
+function selectAc(result, idx, type) {
+  if (type === 'ing') {
+    ingRows[idx].codice      = result.codart;
+    ingRows[idx].descrizione = result.descrart;
+    ingRows[idx].pa_senza_iva = result.pa;
+    renderIngredienti();
+  } else {
+    imbRows[idx].codice      = result.codart;
+    imbRows[idx].descrizione = result.descrart;
+    imbRows[idx].pa_senza_iva = result.pa;
+    renderImballaggi();
+  }
+}
+
+function closeAc(dropId) {
+  const d = document.getElementById(dropId);
+  if (d) d.style.display = 'none';
+}
+
+// ── Serializzazione JSON ──────────────────────────────────────────────────────
+function serializeJSON() {
+  document.getElementById('ingredienti_json').value = JSON.stringify(ingRows);
+  document.getElementById('imballaggi_json').value  = JSON.stringify(imbRows);
+}
+
+// ── Calcolo conto economico live ──────────────────────────────────────────────
+function flt(s) { return parseFloat(String(s || '').replace(',', '.')) || 0; }
+
+function recalc() {
+  serializeJSON();
+
+  const qtaProd  = flt(document.getElementById('inp-qtaprod')?.value);
+  const caloPct  = flt(document.getElementById('inp-calo')?.value);
+  const tempo    = flt(document.getElementById('inp-tempo')?.value);
+  const costoMin = flt(document.getElementById('inp-costomin')?.value);
+  const prezzoIva= flt(document.getElementById('inp-prezzoiva')?.value);
+  const iva      = flt(document.getElementById('inp-iva')?.value);
+
+  const qtaEff   = qtaProd > 0 ? qtaProd * (1 - caloPct / 100) : 0;
+  const totMP    = ingRows.reduce((s, r) => s + (calcIngImporto(r)||0), 0);
+  const totImb   = imbRows.reduce((s, r) => s + (calcImbImporto(r)||0), 0);
+  const totLav   = tempo * costoMin;
+  const prezzoSiva = prezzoIva > 0 ? prezzoIva / (1 + iva / 100) : 0;
+
+  const mpKg  = qtaEff   > 0 ? totMP  / qtaEff   : null;
+  const imbKg = qtaProd  > 0 ? totImb / qtaProd   : null;
+  const lavKg = qtaProd  > 0 ? totLav / qtaProd   : null;
+  const totKg = (mpKg||0) + (imbKg||0) + (lavKg||0);
+  const mrgKg = prezzoSiva > 0 ? prezzoSiva - totKg : null;
+  const mrgPct = prezzoSiva > 0 && mrgKg !== null ? (mrgKg / prezzoSiva * 100) : null;
+
+  setText('eco-mp',  mpKg  !== null ? `€ ${mpKg.toFixed(4)}`  : '—');
+  setText('eco-imb', imbKg !== null ? `€ ${imbKg.toFixed(4)}` : '—');
+  setText('eco-cdl', lavKg !== null ? `€ ${lavKg.toFixed(4)}` : '—');
+  setText('eco-tot', totKg > 0      ? `€ ${totKg.toFixed(4)}` : '—');
+  setText('eco-prz', prezzoSiva > 0 ? `€ ${prezzoSiva.toFixed(4)}` : '—');
+
+  const mrgEl = document.getElementById('eco-mrg');
+  if (mrgKg !== null) {
+    mrgEl.textContent = `€ ${mrgKg.toFixed(4)} (${mrgPct.toFixed(1)}%)`;
+    mrgEl.className = 'eco-kv-val ' + (mrgKg >= 0 ? 'pos' : 'neg');
+  } else {
+    mrgEl.textContent = '—';
+    mrgEl.className = 'eco-kv-val';
+  }
+
+  const fcEl = document.getElementById('eco-fc');
+  if (mpKg !== null && prezzoSiva > 0) {
+    const fc = (mpKg / prezzoSiva) * 100;
+    fcEl.textContent = `${fc.toFixed(1)}%`;
+    fcEl.className = 'eco-kv-val ' + (fc <= 30 ? 'pos' : 'neg');
+  } else {
+    fcEl.textContent = '—';
+    fcEl.className = 'eco-kv-val';
+  }
+}
+
+function setText(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = val;
+}
+
+function fmtEur(v) {
+  return v !== null && v !== undefined ? `€ ${parseFloat(v).toFixed(4)}` : '';
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  INIT_INGREDIENTI.forEach(r => ingRows.push(r));
+  INIT_IMBALLAGGI.forEach(r  => imbRows.push(r));
+  renderIngredienti();
+  renderImballaggi();
+  recalc();
+
+  // Serialize on submit
+  document.querySelector('form').addEventListener('submit', () => {
+    serializeJSON();
+  });
+});
+</script>
+{% endblock %}
