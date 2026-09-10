@@ -106,6 +106,7 @@ INSTALLED_APPS = [
     'modules.scarti_gettati.apps.ScartiGettatiConfig',
     'modules.ricerca_gold',
     'modules.ins_articoli',
+    'modules.ins_art_mass_abbig',
     'modules.preventivi',
     'modules.ortofrutta',
     'modules.entrata_merci',

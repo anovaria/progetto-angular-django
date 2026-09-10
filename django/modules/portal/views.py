@@ -352,6 +352,14 @@ MENU_CONFIG = [
         'app_name': 'Ins. Art. 10001',
     },
     {
+        'path': '/app/ins-art-mass-abbig/',
+        'label': 'Ins. Art. Mass. Abbig.',
+        'icon': 'stack',
+        'desc': 'Inserimento massivo di articoli nuovi abbigliamento per Gold (sostituisce i 4 file Excel Inser_Art_Mass_Master)',
+        'groups': ['abbigliamento', 'itd'],
+        'app_name': 'ins-art-mass-abbig',
+    },
+    {
         'path': '/app/preventivi/',
         'label': 'Preventivi',
         'icon': 'receipt',

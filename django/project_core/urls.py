@@ -55,6 +55,7 @@ urlpatterns = [
     path('app/scarti-gettati/', include('modules.scarti_gettati.urls')),
     path('app/ricerca_gold/', include('modules.ricerca_gold.urls')),
     path('app/ins-articoli/', include('modules.ins_articoli.urls')),
+    path('app/ins-art-mass-abbig/', include('modules.ins_art_mass_abbig.urls')),
     path('app/preventivi/', include('modules.preventivi.urls')),
     path('app/ortofrutta/' , include('modules.ortofrutta.urls')),
     path('app/entrata-merci/' , include('modules.entrata_merci.urls')),
