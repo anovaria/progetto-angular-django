@@ -8,13 +8,18 @@
 
 {% block content %}
 
-{# Sezione: messaggi di feedback post-scansione (es. "+ Nome Articolo") #}
+{# Sezione: messaggi di feedback dal caricamento pagina (es. dopo azione='nuova') #}
 {% if msg %}<div class="msg-ok">{{ msg }}</div>{% endif %}
 {% if errore %}<div class="msg-err">{{ errore }}</div>{% endif %}
 
-{# Sezione: form scansione EAN — invia la richiesta azione='scan' #}
-<form method="post" autocomplete="off" id="frmScan">
+{# Sezione: messaggi di feedback aggiornati via AJAX dopo ogni scansione #}
+<div id="scanMsg"></div>
+
+{# Sezione: form scansione EAN — l'invio avviene via fetch (vedi script sotto), #}
+{# senza ricaricare la pagina, per non perdere scansioni ravvicinate #}
+<form method="post" autocomplete="off" id="frmScan" data-scan-url="{% url 'cursori:stampa_scan' %}">
     {% csrf_token %}
+    {# azione=scan: usato solo come fallback se il JS non parte (submit nativo del form) #}
     <input type="hidden" name="azione" value="scan">
 
     <div style="margin-bottom:8px;">
@@ -26,44 +31,18 @@
     <button type="submit" class="btn btn-terminal btn-ok w-100 mb-2">AGGIUNGI</button>
 </form>
 
-{# Sezione: logica di autosubmit con tempistiche diverse per EAN corti (8 cifre) e lunghi (13 cifre) #}
-<script>
-(function(){
-    var inp = document.getElementById('eanInput');
-    var frm = document.getElementById('frmScan');
-    var timer;
-    inp.value = '';
-    inp.focus();
-    // Invio immediato su tasto Invio
-    inp.addEventListener('keydown', function(e){
-        if(e.key === 'Enter'){ e.preventDefault(); if(inp.value.trim().length > 0) frm.submit(); }
-    });
-    inp.addEventListener('input', function(){
-        clearTimeout(timer);
-        var len = inp.value.trim().length;
-        // EAN-13 (lunghezza piena): invia dopo 120ms per non bloccare scansioni veloci
-        if(len >= 13){
-            timer = setTimeout(function(){ frm.submit(); }, 120);
-        // EAN-8 o codici brevi: attende 1.2s per permettere la digitazione completa
-        } else if(len >= 8){
-            timer = setTimeout(function(){ frm.submit(); }, 1200);
-        }
-    });
-})();
-</script>
-
 {# Sezione: anteprima ridotta degli articoli già in coda (mostra solo la descrizione troncata) #}
-{# Visibile solo se la coda contiene elementi #}
-{% if coda %}
-<div class="mt-3">
-    <div style="color:#aaa; font-size:0.8rem; margin-bottom:4px;">In coda: {{ coda|length }}</div>
+{# Il contenitore resta sempre presente nel DOM: il JS lo aggiorna/mostra ad ogni scansione riuscita #}
+<div class="mt-3" id="codaBox" {% if not coda %}style="display:none;"{% endif %}>
+    <div style="color:#aaa; font-size:0.8rem; margin-bottom:4px;">In coda: <span id="codaCount">{{ coda|length }}</span></div>
+    <div id="codaList">
     {% for item in coda %}
     <div class="art-codart" style="padding:3px 0; border-bottom:1px solid #2a2a2a;">
         <span>{{ item.descrizione|truncatechars:28 }}</span>
     </div>
     {% endfor %}
+    </div>
 </div>
-{% endif %}
 
 {# Sezione: azioni principali — accesso alla coda completa e ritorno al menu #}
 <div class="d-flex gap-2 mt-3">
@@ -71,12 +50,101 @@
     <a href="{% url 'cursori:home' %}" class="btn btn-terminal btn-home">&#8592;</a>
 </div>
 
-{# Riposiziona il focus sul campo EAN al caricamento pagina (per permettere scansione immediata) #}
+{# Sezione: logica di invio — coda seriale lato client: ogni scansione viene accodata #}
+{# e inviata via fetch una alla volta, mai in sovrapposizione, mai persa. #}
+{# Posizionato in fondo alla pagina: deve girare DOPO che #codaBox/#codaCount/#codaList #}
+{# esistono nel DOM, altrimenti getElementById li trova null e la coda visuale non si aggiorna. #}
 <script>
-document.addEventListener('DOMContentLoaded', function(){
-    var e = document.getElementById('eanInput');
-    if(e){ e.focus(); }
-});
+(function(){
+    var inp    = document.getElementById('eanInput');
+    var frm    = document.getElementById('frmScan');
+    var scanUrl = frm.dataset.scanUrl;
+    var csrf   = frm.querySelector('[name=csrfmiddlewaretoken]').value;
+    var msgBox = document.getElementById('scanMsg');
+    var codaBox   = document.getElementById('codaBox');
+    var codaCount = document.getElementById('codaCount');
+    var codaList  = document.getElementById('codaList');
+    var timer;
+    var coda = [];   // valori scansionati in attesa di invio
+    var busy = false;
+
+    inp.value = '';
+    inp.focus();
+
+    function mostraMsg(testo, errore){
+        msgBox.innerHTML = testo
+            ? '<div class="' + (errore ? 'msg-err' : 'msg-ok') + '">' + testo + '</div>'
+            : '';
+    }
+
+    function accoda(){
+        clearTimeout(timer);
+        var v = inp.value.trim();
+        inp.value = '';
+        if(v.length > 0){
+            coda.push(v);
+            processaCoda();
+        }
+    }
+
+    function processaCoda(){
+        if(busy || coda.length === 0) return;
+        busy = true;
+        var valore = coda.shift();
+
+        var fd = new FormData();
+        fd.append('ean', valore);
+        fd.append('csrfmiddlewaretoken', csrf);
+
+        fetch(scanUrl, {
+            method: 'POST',
+            body: fd,
+            headers: {'X-Requested-With': 'XMLHttpRequest'},
+        })
+        .then(function(r){ return r.json(); })
+        .then(function(data){
+            if(data.ok){
+                mostraMsg(data.msg, false);
+                if(codaCount) codaCount.textContent = data.coda_count;
+                if(codaBox) codaBox.style.display = '';
+                if(codaList){
+                    var riga = document.createElement('div');
+                    riga.className = 'art-codart';
+                    riga.style.cssText = 'padding:3px 0; border-bottom:1px solid #2a2a2a;';
+                    riga.textContent = data.descrizione;
+                    codaList.appendChild(riga);
+                }
+            } else {
+                mostraMsg(data.errore, true);
+            }
+        })
+        .catch(function(){
+            mostraMsg('Errore di rete — riscansionare "' + valore + '"', true);
+        })
+        .finally(function(){
+            busy = false;
+            processaCoda();
+        });
+    }
+
+    // Il submit del form (bottone AGGIUNGI o tasto Invio dello scanner) accoda subito
+    frm.addEventListener('submit', function(e){
+        e.preventDefault();
+        accoda();
+    });
+
+    inp.addEventListener('input', function(){
+        clearTimeout(timer);
+        var len = inp.value.trim().length;
+        // EAN-13 (lunghezza piena): invia dopo 120ms per non bloccare scansioni veloci
+        if(len >= 13){
+            timer = setTimeout(accoda, 120);
+        // EAN-8 o codici brevi: attende 1.2s per permettere la digitazione completa
+        } else if(len >= 8){
+            timer = setTimeout(accoda, 1200);
+        }
+    });
+})();
 </script>
 
 {% endblock %}

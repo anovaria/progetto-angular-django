@@ -61,4 +61,5 @@ urlpatterns = [
     path('app/entrata-merci/' , include('modules.entrata_merci.urls')),
     path('app/giacenze-negative/' , include('modules.giacenze_negative.urls')),
     path('app/articoli-nuovi/' , include('modules.articoli_nuovi.urls')),
+    path('app/promo-abbigliamento/' , include('modules.promo_abbigliamento.urls')),
 ]

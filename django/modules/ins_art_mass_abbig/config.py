@@ -60,7 +60,7 @@ def tracciato(variante):
         {"nome": "Data fine",                                "tipo": "fine"},
         {"nome": "Unità di stock",                           "tipo": "costante", "valore": "1"},
         {"nome": "Unità di fatturazione",                    "tipo": "costante", "valore": "1"},
-        {"nome": "Iva acquisto",                             "tipo": "costante", "valore": v["iva_acquisto"]},
+        {"nome": "Iva acquisto",                             "tipo": "costante", "valore": "22"},  # sempre fisso, mai variabile per variante
         {"nome": "Iva vendita",                              "tipo": "costante", "valore": "22"},
         {"nome": "Unità di misura Peso/Vol",                 "tipo": "costante", "valore": "1"},
         {"nome": "Peso/vol",                                 "tipo": "costante", "valore": "1"},

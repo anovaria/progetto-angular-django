@@ -1,5 +1,6 @@
 from django.shortcuts import render, redirect
 from django.views.decorators.http import require_POST
+from django.http import JsonResponse
 from django.contrib import messages
 
 from . import services
@@ -133,6 +134,40 @@ def stampa(request):
     ctx['msg']  = request.session.pop('cursori_stampa_msg', None)
     ctx['coda'] = list(services.stampa_get_items(token))
     return render(request, 'cursori/stampa.html', ctx)
+
+
+@require_POST
+def stampa_scan(request):
+    """Endpoint AJAX per la scansione: aggiunge un articolo alla coda senza ricaricare la pagina.
+
+    Sostituisce il vecchio flusso POST/redirect/GET a pagina intera per lo scan:
+    quel giro di reload lasciava una finestra "morta" tra un invio e il successivo
+    in cui una scansione troppo ravvicinata (pistola barcode su più articoli in
+    sequenza) andava persa. Qui il campo resta sempre attivo e le scansioni sono
+    accodate ed inviate una alla volta lato client (vedi JS in stampa.html),
+    evitando sia scansioni perse sia doppi invii dello stesso articolo.
+    """
+    token = services.get_or_create_token(request, 'cursori_stampa_token')
+    ip    = _get_ip(request)
+    ean   = request.POST.get('ean', '').strip()
+
+    if not ean.isdigit():
+        return JsonResponse({'ok': False, 'errore': 'Codice non valido'})
+
+    art = services.get_articolo_by_ean(ean)
+    if not art:
+        art = services.get_articolo_by_codart(ean)
+    if not art:
+        return JsonResponse({'ok': False, 'errore': 'EAN / Cod. art. non trovato'})
+
+    services.stampa_add_articolo(token, ip, art, 1)
+    coda_count = services.stampa_get_items(token).count()
+    return JsonResponse({
+        'ok': True,
+        'msg': f"+ {art['descrizione'][:32]}",
+        'descrizione': art['descrizione'][:28],
+        'coda_count': coda_count,
+    })
 
 
 def stampa_preview(request):

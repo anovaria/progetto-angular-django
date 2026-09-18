@@ -299,7 +299,7 @@ class PresenzaHostess(models.Model):
     uscita_mattino = models.TimeField(blank=True, null=True)
     ingresso_pomeriggio = models.TimeField(blank=True, null=True)
     uscita_pomeriggio = models.TimeField(blank=True, null=True)
-    nota = models.CharField(max_length=50, blank=True, null=True)
+    nota = models.CharField(max_length=255, blank=True, null=True)
     fornitore_id = models.IntegerField(blank=True, null=True, db_column='fornitore_id')
 
     @property
@@ -308,7 +308,7 @@ class PresenzaHostess(models.Model):
         if self.fornitore_id:
             return Fornitore.objects.filter(codice=self.fornitore_id).first()
         return None
-    nota_fornitore = models.CharField(max_length=50, blank=True, null=True)
+    nota_fornitore = models.CharField(max_length=255, blank=True, null=True)
     buyer = models.ForeignKey(Buyer, on_delete=models.PROTECT,
                               db_column='buyer_id',
                               blank=True, null=True,

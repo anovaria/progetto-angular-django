@@ -1,0 +1,136 @@
+{% extends 'portal/base.html' %}
+
+{% block page_content %}
+{% if messages %}
+    {% for message in messages %}
+        {% if message.tags == 'success' %}
+            <div class="alert alert-success">{{ message }}</div>
+        {% else %}
+            <div class="alert alert-danger">{{ message }}</div>
+        {% endif %}
+    {% endfor %}
+{% endif %}
+
+<div class="table-wrapper">
+    <table class="table table-striped table-hover table-sm">
+        <thead>
+        <tr>
+            <th>Tipo Promo</th>
+            <th>Codice Promo</th>
+            <th>Descrizione Promo</th>
+            <th>Data Inizio Sell-Out</th>
+            <th>Data Fine Sell-Out</th>
+            <th>Origine</th>
+            <th class="text-end">
+                <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalCreaTestata">
+                  Crea Testata
+                </button>
+            </th>
+        </tr>
+        </thead>
+        <tbody>
+            {% for riga in testate %}
+                <tr>
+                    <td>{{ riga.tipo_promo }}</td>
+                    <td>{{ riga.codice_promo }}</td>
+                    <td>{{ riga.descrizione }}</td>
+                    <td>{{ riga.data_inizio_sellout }}</td>
+                    <td>{{ riga.data_fine_sellout }}</td>
+                    <td>Nuova</td>
+                    <td></td>
+                </tr>
+            {% endfor %}            
+            {% for riga in storico %}
+                <tr>
+                    <td>{{ riga.tipo_promo }}</td>
+                    <td>{{ riga.codice_promo }}</td>
+                    <td>{{ riga.descrizione }}</td>
+                    <td>{{ riga.data_inizio_sellout }}</td>
+                    <td>{{ riga.data_fine_sellout }}</td>
+                    <td>Storico</td>
+                    <td></td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="modal fade" id="modalCreaTestata" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Crea Testata</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="{% url 'promo_abbigliamento:crea' %}">{% csrf_token %}
+      <div class="modal-body">
+        <div class="mb-3">
+            <label class="form-label">Tipo Promo</label>
+            <input type="text" readonly class="form-control" value="M" name='tipo_promo'>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Codice Promo</label>
+            <input type="text" class="form-control" value="{{ prossimo_codice }}" name='codice_promo'>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Descrizione Promo</label>
+            <input type="text" id="id_descrizione" class="form-control" value="" name='descrizione'>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Data Inizio Sell-Out</label>
+            <input type="date" class="form-control" value="" name='data_inizio_sellout' required>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Data Fine Sell-Out</label>
+            <input type="date" class="form-control" value="" name='data_fine_sellout' required>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Lunghezza</label>
+            <input type="text" id="id_lunghezza" disabled class="form-control" value="0">
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Nome File CSV</label>
+            <input type="text" class="form-control" value="{{ prossimo_codice }}" name='nome_file'>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="submit">Crea Testata</button>
+      </div>
+    </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+    <script>
+    document.getElementById('id_descrizione').addEventListener('input', function () {
+        var lunghezza = this.value.length
+        document.getElementById('id_lunghezza').value = lunghezza
+    });
+    </script>
+
+{% if codice_da_scaricare %}
+<script>
+    var iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    iframe.src = "{% url 'promo_abbigliamento:csv' codice_da_scaricare %}";
+    document.body.appendChild(iframe);
+</script>
+{% endif %}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.table-wrapper {
+    width: 100%;
+}
+
+thead th {
+    position: sticky;
+    top: 64px;
+    z-index: 40;
+    background-color: #fff;
+}
+</style>
+{% endblock %}

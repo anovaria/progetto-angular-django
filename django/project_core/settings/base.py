@@ -112,6 +112,7 @@ INSTALLED_APPS = [
     'modules.entrata_merci',
     'modules.giacenze_negative',
     'modules.articoli_nuovi',
+    'modules.promo_abbigliamento',
 ]
 
 # Middleware (Nessun cambiamento)

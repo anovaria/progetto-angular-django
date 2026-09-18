@@ -360,6 +360,14 @@ MENU_CONFIG = [
         'app_name': 'ins-art-mass-abbig',
     },
     {
+        'path': '/app/promo-abbigliamento/',
+        'label': 'Ins. Promo Abbig.',
+        'icon': 'stack',
+        'desc': 'Inserimento nuova promo per Abbigliamento',
+        'groups': ['abbigliamento', 'itd'],
+        'app_name': 'promo-abbigliamento',
+    },    
+    {
         'path': '/app/preventivi/',
         'label': 'Preventivi',
         'icon': 'receipt',

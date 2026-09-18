@@ -7,6 +7,7 @@ urlpatterns = [
     path('',                  views.home,            name='home'),
     path('dettaglio/',        views.dettaglio,       name='dettaglio'),
     path('stampa/',           views.stampa,          name='stampa'),
+    path('stampa/scan/',      views.stampa_scan,     name='stampa_scan'),
     path('stampa/vedi/',      views.vedi_stampa,     name='vedi_stampa'),
     path('stampa/preview/',   views.stampa_preview,  name='stampa_preview'),
     path('stampa/qta/',       views.stampa_salva_qta, name='stampa_salva_qta'),

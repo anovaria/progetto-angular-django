@@ -332,7 +332,7 @@
         <!-- Nota Fornitore -->
         <div class="slot-field">
             <label>Nota</label>
-            <input type="text" name="nota_fornitore_{{ slot }}" 
+            <input type="text" name="nota_fornitore_{{ slot }}" maxlength="255"
                    value="{{ presenza.nota_fornitore|default:'' }}">
         </div>
         
@@ -389,7 +389,7 @@
         <!-- Varie -->
         <div class="slot-field">
             <label>Varie</label>
-            <input type="text" name="varie_{{ slot }}" 
+            <input type="text" name="varie_{{ slot }}" maxlength="255"
                    value="{{ presenza.nota|default:'' }}">
         </div>
     </div>

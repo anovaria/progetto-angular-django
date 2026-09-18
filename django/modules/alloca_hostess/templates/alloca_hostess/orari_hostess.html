@@ -391,6 +391,7 @@
                         {# Campo note libere: modificabile solo se oggi, disabilitato per altri giorni #}
                         <input type="text"
                                name="nota"
+                               maxlength="255"
                                class="form-control form-control-sm"
                                value="{{ item.presenza.nota|default:'' }}"
                                data-slot="{{ item.slot }}"

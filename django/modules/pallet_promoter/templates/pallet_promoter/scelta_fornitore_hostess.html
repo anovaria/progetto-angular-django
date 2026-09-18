@@ -294,7 +294,7 @@
                     {% for s in slots %}
                     {% with presenza=g.presenze|get_item:s %}
                     <td>
-                        <input type="text" class="nota-input"
+                        <input type="text" class="nota-input" maxlength="255"
                             name="nota_{{ g.data|date:'Y-m-d' }}_{{ s }}"
                             data-giorno="{{ g.data|date:'Y-m-d' }}" data-slot="{{ s }}"
                             value="{{ presenza.nota_fornitore|default:'' }}" placeholder="Nota...">
