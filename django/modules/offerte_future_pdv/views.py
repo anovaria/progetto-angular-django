@@ -13,6 +13,7 @@ Funzionalità:
 - export_excel: esportazione di tutti i risultati filtrati in formato .xlsx formattato
 - report_pdf: stampa PDF dei risultati filtrati, apribile in una nuova finestra del browser
 """
+import logging
 from django.shortcuts import render
 from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -28,6 +29,8 @@ from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, Tabl
 from reportlab.graphics.barcode import createBarcodeDrawing
 from datetime import datetime
 from modules.asso_articoli.barcode_utils import generate_ean13_svg
+
+logger = logging.getLogger(__name__)
 
 
 def get_current_user(request):
@@ -257,6 +260,10 @@ def anteprima(request):
             ) if ean_val else None
         return JsonResponse({'count': len(rows), 'rows': anteprima_rows})
     except Exception as e:
+        logger.exception(
+            'anteprima fallita: codpromo=%s reparto=%s sottoreparto=%s codforn=%s',
+            codpromo, reparto, sottoreparto, codforn,
+        )
         return JsonResponse({'error': str(e)}, status=500)
 
 
@@ -275,6 +282,10 @@ def export_excel(request):
     try:
         rows = _get_queryset(codpromo, reparto, sottoreparto, codforn)
     except Exception as e:
+        logger.exception(
+            'export_excel fallito: codpromo=%s reparto=%s sottoreparto=%s codforn=%s',
+            codpromo, reparto, sottoreparto, codforn,
+        )
         return HttpResponse(f'Errore query: {e}', status=500)
 
     wb = openpyxl.Workbook()
@@ -418,6 +429,10 @@ def report_pdf(request):
     try:
         rows = _get_queryset(codpromo, reparto, sottoreparto, codforn)
     except Exception as e:
+        logger.exception(
+            'report_pdf fallito: codpromo=%s reparto=%s sottoreparto=%s codforn=%s',
+            codpromo, reparto, sottoreparto, codforn,
+        )
         return HttpResponse(f'Errore query: {e}', status=500)
 
     buffer = BytesIO()

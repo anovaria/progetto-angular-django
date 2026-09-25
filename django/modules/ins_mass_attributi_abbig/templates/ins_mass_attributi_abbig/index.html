@@ -1,0 +1,186 @@
+{% extends 'portal/base.html' %}
+
+{% block page_content %}
+<div class="container">
+    <div class="section">
+        <div class="section-title">Inserimento massivo attributi — Abbigliamento</div>
+        <p style="font-size:0.85em; color:#666; margin-bottom:0;">Incollare le 6 colonne, le righe si abbinano per posizione
+             Genera e scarica i 5 CSV per Gold separatamente per ogni Attributo.
+        </p>
+    </div>
+    <div class="section">
+    <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="nome_file">
+        <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(190px, 1fr)); gap:10px;">
+            {% for col in colonne %}
+            <div>
+                <label>{{ col.label }}</label>
+                <textarea name="{{ col.campo }}" rows="12" wrap="off">{{ col.valore }}</textarea>
+            </div>
+            {% endfor %}
+        </div>
+        {% if errore %}
+        <div class="section">
+            <div class="section-title errore-title">⚠ Dati non validi</div>
+            <p style="font-size:0.9em;">{{ errore }}</p>
+        </div>
+        {% endif %}
+        {% if codici_non_validi %}
+        <div class="section">
+            <div class="section-title errore-title">⚠ Codici non validi</div>
+            <ul>
+            {% for t in codici_non_validi %}
+                <li>Riga {{ t.riga }} — {{ t.codice_articolo }}: <strong>{{ t.lunghezza }}</strong> caratteri (attesi 6)</li>
+            {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+        {% if pronta %}
+            <div class="section">
+                <div class="section-title">Anteprima ({{ righe.ACQ|length }} articoli)</div>
+                    <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Codice articolo</th>
+                                <th>Classe attributo</th>                     
+                                <th>Codice attributo</th>
+                                <th>Valore numerico</th>
+                                <th>Valore alfanumerico</th>
+                                <th>Valore data</th>
+                                <th>Data inizio</th>
+                                <th>Data fine</th>
+                            </tr>
+                        </thead> 
+                        <tbody>                   
+                            {% for riga in righe.ACQ %}
+                                <tr>
+                                    {% for valore in riga %}
+                                    <td>{{ valore }}</td>
+                                    {% endfor %}
+                                </tr>
+                            {% endfor %}
+                        </tbody>   
+                    </table>
+                </div>
+            </div>
+            {% for b in blocchi %}
+            <a href="{% url 'ins_mass_attributi_abbig_download' %}?b={{ b }}" class="btn">📥 Scarica {{ b }}.csv</a>
+            {% endfor %}
+        {% endif %} 
+        <div style="margin-top:15px;">
+            {% if not pronta %}
+                <button type="button" class="btn btn-genera">Genera</button>
+            {% endif %}
+            <a href="{% url 'ins_mass_attributi_abbig' %}" class="btn" style="background:#95a5a6;">Pulisci</a>
+        </div>
+        </form>
+
+        <div class="modal fade" id="modalNomeFile" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Nome file CSV</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                    <label for="id_nome_file_input">Nome base file (SENZA SPAZI - senza estensione — ogni CSV avrà "_ACQ", "_TCOL", ecc.)</label>
+                    <input type="text" id="id_nome_file_input" class="form-control">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn" style="background:#95a5a6;" data-bs-dismiss="modal">Annulla</button>
+                    <button type="button" class="btn" id="btnConfermaGenera">Genera</button>
+                </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+    let formDaSottomettere = null;
+
+    document.querySelectorAll('.btn-genera').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            formDaSottomettere = btn.closest('form');
+
+            var textareas = formDaSottomettere.querySelectorAll('textarea');
+            var tutteVuote = Array.from(textareas).every(function (t) {
+                return t.value.trim() === '';
+            });
+            if (tutteVuote) {
+                alert('Incolla almeno una riga di dati prima di generare.');
+                return;
+            }
+
+            document.getElementById('id_nome_file_input').value = '';
+            new bootstrap.Modal(document.getElementById('modalNomeFile')).show();
+        });
+    });
+
+    document.getElementById('btnConfermaGenera').addEventListener('click', function () {
+        if (!formDaSottomettere) return;
+        var nomeFile = document.getElementById('id_nome_file_input').value.trim();
+        formDaSottomettere.querySelector('input[name="nome_file"]').value = nomeFile;
+        bootstrap.Modal.getInstance(document.getElementById('modalNomeFile')).hide();
+        formDaSottomettere.submit();
+    });
+</script>
+{% endblock %}
+{% block extra_css %}
+<style>
+    .container { max-width: 1400px; margin: 15px auto; padding: 0 15px; }
+
+    .section {
+        background: white; border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        margin-bottom: 15px; padding: 15px 20px;
+    }
+    .section-title {
+        font-size: 1em; font-weight: 600; margin-bottom: 12px;
+        color: #6c3483; border-bottom: 2px solid #8e44ad; padding-bottom: 6px;
+    }
+
+    .form-group { display: flex; flex-direction: column; gap: 4px; }
+    .form-group label { font-size: 0.8em; font-weight: 600; color: #555; }
+    .form-group input {
+        padding: 7px 10px; border: 1px solid #ccc; border-radius: 4px;
+        font-size: 0.9em; min-width: 160px;
+    }
+    .form-group input:focus { border-color: #8e44ad; outline: none; }
+
+    textarea {
+        width: 100%; padding: 8px 10px; border: 1px solid #ccc;
+        border-radius: 4px; font-family: monospace; font-size: 0.9em;
+        white-space: pre;
+        overflow-x: auto;
+    }
+    textarea:focus { border-color: #8e44ad; outline: none; }
+
+    .btn {
+        padding: 8px 16px; border: none; border-radius: 5px;
+        font-size: 0.85em; font-weight: 500; cursor: pointer;
+        background: #8e44ad; color: white; text-decoration: none;
+        display: inline-block;
+    }
+    .btn:hover { background: #6c3483; }
+
+    .table-wrap { overflow-x: auto; max-height: 450px; overflow-y: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.85em; }
+    th {
+        background: #6c3483; color: white; padding: 7px 8px;
+        text-align: left; position: sticky; top: 0; white-space: nowrap;
+    }
+    td { padding: 5px 8px; border-bottom: 1px solid #eee; }
+    tr:hover td { background: #f4ecf7; }
+    tr:nth-child(even) td { background: #fafbfc; }
+    tr:nth-child(even):hover td { background: #f4ecf7; }
+
+    .errore-title { color: #c0392b; border-bottom-color: #e74c3c; }
+
+</style>
+{% endblock %}

@@ -62,4 +62,6 @@ urlpatterns = [
     path('app/giacenze-negative/' , include('modules.giacenze_negative.urls')),
     path('app/articoli-nuovi/' , include('modules.articoli_nuovi.urls')),
     path('app/promo-abbigliamento/' , include('modules.promo_abbigliamento.urls')),
+    path('app/creazione-ordini-abbig/' , include('modules.creazione_ordini_abbig.urls')),
+    path('app/ins-attr-abbigliamento/' , include('modules.ins_mass_attributi_abbig.urls')),
 ]

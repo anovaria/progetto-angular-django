@@ -1,5 +1,6 @@
 from .models import VLuke
 from datetime import datetime
+from django.db.models import F
 
 TEXT_FILTERS = {
     'reparto': 'descr_reparto__icontains',
@@ -44,6 +45,10 @@ def get_giacenze_negative(get_params):
                 campo = '-' + campo
             righe = righe.order_by(campo)
     else:
-        righe = righe.order_by('descr_reparto', '-ultima_vendita')
-
+        righe = sorted(righe, key=lambda riga: 
+                       (999999 if not riga.corsia else int(riga.corsia),
+                        999999 if not riga.campata else int(riga.campata),
+                        999999 if riga.giac_pdv is None else riga.giac_pdv,
+                        999999 if riga.giac_dep is None else -riga.giac_dep
+                        ))
     return righe

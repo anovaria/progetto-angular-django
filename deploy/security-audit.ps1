@@ -86,7 +86,8 @@ if ($pipOutdatedRaw) {
         foreach ($pkg in $pipOutdatedList) {
             if ($pacchettoCritici -contains $pkg.name.ToLower()) {
                 $pipOutdatedCritici += $pkg
-            } else {
+            }
+            else {
                 $pipOutdatedSafe += $pkg
             }
         }
@@ -154,7 +155,6 @@ if ($hasVulnerabilities -or $hasOutdated) {
                     Write-Host "   [--] Aggiorno $($pkg.name)..." -ForegroundColor Gray
                     & .\venv\Scripts\python.exe -m pip install --upgrade $pkg.name --quiet 2>&1 | Out-Null
                 }
-                & .\venv\Scripts\python.exe -m pip freeze > requirements.txt
                 Write-Host "   [OK] Aggiornamento completato" -ForegroundColor Green
                 Pop-Location
             }
@@ -202,3 +202,15 @@ else {
     Write-Host "================================================" -ForegroundColor Green
     Write-Host ""
 }
+
+# ============================================
+# FASE 4: SINCRONIZZA requirements.txt
+# Gira sempre, a prescindere dalle scelte fatte sopra,
+# cosi' il file riflette sempre cio' che e' davvero installato.
+# ============================================
+Write-Host "[4/4] Sincronizzazione requirements.txt..." -ForegroundColor Yellow
+Push-Location $BackendPath
+& .\venv\Scripts\python.exe -m pip freeze > requirements.txt
+Pop-Location
+Write-Host "   [OK] requirements.txt aggiornato" -ForegroundColor Green
+Write-Host ""

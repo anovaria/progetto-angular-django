@@ -10,7 +10,7 @@ $ErrorActionPreference = "Stop"
 # Configurazione
 $BackendSource = "C:\portale\django"
 $DestRoot = "C:\inetpub\PortaleTest"
-$DestAngular = "$DestRoot\angular"
+$DestProxy = "$DestRoot\proxy"
 $DestDjango = "$DestRoot\django"
 $ServiceName = "Djangoportaltest"
 $SiteName = "PortaleTest"
@@ -18,7 +18,7 @@ $SiteName = "PortaleTest"
 # ============================================
 # FASE 1: STOP SERVIZIO DJANGO
 # ============================================
-Write-Host "[1/6] Stop servizio Django..." -ForegroundColor Yellow
+Write-Host "[1/7] Stop servizio Django..." -ForegroundColor Yellow
 
 $service = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
 if ($service -and $service.Status -eq "Running") {
@@ -33,7 +33,7 @@ else {
 # ============================================
 # FASE 2: DEPLOY BACKEND DJANGO
 # ============================================
-Write-Host "[2/6] Deploy backend Django..." -ForegroundColor Yellow
+Write-Host "[2/7] Deploy backend Django..." -ForegroundColor Yellow
 
 robocopy $BackendSource $DestDjango /MIR /XD venv __pycache__ .git logs staticfiles /XF *.pyc *.log /NFL /NDL /NJH /NJS /NP
 
@@ -46,13 +46,52 @@ else {
 }
 
 # ============================================
-# FASE 3: COLLECTSTATIC DJANGO
+# FASE 3: SINCRONIZZA DIPENDENZE PYTHON
+# Il venv di test NON viene mai copiato (escluso da robocopy /XD venv),
+# quindi va allineato a requirements.txt ad ogni deploy.
 # ============================================
-Write-Host "[3/6] Collectstatic Django..." -ForegroundColor Yellow
+Write-Host "[3/7] Sincronizzazione dipendenze (pip install -r requirements.txt)..." -ForegroundColor Yellow
+
+$reqFile = "$DestDjango\requirements.txt"
+if (Test-Path $reqFile) {
+    Push-Location $DestDjango
+
+    # pip scrive spesso avvisi innocui su stderr (es. "aggiorna pip").
+    # Con $ErrorActionPreference = Stop, 2>&1 trasformerebbe quelle righe
+    # in errori fatali anche a comando riuscito: disattiviamo Stop solo qui.
+    $prevEAP = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    $pipOutput = & .\venv\Scripts\python.exe -m pip install -r requirements.txt --quiet 2>&1
+    $pipExit = $LASTEXITCODE
+    $ErrorActionPreference = $prevEAP
+
+    Pop-Location
+
+    if ($pipExit -eq 0) {
+        Write-Host "   [OK] Dipendenze sincronizzate" -ForegroundColor Green
+    }
+    else {
+        Write-Host "   [ERR] Sincronizzazione dipendenze fallita (exit code $pipExit):" -ForegroundColor Red
+        $pipOutput | ForEach-Object { Write-Host "        $_" -ForegroundColor Red }
+        exit 1
+    }
+}
+else {
+    Write-Host "   [ERR] requirements.txt non trovato in $DestDjango" -ForegroundColor Red
+    exit 1
+}
+
+# ============================================
+# FASE 4: COLLECTSTATIC DJANGO
+# ============================================
+Write-Host "[4/7] Collectstatic Django..." -ForegroundColor Yellow
 
 Push-Location $DestDjango
+$prevEAP = $ErrorActionPreference
+$ErrorActionPreference = "Continue"
 $staticOutput = & .\venv\Scripts\python.exe manage.py collectstatic --noinput --settings=project_core.settings.prod 2>&1
 $staticExit = $LASTEXITCODE
+$ErrorActionPreference = $prevEAP
 Pop-Location
 
 if ($staticExit -eq 0) {
@@ -65,17 +104,18 @@ else {
 }
 
 # ============================================
-# FASE 4: DEPLOY WEB.CONFIG DJANGO PURO
+# FASE 5: DEPLOY WEB.CONFIG DJANGO PURO
 # (nessun Angular - IIS proxia tutto a Django)
 # ============================================
-Write-Host "[4/6] Deploy web.config Django puro..." -ForegroundColor Yellow
+Write-Host "[5/7] Deploy web.config Django puro..." -ForegroundColor Yellow
 
-# Svuota la cartella angular (rimuove eventuali file Angular residui)
-if (Test-Path $DestAngular) {
-    Get-ChildItem $DestAngular | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+# Svuota la cartella proxy (contiene solo il web.config di reverse proxy verso Django;
+# il nome "angular" era storico, da quando il frontend era ancora Angular)
+if (Test-Path $DestProxy) {
+    Get-ChildItem $DestProxy | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
 }
 else {
-    New-Item -ItemType Directory -Path $DestAngular -Force | Out-Null
+    New-Item -ItemType Directory -Path $DestProxy -Force | Out-Null
 }
 
 # web.config che proxia TUTTO a Django (porta 8001), tranne /static/
@@ -98,13 +138,13 @@ $webConfig = @'
   </system.webServer>
 </configuration>
 '@
-$webConfig | Set-Content "$DestAngular\web.config" -Force
+$webConfig | Set-Content "$DestProxy\web.config" -Force
 Write-Host "   [OK] web.config Django puro creato (proxy completo -> :8001)" -ForegroundColor Green
 
 # ============================================
-# FASE 6: VERIFICA VIRTUAL DIRECTORY + AVVIO
+# FASE 6: VERIFICA VIRTUAL DIRECTORY
 # ============================================
-Write-Host "[6/6] Avvio servizi..." -ForegroundColor Yellow
+Write-Host "[6/7] Verifica virtual directory..." -ForegroundColor Yellow
 
 Import-Module WebAdministration -ErrorAction SilentlyContinue
 
@@ -116,6 +156,11 @@ if (!$vdir) {
 else {
     Write-Host "   [OK] Virtual directory 'static' esiste" -ForegroundColor Green
 }
+
+# ============================================
+# FASE 7: AVVIO SERVIZI
+# ============================================
+Write-Host "[7/7] Avvio servizi..." -ForegroundColor Yellow
 
 Start-Service -Name $ServiceName -ErrorAction SilentlyContinue
 Start-Sleep -Seconds 3
@@ -133,7 +178,8 @@ try {
     Start-Sleep -Seconds 2
     Start-Service W3SVC -ErrorAction Stop
     Write-Host "   [OK] IIS riavviato" -ForegroundColor Green
-} catch {
+}
+catch {
     iisreset /restart | Out-Null
     Write-Host "   [OK] IIS riavviato (via iisreset)" -ForegroundColor Green
 }

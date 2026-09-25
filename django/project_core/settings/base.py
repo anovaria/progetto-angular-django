@@ -113,6 +113,8 @@ INSTALLED_APPS = [
     'modules.giacenze_negative',
     'modules.articoli_nuovi',
     'modules.promo_abbigliamento',
+    'modules.creazione_ordini_abbig',
+    'modules.ins_mass_attributi_abbig',
 ]
 
 # Middleware (Nessun cambiamento)

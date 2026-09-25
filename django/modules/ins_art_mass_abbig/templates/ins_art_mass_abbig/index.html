@@ -95,7 +95,7 @@
                 <form method="post">
                     {% csrf_token %}
                     <input type="hidden" name="variante" value="{{ slug }}">
-
+                    <input type="hidden" name="nome_file">
                     <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(190px, 1fr)); gap:10px;">
                         {% for col in tab.colonne %}
                         <div {% if col.campo == "descrizione" %}style="grid-column: span 2;"{% endif %}>
@@ -106,7 +106,7 @@
                     </div>
 
                     <br>
-                    <button type="submit" class="btn">Genera</button>
+                    <button type="button" class="btn btn-genera">Genera</button>
                     <a href="{% url 'ins_art_mass_main' %}" class="btn" style="background:#95a5a6;">Pulisci</a>
                 </form>
             </div>
@@ -200,7 +200,57 @@
             {% endif %}
         </div>
         {% endfor %}
+        <div class="modal fade" id="modalNomeFile" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Nome file CSV</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                <label for="id_nome_file_input">Nome file (SENZA SPAZI - senza estensione)</label>
+                <input type="text" id="id_nome_file_input" class="form-control">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn" style="background:#95a5a6;" data-bs-dismiss="modal">Annulla</button>
+                <button type="button" class="btn" id="btnConfermaGenera">Genera</button>
+            </div>
+            </div>
+        </div>
+        </div>       
     </div>
-
 </div>
+{% endblock %}
+{% block extra_js %}
+<script>
+    let formDaSottomettere = null;
+
+    document.querySelectorAll('.btn-genera').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            formDaSottomettere = btn.closest('form');
+
+            var textareas = formDaSottomettere.querySelectorAll('textarea');
+            var tutteVuote = Array.from(textareas).every(function (t) {
+                return t.value.trim() === '';
+            });
+            if (tutteVuote) {
+                alert('Incolla almeno una riga di dati prima di generare.');
+                return;
+            }
+
+            document.getElementById('id_nome_file_input').value = '';
+            new bootstrap.Modal(document.getElementById('modalNomeFile')).show();
+        });
+    });
+
+    document.getElementById('btnConfermaGenera').addEventListener('click', function () {
+        if (!formDaSottomettere) return;
+        var nomeFile = document.getElementById('id_nome_file_input').value.trim();
+        formDaSottomettere.querySelector('input[name="nome_file"]').value = nomeFile;
+        bootstrap.Modal.getInstance(document.getElementById('modalNomeFile')).hide();
+        formDaSottomettere.submit();
+    });
+</script>
 {% endblock %}

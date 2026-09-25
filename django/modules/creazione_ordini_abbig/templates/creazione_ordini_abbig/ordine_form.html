@@ -1,0 +1,100 @@
+{% extends 'portal/base.html' %}
+{% block page_content %}
+<div class="card mb-4">
+  <div class="card-header">
+    <h5 class="mb-0">Nuovo ordine</h5>
+  </div>
+  <div class="card-body">
+    <form method="post" action="{% url 'ordini-abbig:download' %}">
+    {% csrf_token %}
+    <div class="row g-2 align-items-end mb-3">
+      <div class="col">
+          <label for="{{ form.codice_ordine.id_for_label }}" class="form-label">Codice ordine</label>
+          {{ form.codice_ordine }}
+          <div class="text-danger small">{{ form.codice_ordine.errors }}</div>
+      </div>
+      <div class="col">
+          <label for="{{ form.codice_fornitore.id_for_label }}" class="form-label">Codice Fornitore</label>
+          {{ form.codice_fornitore }}
+          <div class="text-danger small">{{ form.codice_fornitore.errors }}</div>
+      </div>
+      <div class="col">
+          <label for="{{ form.codice_commerciale.id_for_label }}" class="form-label">Codice Contratto Commerciale</label>
+          {{ form.codice_commerciale }}
+          <div class="text-danger small">{{ form.codice_commerciale.errors }}</div>
+      </div>
+      <div class="col">
+          <label for="{{ form.codice_articolo.id_for_label }}" class="form-label">Codice Articolo</label>
+          {{ form.codice_articolo }}
+          <div class="text-danger small">{{ form.codice_articolo.errors }}</div>
+      </div>
+      <div class="col">
+          <label for="{{ form.quantita_ordine.id_for_label }}" class="form-label">Quantità Ordine</label>
+          {{ form.quantita_ordine }}
+          <div class="text-danger small">{{ form.quantita_ordine.errors }}</div>
+      </div>
+    </div>
+    <div class="row g-2 align-items-end mb-3">
+      <div class="col">
+          <label for="{{ form.nome_file.id_for_label }}" class="form-label">Nome file CSV - SENZA SPAZI</label>
+          {{ form.nome_file }}
+          <div class="text-danger small">{{ form.nome_file.errors }}</div>
+      </div>
+    <div class="col-auto">
+        <button type="submit" class="btn btn-primary">Genera Ordine</button>
+        <button type="button" class="btn btn-secondary" onclick="
+          document.querySelectorAll('.text-danger').forEach(el => el.innerHTML = '');
+          document.getElementById('{{ form.codice_ordine.id_for_label }}').value = 'ABB0000000000';
+          document.getElementById('{{ form.codice_fornitore.id_for_label }}').value = '';
+          document.getElementById('{{ form.codice_commerciale.id_for_label }}').value = '';
+          document.getElementById('{{ form.codice_articolo.id_for_label }}').value = '';
+          document.getElementById('{{ form.quantita_ordine.id_for_label }}').value = '';
+          document.getElementById('{{ form.nome_file.id_for_label }}').value = '';
+        ">Pulisci</button>
+    </div>
+    </div>
+    </form>
+  <hr class="my-4">
+  <div class="toolbar d-flex justify-content-between align-items-center">
+    <h5 class="mb-0">Elenco ultimi 10 ordini eseguiti</h5>
+    <a href="{% url 'ordini-abbig:index' %}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-arrow-clockwise"></i> Aggiorna storico
+    </a>
+  </div>
+  {% if not righe %}
+  <p>Nessun nuovo ordine al momento.</p>
+  {% else %}
+  <div class="table-wrapper">
+    <table class="table table-striped table-hover table-sm">
+      <thead>
+        <tr>
+            <th>Codice ordine</th>
+            <th>Codice Fornitore</th>
+            <th>Codice Commerciale</th>
+            <th>Codice Articolo</th>
+            <th>Sito</th>
+            <th>Data ordine</th>
+            <th>Data consegna</th>
+            <th>Quantità ordine</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for riga in righe %}
+        <tr>
+            <td>{{ riga.codice_ordine }}</td>
+            <td>{{ riga.codice_fornitore }}</td>
+            <td>{{ riga.codice_commerciale }}</td>
+            <td>{{ riga.codice_articolo }}</td>
+            <td>{{ riga.sito }}</td>
+            <td>{{ riga.data_ordine }}</td>
+            <td>{{ riga.data_consegna }}</td>
+            <td>{{ riga.quantita_ordine }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+  </div>
+</div>
+{% endblock page_content %}

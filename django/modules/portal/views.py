@@ -272,6 +272,14 @@ MENU_CONFIG = [
         'app_name': 'assortimento-abbig',
     },
     {
+        'path': '/app/creazione-ordini-abbig/',
+        'label': 'Ordini Abbig.',
+        'icon': 'bag-plus',
+        'desc': 'Creazione ordini Abbigliamento',
+        'groups': ['abbigliamento', 'itd'],
+        'app_name': 'ordini-abbig',
+    },
+    {
         'path': '/app/invenduti/',
         'label': 'Invenduti',
         'icon': 'archive',
@@ -366,7 +374,15 @@ MENU_CONFIG = [
         'desc': 'Inserimento nuova promo per Abbigliamento',
         'groups': ['abbigliamento', 'itd'],
         'app_name': 'promo-abbigliamento',
-    },    
+    }, 
+    {
+        'path': '/app/ins-attr-abbigliamento/',
+        'label': 'Ins. Attributi Abbig.',
+        'icon': 'stack',
+        'desc': 'Inserimento massivo Attributi per Abbigliamento',
+        'groups': ['abbigliamento', 'itd'],
+        'app_name': 'ins-attr-abbigliamento',
+    },        
     {
         'path': '/app/preventivi/',
         'label': 'Preventivi',

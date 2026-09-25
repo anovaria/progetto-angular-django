@@ -49,3 +49,9 @@ def scarica_csv_promo(request, codice_promo):
     response['Content-Disposition'] = f'attachment; filename="{nome}.csv"'
     request.session.pop('codice_promo_creato', None)
     return response
+
+def elimina_testata(request, codice_promo):
+    promo = PromoTestata.objects.get(codice_promo=codice_promo)
+    promo.delete()
+    messages.success(request, f'Il codice {codice_promo} è stato cancellato con successo!')
+    return redirect('promo_abbigliamento:home')

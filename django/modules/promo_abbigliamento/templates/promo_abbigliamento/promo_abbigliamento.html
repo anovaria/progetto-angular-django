@@ -37,7 +37,12 @@
                     <td>{{ riga.data_inizio_sellout }}</td>
                     <td>{{ riga.data_fine_sellout }}</td>
                     <td>Nuova</td>
-                    <td></td>
+                    <td>
+                        <form method="post" action="{% url 'promo_abbigliamento:elimina' riga.codice_promo %}" onsubmit="return confirm('Sei sicuro di voler eliminare {{ riga.codice_promo }}?');">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-danger btn-sm">Elimina</button>
+                        </form>
+                    </td>
                 </tr>
             {% endfor %}            
             {% for riga in storico %}

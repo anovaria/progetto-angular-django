@@ -1,8 +1,7 @@
 from django.shortcuts import render
 from datetime import date
 from .config import tracciato, VARIANTI
-import csv
-import io
+import csv,io,re
 from django.http import HttpResponse
 
 # Le colonne che l'utente incolla, una per box, uguali per tutte e 4 le varianti.
@@ -132,16 +131,18 @@ def index(request):
 
             if not any([troppo_lunghe, barcode_rotti]):
                 righe = _genera_righe(articoli, attiva)
-
                 sessione_righe = request.session.get('ins_art_mass_righe', {})
                 sessione_ccom = request.session.get('ins_art_mass_ccom', {})
                 sessione_righe[attiva] = righe
                 sessione_ccom[attiva] = articoli[0]["ccom"] or "articoli"
                 request.session['ins_art_mass_righe'] = sessione_righe
                 request.session['ins_art_mass_ccom'] = sessione_ccom
-
                 t["articoli"] = articoli
                 t["pronta"] = True
+                nome_file = request.POST.get('nome_file', '').strip()
+                sessione_nomi = request.session.get('ins_art_mass_nomi', {})
+                sessione_nomi[attiva] = nome_file
+                request.session['ins_art_mass_nomi'] = sessione_nomi
 
     for t in tabs.values():
         t["colonne"] = [
@@ -156,29 +157,30 @@ def index(request):
 
 
 def download(request):
-    """Scarica il CSV generato per la variante indicata in ?v=.
-
-    Arriva in GET (è un link), quindi le righe vengono rilette dalla sessione
-    dove le ha salvate la view index, tenute separate per variante.
-    """
     variante = request.GET.get('v', '')
     sessione_righe = request.session.get('ins_art_mass_righe', {})
     sessione_ccom = request.session.get('ins_art_mass_ccom', {})
+    sessione_nomi = request.session.get('ins_art_mass_nomi', {})
     righe = sessione_righe.get(variante, [])
     ccom = sessione_ccom.get(variante, 'articoli')
+    nome_file = sessione_nomi.get(variante, '').strip()
 
     if variante not in VARIANTI or not righe:
         return HttpResponse("Nessun dato da scaricare. Genera prima le righe.", status=400)
+
+    if not nome_file:
+        nome_file = f'{ccom}-{variante}'
+    if nome_file.lower().endswith('.csv'):
+        nome_file = nome_file[:-4]
+    nome_file = re.sub(r'[\\/:*?"<>|\r\n]', '_', nome_file)
 
     buffer = io.StringIO()
     writer = csv.writer(buffer, delimiter=';')
     writer.writerow([c["nome"] for c in tracciato(variante)])
     writer.writerows(righe)
 
-    # Gold vuole ISO-8859-1 (cp1252), non UTF-8: le accentate uscirebbero
-    # sbagliate. errors='replace' evita il crash su caratteri non rappresentabili.
     contenuto = buffer.getvalue().encode('cp1252', errors='replace')
 
     response = HttpResponse(contenuto, content_type='text/csv; charset=ISO-8859-1')
-    response['Content-Disposition'] = f'attachment; filename="{ccom}-{variante}.csv"'
+    response['Content-Disposition'] = f'attachment; filename="{nome_file}.csv"'
     return response
