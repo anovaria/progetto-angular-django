@@ -115,6 +115,7 @@ INSTALLED_APPS = [
     'modules.promo_abbigliamento',
     'modules.creazione_ordini_abbig',
     'modules.ins_mass_attributi_abbig',
+    'modules.rotazione_minmax',
 ]
 
 # Middleware (Nessun cambiamento)

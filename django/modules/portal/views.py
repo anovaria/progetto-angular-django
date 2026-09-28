@@ -304,6 +304,14 @@ MENU_CONFIG = [
         'app_name': 'articoli-nuovi',
     },
     {
+        'path': '/app/rotazione-minmax/',
+        'label': 'Rotazione min-max Settore',
+        'icon': 'stars',
+        'desc': 'Rotazione e min/max articoli per sito, con export Excel',
+        'groups': ['itd', 'depositi'],
+        'app_name': 'rotazione-minmax',
+    },
+    {
         'path': '/app/stock-picking/',
         'label': 'Stock Picking',
         'icon': 'box-arrow-in-down',

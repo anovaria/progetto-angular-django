@@ -1,0 +1,127 @@
+{% extends 'portal/base.html' %}
+
+{% block extra_css %}
+<link href="https://cdnjs.cloudflare.com/ajax/libs/tabulator-tables/6.5.2/css/tabulator_bootstrap5.min.css" rel="stylesheet">
+{% endblock %}
+
+{% block page_content %}
+<div class="container-fluid">
+  <div class="card">
+    <div class="card-body">
+      <div class="d-flex align-items-center gap-2 mb-3">
+        <label for="sel-sito" class="form-label mb-0">Sito</label>
+        <select id="sel-sito" class="form-select form-select-sm w-auto">
+          <option value="">-- scegli il sito --</option>
+          {% for s in siti %}
+          <option value="{{ s }}">{{ s }}</option>
+          {% endfor %}
+        </select>
+        <span id="stato" class="text-muted small"></span>
+        <button id="btn-export" class="btn btn-success btn-sm ms-auto" disabled>
+            <i class="bi bi-file-earmark-excel"></i> Esporta Excel
+        </button>
+      </div>
+      <div id="griglia"></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tabulator-tables/6.5.2/js/tabulator.min.js"></script>
+<script>
+  const esatto = { headerFilterFunc: '=' };
+  const colonne = [
+    { title: 'DataAgg', field: 'dtaaggio', headerFilter: false },
+    { title: 'SITO', field: 'sito', headerFilter: false },
+    { title: 'SETT', field: 'sett', ...esatto },
+    { title: 'REP', field: 'rep', ...esatto },
+    { title: 'SREP', field: 'srep', ...esatto },
+    { title: 'FAM', field: 'fam', ...esatto },
+    { title: 'DESCRFAM', field: 'descrfam' },
+    { title: 'FOPRINC', field: 'foprinc', ...esatto },
+    { title: 'Ordinabile', field: 'ordinabile' },
+    { title: 'CODFORN', field: 'codforn', ...esatto },
+    { title: 'CCOM', field: 'ccom', ...esatto },
+    { title: 'DESCRCCOM', field: 'descrccom' },
+    { title: 'DESCR_LINEA', field: 'descr_linea' },
+    { title: 'Corsia', field: 'corsia', ...esatto },
+    { title: 'Campata', field: 'campata', ...esatto },
+    { title: 'facing', field: 'facing', ...esatto },
+    { title: 'Min', field: 'min_qta' },
+    { title: 'Max', field: 'max_qta' },
+    { title: 'qtamax', field: 'qtamax' },
+    { title: 'ROTANOOFF', field: 'rotanooff' },
+    { title: 'ROTAOFF', field: 'rotaoff' },
+    { title: 'PZXCART', field: 'pzxcart' },
+    { title: 'codarticolo', field: 'codarticolo', ...esatto },
+    { title: 'DESCRART', field: 'descrart' },
+    { title: 'EAN', field: 'ean' },
+    { title: 'STATO', field: 'stato' },
+    { title: 'pick', field: 'pick' },
+    { title: 'BARICENTRO', field: 'baricentro' },
+    { title: 'GIACENZA_PDV', field: 'giacenza_pdv' },
+    { title: 'GIACENZA_DEPOSITO', field: 'giacenza_deposito' },
+  ];
+  const tabella = new Tabulator('#griglia', {
+    height: '70vh',
+    layout: 'fitData',
+    columnDefaults: {
+      headerFilter: 'input',
+      accessorDownload: (valore) => valore ?? '',
+    },
+    columns: colonne,
+    placeholder: 'Scegli un sito',
+  });
+
+  const selSito = document.getElementById('sel-sito');
+  const stato = document.getElementById('stato');
+  const btnExport = document.getElementById('btn-export');
+
+  btnExport.addEventListener('click', () => {
+    const oggi = new Date().toISOString().slice(0, 10);
+    tabella.download('xlsx', `rotazione_${selSito.value}_${oggi}.xlsx`, { sheetName: 'Rotazione' });
+  });
+
+  tabella.on('dataFiltered', (filtri, righe) => {
+    const totale = tabella.getDataCount();
+    stato.textContent = righe.length === totale
+      ? `${totale} righe`
+      : `${righe.length} di ${totale} righe`;
+  });
+  selSito.addEventListener('change', async () => {
+    const sito = selSito.value;
+    if (!sito) {
+      tabella.clearData();
+      stato.textContent = '';
+      btnExport.disabled = true;
+      return;
+    }
+
+    stato.textContent = 'Caricamento…';
+    selSito.disabled = true;
+    btnExport.disabled = true;
+    try {
+      const resp = await fetch(`{% url 'rotazione-minmax:dati' %}?sito=${sito}`);
+      const tipo = resp.headers.get('content-type') || '';
+      if (!tipo.includes('application/json')) {
+        stato.textContent = 'Sessione scaduta: ricarica la pagina e rifai il login.';
+        return;
+      }
+      const json = await resp.json();
+      if (!resp.ok) {
+        stato.textContent = json.errore;
+        return;
+      }
+      await tabella.setData(json.righe);
+      btnExport.disabled = false;
+      stato.textContent = `${json.totale} righe`;
+    } catch (e) {
+      stato.textContent = 'Errore di comunicazione con il server.';
+    } finally {
+      selSito.disabled = false;
+    }
+  });
+</script>
+{% endblock %}
