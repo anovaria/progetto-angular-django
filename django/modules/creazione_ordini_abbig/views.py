@@ -6,8 +6,8 @@ from .services import crea_ordine,genera_csv,ultime_righe
 def download(request):
     form = OrdineForm(request.POST)
     if form.is_valid():
-        ordine = crea_ordine(form.cleaned_data, request.portal_user)
-        contenuto_csv = genera_csv(ordine)
+        ordini = crea_ordine(form.cleaned_data, request.portal_user)
+        contenuto_csv = genera_csv(ordini)
         contenuto = contenuto_csv.encode('utf-8-sig')
         response = HttpResponse(contenuto, content_type='text/csv; charset=utf-8')
         nome_file = form.cleaned_data['nome_file']

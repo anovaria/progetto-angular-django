@@ -38,22 +38,50 @@ def _query_goldreport(sql, params=None):
         return cursor.fetchall()
 
 
+def _descr_reparti():
+    """
+    Dizionario REP -> descrizione da t_masterData (stessa connessione 'goldreport'
+    di v_abbigliamento, ma query indipendente): un JOIN diretto fra le due viste
+    è troppo lento, mentre una DISTINCT su t_masterData da sola è veloce.
+    """
+    rows = _query_goldreport(
+        "SELECT DISTINCT REPARTO, DESCREP FROM t_masterData WHERE REPARTO IS NOT NULL"
+    )
+    return {r[0]: (r[1] or '') for r in rows}
+
+
+def _descr_fornitori(rep):
+    """
+    Dizionario CODFORN -> descrizione da t_masterData, filtrato per reparto per
+    restare veloce. Copertura parziale (~60%): fornitori storici/dismessi non
+    più presenti in t_masterData restano senza descrizione (si mostra il codice).
+    """
+    rows = _query_goldreport(
+        "SELECT DISTINCT CODFORN, DESCFORN FROM t_masterData "
+        "WHERE REPARTO = %s AND CODFORN IS NOT NULL",
+        [rep],
+    )
+    return {r[0]: (r[1] or '') for r in rows}
+
+
 def _lista_reparti():
-    """Restituisce i reparti distinti presenti nella view."""
+    """Restituisce i reparti distinti (codice + descrizione) presenti nella view."""
     rows = _query_goldreport(
         "SELECT DISTINCT REP FROM v_abbigliamento WHERE REP IS NOT NULL ORDER BY REP"
     )
-    return [r[0] for r in rows]
+    descr = _descr_reparti()
+    return [{'cod': r[0], 'descr': descr.get(r[0], '')} for r in rows]
 
 
 def _lista_fornitori(rep):
-    """Restituisce i codici fornitore distinti per il reparto indicato."""
+    """Restituisce i fornitori distinti (codice + descrizione) per il reparto indicato."""
     rows = _query_goldreport(
         "SELECT DISTINCT CODFORN FROM v_abbigliamento "
         "WHERE REP = %s AND CODFORN IS NOT NULL ORDER BY CODFORN",
         [rep],
     )
-    return [r[0] for r in rows]
+    descr = _descr_fornitori(rep)
+    return [{'cod': r[0], 'descr': descr.get(r[0], '')} for r in rows]
 
 
 def _lista_ccom(rep, codforn=None):
@@ -191,7 +219,7 @@ def main(request):
 
 
 def api_fornitori(request):
-    """Endpoint JSON: fornitori distinti per il reparto selezionato (cascata filtri)."""
+    """Endpoint JSON: fornitori (codice + descrizione) per il reparto selezionato (cascata filtri)."""
     rep = request.GET.get('rep', '')
     if not rep:
         return JsonResponse({'fornitori': []})

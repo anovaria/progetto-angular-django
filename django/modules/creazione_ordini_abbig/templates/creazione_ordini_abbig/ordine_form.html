@@ -7,52 +7,71 @@
   <div class="card-body">
     <form method="post" action="{% url 'ordini-abbig:download' %}">
     {% csrf_token %}
-    <div class="row g-2 align-items-end mb-3">
-      <div class="col">
-          <label for="{{ form.codice_ordine.id_for_label }}" class="form-label">Codice ordine</label>
-          {{ form.codice_ordine }}
-          <div class="text-danger small">{{ form.codice_ordine.errors }}</div>
+      <div class="my-4">
+        <div class="row g-2 align-items-end mb-4">
+          <div class="col">
+              <label for="{{ form.codice_ordine.id_for_label }}" class="form-label">Codice ordine modifica le cifre del campo che ha ABB0000000000 preimpostato mettendo al posto dgli 0 il numero ordine che si ricava dal suo file</label>
+              {{ form.codice_ordine }}
+              <div class="text-danger small">{{ form.codice_ordine.errors }}</div>
+          </div>
+          <div class="col">
+              <label for="{{ form.codice_fornitore.id_for_label }}" class="form-label">Codice Fornitore</label>
+              {{ form.codice_fornitore }}
+              <div class="text-danger small">{{ form.codice_fornitore.errors }}</div>
+          </div>
+          <div class="col">
+              <label for="{{ form.codice_commerciale.id_for_label }}" class="form-label">Codice Contratto Commerciale</label>
+              {{ form.codice_commerciale }}
+              <div class="text-danger small">{{ form.codice_commerciale.errors }}</div>
+          </div>
+        </div>
+
+        <div class="row g-2 align-items-start">
+          <div class="col">
+              <label for="{{ form.lista_articoli.id_for_label }}" class="form-label">Codici Articolo (uno per riga)</label>
+              {{ form.lista_articoli }}
+              <div class="text-danger small">{{ form.lista_articoli.errors }}</div>
+          </div>
+          <div class="col">
+              <label for="{{ form.lista_quantita.id_for_label }}" class="form-label">Quantità ordine (una per riga)</label>
+              {{ form.lista_quantita }}
+              <div class="text-danger small">{{ form.lista_quantita.errors }}</div>
+          </div>
+        </div>
       </div>
-      <div class="col">
-          <label for="{{ form.codice_fornitore.id_for_label }}" class="form-label">Codice Fornitore</label>
-          {{ form.codice_fornitore }}
-          <div class="text-danger small">{{ form.codice_fornitore.errors }}</div>
-      </div>
-      <div class="col">
-          <label for="{{ form.codice_commerciale.id_for_label }}" class="form-label">Codice Contratto Commerciale</label>
-          {{ form.codice_commerciale }}
-          <div class="text-danger small">{{ form.codice_commerciale.errors }}</div>
-      </div>
-      <div class="col">
-          <label for="{{ form.codice_articolo.id_for_label }}" class="form-label">Codice Articolo</label>
-          {{ form.codice_articolo }}
-          <div class="text-danger small">{{ form.codice_articolo.errors }}</div>
-      </div>
-      <div class="col">
-          <label for="{{ form.quantita_ordine.id_for_label }}" class="form-label">Quantità Ordine</label>
-          {{ form.quantita_ordine }}
-          <div class="text-danger small">{{ form.quantita_ordine.errors }}</div>
-      </div>
-    </div>
-    <div class="row g-2 align-items-end mb-3">
-      <div class="col">
-          <label for="{{ form.nome_file.id_for_label }}" class="form-label">Nome file CSV - SENZA SPAZI</label>
-          {{ form.nome_file }}
-          <div class="text-danger small">{{ form.nome_file.errors }}</div>
-      </div>
-    <div class="col-auto">
-        <button type="submit" class="btn btn-primary">Genera Ordine</button>
-        <button type="button" class="btn btn-secondary" onclick="
-          document.querySelectorAll('.text-danger').forEach(el => el.innerHTML = '');
-          document.getElementById('{{ form.codice_ordine.id_for_label }}').value = 'ABB0000000000';
-          document.getElementById('{{ form.codice_fornitore.id_for_label }}').value = '';
-          document.getElementById('{{ form.codice_commerciale.id_for_label }}').value = '';
-          document.getElementById('{{ form.codice_articolo.id_for_label }}').value = '';
-          document.getElementById('{{ form.quantita_ordine.id_for_label }}').value = '';
-          document.getElementById('{{ form.nome_file.id_for_label }}').value = '';
-        ">Pulisci</button>
-    </div>
-    </div>
+      <input type="hidden" id="id_nome_file_hidden" name="nome_file">
+      <div class="col-auto">
+          <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalNomeFile">Genera Ordine</button>
+          <button type="button" class="btn btn-secondary" onclick="
+            document.querySelectorAll('.text-danger').forEach(el => el.innerHTML = '');
+            document.getElementById('{{ form.codice_ordine.id_for_label }}').value = 'ABB0000000000';
+            document.getElementById('{{ form.codice_fornitore.id_for_label }}').value = '';
+            document.getElementById('{{ form.codice_commerciale.id_for_label }}').value = '';
+            document.getElementById('{{ form.lista_articoli.id_for_label }}').value = '';
+            document.getElementById('{{ form.lista_quantita.id_for_label }}').value = '';
+            document.getElementById('id_nome_file_hidden').value = '';"
+          >Pulisci</button>
+      </div>  
+      <div class="modal fade" id="modalNomeFile" tabindex="-1" aria-hidden="true">
+          <div class="modal-dialog">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title">Nome file CSV</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+              </div>
+              <div class="modal-body">
+                <input type="text" class="form-control" id="input_nome_file" placeholder="es. ordine_fornitore">
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-primary" onclick="
+                  document.getElementById('id_nome_file_hidden').value = document.getElementById('input_nome_file').value;
+                  document.querySelector('form').submit();
+                  bootstrap.Modal.getInstance(document.getElementById('modalNomeFile')).hide();
+                ">Conferma e scarica</button>
+              </div>
+            </div>
+          </div>
+        </div>
     </form>
   <hr class="my-4">
   <div class="toolbar d-flex justify-content-between align-items-center">
