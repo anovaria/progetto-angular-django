@@ -1,6 +1,8 @@
 import csv
 from datetime import date, timedelta
 import io
+
+from django.db.models import Count
 from .models import Ordine
 import re
 from django.core.exceptions import ValidationError
@@ -78,7 +80,12 @@ def genera_csv(ordini):
     return buffer.getvalue()
 
 def ultime_righe():
-    return Ordine.objects.order_by('-codice_ordine', 'numero_riga')[:10]
+    return (
+        Ordine.objects
+        .values('codice_ordine', 'codice_fornitore', 'codice_commerciale', 'data_ordine', 'data_consegna')
+        .annotate(num_articoli=Count('id'))
+        .order_by('-codice_ordine')[:10]
+    )
 
 def parse_lista_testo(testo):
     lista = testo.splitlines()

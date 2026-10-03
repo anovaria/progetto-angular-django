@@ -89,12 +89,10 @@
         <tr>
             <th>Codice ordine</th>
             <th>Codice Fornitore</th>
-            <th>Codice Commerciale</th>
-            <th>Codice Articolo</th>
-            <th>Sito</th>
+            <th>Codice CCOM</th>
+            <th>N° articoli</th>
             <th>Data ordine</th>
             <th>Data consegna</th>
-            <th>Quantità ordine</th>
         </tr>
       </thead>
       <tbody>
@@ -103,11 +101,9 @@
             <td>{{ riga.codice_ordine }}</td>
             <td>{{ riga.codice_fornitore }}</td>
             <td>{{ riga.codice_commerciale }}</td>
-            <td>{{ riga.codice_articolo }}</td>
-            <td>{{ riga.sito }}</td>
+            <td>{{ riga.num_articoli }}</td>
             <td>{{ riga.data_ordine }}</td>
             <td>{{ riga.data_consegna }}</td>
-            <td>{{ riga.quantita_ordine }}</td>
         </tr>
         {% endfor %}
       </tbody>
