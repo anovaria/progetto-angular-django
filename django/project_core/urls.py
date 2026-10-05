@@ -65,4 +65,5 @@ urlpatterns = [
     path('app/creazione-ordini-abbig/' , include('modules.creazione_ordini_abbig.urls')),
     path('app/ins-attr-abbigliamento/' , include('modules.ins_mass_attributi_abbig.urls')),
     path('app/rotazione-minmax/', include('modules.rotazione_minmax.urls')),
+    path('app/foresteria/', include('modules.foresteria.urls')),
 ]

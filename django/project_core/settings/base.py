@@ -116,6 +116,7 @@ INSTALLED_APPS = [
     'modules.creazione_ordini_abbig',
     'modules.ins_mass_attributi_abbig',
     'modules.rotazione_minmax',
+    'modules.foresteria',
 ]
 
 # Middleware (Nessun cambiamento)

@@ -63,7 +63,7 @@ REM
 REM  Cartella di salvataggio copia CSV: stesso posto del vecchio flusso legacy
 REM  (bcp + trasffilerioDash.exe scrivevano in C:\C3\riordino\riofo\ su srviisnew),
 REM  sottocartella dedicata per non mischiare coi file dell'exe. Richiede che
-REM  l'account del task (adminalessandro) abbia Change sulla share \\srviisnew\riordino
+REM  l'account del task (SYSTEM) abbia Change sulla share \\srviisnew\riordino
 REM  (share-level, verificato 14/07/2026 - vedi anche SRV-DEV1$ per il servizio NSSM).
 set RIO_DASH_DRY_RUN_DIR=\\srviisnew\riordino\riofo\portale\
 REM
