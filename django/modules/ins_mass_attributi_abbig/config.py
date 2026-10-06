@@ -66,9 +66,11 @@ COLONNE_INPUT = [
     ("codice_articolo", "Codice articolo"),
     ("ccom", "Codice CCOM"),
     ("linea", "Linea"),
+    ("noscorep_data_fine", "Data Fine NOSCOREP"),
     ("tcol_attributo", "Codice attributo TCOL"),
     ("tcol_alfa", "Valore alfanumerico TCOL"),
     ("sargc_attributo", "Codice attributo SARGC"),
-    ("noscorep_data_fine", "Data Fine NOSCOREP")
 ]
 CAMPI_OBBLIGATORI =  [campo for campo, _label in COLONNE_INPUT if campo != "noscorep_data_fine"]
+CAMPI_RIPETIBILI = ["tcol_attributo", "tcol_alfa", "sargc_attributo"]
+ETICHETTE = dict(COLONNE_INPUT)

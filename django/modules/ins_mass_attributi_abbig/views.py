@@ -2,7 +2,7 @@ import re,io,csv
 
 from django.http import HttpResponse
 from django.shortcuts import render
-from .config import BLOCCHI,COLONNE_INPUT,CAMPI_OBBLIGATORI, TRACCIATO
+from .config import BLOCCHI,COLONNE_INPUT,CAMPI_OBBLIGATORI, TRACCIATO,CAMPI_RIPETIBILI,ETICHETTE
 
 def _valore_campo(definizione, art):
     if definizione["tipo"] == "manuale":
@@ -44,12 +44,16 @@ def _parsing(valori):
         else:
             liste[campo] = [r.strip() for r in righe_grezze if r.strip()]
 
-    conteggi = {campo: len(liste[campo]) for campo in liste}
     n = len(liste["codice_articolo"])
     if n == 0:
         return [], "Non hai incollato nessun dato."
     
-    diverse = [f"{campo}: {conteggi[campo]}"
+    for campo in CAMPI_RIPETIBILI:
+        if len(liste[campo]) == 1:
+            liste[campo] = liste[campo] * n
+
+    conteggi = {campo: len(liste[campo]) for campo in liste}
+    diverse = [f"{ETICHETTE[campo]}: {conteggi[campo]} righe"
            for campo in CAMPI_OBBLIGATORI if conteggi[campo] != n]
     if diverse:
         return [], (f"Le colonne hanno un numero di righe diverso (attese {n}). "
@@ -103,7 +107,7 @@ def index(request):
                 request.session['ins_attr_nome'] = nome_file
                 pronta = True
     colonne = [
-        {"campo": campo, "label": _label, "valore": valori.get(campo, "")}
+        {"campo": campo, "label": _label, "valore": valori.get(campo, ""),"ripetibile": campo in CAMPI_RIPETIBILI }
         for campo, _label in COLONNE_INPUT
     ]
     blocchi = list(BLOCCHI.keys())

@@ -4,7 +4,7 @@
 <div class="container">
     <div class="section">
         <div class="section-title">Inserimento massivo attributi — Abbigliamento</div>
-        <p style="font-size:0.85em; color:#666; margin-bottom:0;">Incollare le 6 colonne, le righe si abbinano per posizione
+        <p style="font-size:0.85em; color:#666; margin-bottom:0;">Incollare le 7 colonne, le righe si abbinano per posizione
              Genera e scarica i 5 CSV per Gold separatamente per ogni Attributo.
         </p>
     </div>
@@ -12,13 +12,27 @@
     <form method="post">
         {% csrf_token %}
         <input type="hidden" name="nome_file">
-        <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(190px, 1fr)); gap:10px;">
+        <div style="display:none;">
             {% for col in colonne %}
             <div>
                 <label>{{ col.label }}</label>
                 <textarea name="{{ col.campo }}" rows="12" wrap="off">{{ col.valore }}</textarea>
             </div>
             {% endfor %}
+        </div>
+        <div class="table-wrap">
+            <table id="griglia-tabella">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        {% for col in colonne %}
+                            <th data-campo="{{ col.campo }}" {% if col.ripetibile %}data-ripetibile{% endif %}>{{ col.label }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody id="griglia">
+                </tbody>
+            </table>
         </div>
         {% if errore %}
         <div class="section">
@@ -104,9 +118,139 @@
 <script>
     let formDaSottomettere = null;
 
+    // ---------- Griglia: struttura ----------
+
+    var campiGriglia = Array.from(
+        document.querySelectorAll('#griglia-tabella th[data-campo]')
+    ).map(function (th) {
+        return th.dataset.campo;
+    });
+
+    function aggiungiRiga() {
+        var tr = document.createElement('tr');
+
+        var numero = document.querySelectorAll('#griglia tr').length + 1;
+        var tdNum = document.createElement('td');
+        tdNum.textContent = numero;
+        tdNum.className = 'num';
+        tr.appendChild(tdNum);
+
+        campiGriglia.forEach(function (campo) {
+            var td = document.createElement('td');
+            var input = document.createElement('input');
+            input.type = 'text';
+            input.dataset.campo = campo;
+            td.appendChild(input);
+            tr.appendChild(td);
+        });
+        document.getElementById('griglia').appendChild(tr);
+    }
+
+    // ---------- Riempimento verso il basso (colonne ripetibili) ----------
+
+    function riempiGiu() {
+        var righeConCodice = Array.from(document.querySelectorAll('#griglia tr')).filter(function (tr) {
+            return tr.querySelector('input[data-campo="codice_articolo"]').value.trim() !== '';
+        });
+        if (righeConCodice.length < 2) return;
+
+        document.querySelectorAll('#griglia-tabella th[data-ripetibile]').forEach(function (th) {
+            var campo = th.dataset.campo;
+            var celle = righeConCodice.map(function (tr) {
+                return tr.querySelector('input[data-campo="' + campo + '"]');
+            });
+            var compilate = celle.filter(function (c) {
+                return c.value.trim() !== '';
+            });
+            if (compilate.length === 1) {
+                var valore = compilate[0].value.trim();
+                celle.forEach(function (c) {
+                    c.value = valore;
+                });
+            }
+        });
+    }
+
+    // ---------- Griglia -> textarea nascoste (verso il server) ----------
+
+    function grigliaATextarea() {
+        riempiGiu();
+        var righe = Array.from(document.querySelectorAll('#griglia tr')).filter(function (tr) {
+            return tr.querySelector('input[data-campo="codice_articolo"]').value.trim() !== '';
+        });
+        campiGriglia.forEach(function (campo) {
+            var valori = righe.map(function (tr) {
+                return tr.querySelector('input[data-campo="' + campo + '"]').value.trim();
+            });
+            document.querySelector('textarea[name="' + campo + '"]').value = valori.join('\n');
+        });
+    }
+
+    // ---------- Textarea nascoste -> griglia (dopo il ricaricamento) ----------
+
+    function textareaAGriglia() {
+        var colonne = {};
+        var n = 0;
+        campiGriglia.forEach(function (campo) {
+            var ta = document.querySelector('textarea[name="' + campo + '"]');
+            var righe = ta.value === '' ? [] : ta.value.split('\n');
+            colonne[campo] = righe;
+            if (righe.length > n) n = righe.length;
+        });
+
+        while (document.querySelectorAll('#griglia tr').length < n) {
+            aggiungiRiga();
+        }
+
+        var trGriglia = document.querySelectorAll('#griglia tr');
+        campiGriglia.forEach(function (campo) {
+            colonne[campo].forEach(function (valore, i) {
+                trGriglia[i].querySelector('input[data-campo="' + campo + '"]').value = valore;
+            });
+        });
+    }
+
+    // ---------- Incolla da Excel ----------
+
+    document.getElementById('griglia').addEventListener('paste', function (e) {
+        if (!e.target.dataset.campo) return;
+        e.preventDefault();
+
+        var testo = e.clipboardData.getData('text');
+        var righe = testo.replace(/\r/g, '').replace(/\n$/, '').split('\n');
+        var blocco = righe.map(function (riga) {
+            return riga.split('\t');
+        });
+
+        var tr = e.target.closest('tr');
+        var righeGriglia = Array.from(document.querySelectorAll('#griglia tr'));
+        var rigaIniziale = righeGriglia.indexOf(tr);
+        var colonnaIniziale = campiGriglia.indexOf(e.target.dataset.campo);
+
+        while (document.querySelectorAll('#griglia tr').length < rigaIniziale + blocco.length) {
+            aggiungiRiga();
+        }
+
+        var trGriglia = document.querySelectorAll('#griglia tr');
+        blocco.forEach(function (valoriRiga, r) {
+            var campi = trGriglia[rigaIniziale + r].querySelectorAll('input');
+            valoriRiga.forEach(function (valore, c) {
+                var campo = campi[colonnaIniziale + c];
+                if (campo) campo.value = valore.trim();
+            });
+        });
+        riempiGiu();
+    });
+
+    // Scrittura a mano: quando esce da una cella modificata
+    document.getElementById('griglia').addEventListener('change', riempiGiu);
+
+    // ---------- Genera + modal del nome file ----------
+
     document.querySelectorAll('.btn-genera').forEach(function (btn) {
         btn.addEventListener('click', function () {
             formDaSottomettere = btn.closest('form');
+            grigliaATextarea();
 
             var textareas = formDaSottomettere.querySelectorAll('textarea');
             var tutteVuote = Array.from(textareas).every(function (t) {
@@ -129,6 +273,14 @@
         bootstrap.Modal.getInstance(document.getElementById('modalNomeFile')).hide();
         formDaSottomettere.submit();
     });
+
+    // ---------- Avvio ----------
+
+    for (var i = 0; i < 15; i++) {
+        aggiungiRiga();
+    }
+    textareaAGriglia();
+    riempiGiu();
 </script>
 {% endblock %}
 {% block extra_css %}
@@ -153,11 +305,23 @@
     }
     .form-group input:focus { border-color: #8e44ad; outline: none; }
 
-    textarea {
-        width: 100%; padding: 8px 10px; border: 1px solid #ccc;
-        border-radius: 4px; font-family: monospace; font-size: 0.9em;
-        white-space: pre;
-        overflow-x: auto;
+   textarea {
+    font-size: 14px;
+    line-height: 21px;
+    background-image: linear-gradient(to bottom,
+        #ffffff 0, #ffffff 20px, #ddd 20px, #ddd 21px,
+        #f4ecf7 21px, #f4ecf7 41px, #ddd 41px, #ddd 42px);
+    background-size: 100% 42px;
+    background-attachment: local;
+    background-origin: content-box;
+    display: block;
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-family: monospace;
+    white-space: pre;
+    overflow-x: auto;
     }
     textarea:focus { border-color: #8e44ad; outline: none; }
 
@@ -181,6 +345,9 @@
     tr:nth-child(even):hover td { background: #f4ecf7; }
 
     .errore-title { color: #c0392b; border-bottom-color: #e74c3c; }
-
+    .section label { display: block; margin-bottom: 4px; }
+    #griglia input { width: 100%; border: 1px solid transparent; padding: 4px 6px; font-family: monospace; font-size: 14px; }
+    #griglia input:focus { border-color: #8e44ad; outline: none; }
+    .num { color: #888; text-align: right; width: 40px; user-select: none; }
 </style>
 {% endblock %}
