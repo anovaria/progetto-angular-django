@@ -169,6 +169,14 @@ MENU_CONFIG = [
         'app_name': 'agenzie',
     },
     {
+        'path': '/app/foresteria/',
+        'label': 'Foresteria',
+        'icon': 'house-door',
+        'desc': 'Gestione delle camere di foresteria',
+        'groups': ['agenzie', 'itd'],
+        'app_name': 'Foresteria',
+    },
+    {
         'path': '/app/merchandiser/solo-orari/',
         'label': 'Orari Merchandiser Pinfo',
         'icon': 'clock',
@@ -364,7 +372,7 @@ MENU_CONFIG = [
         'label': 'Ins. Art. 10001',
         'icon': 'plus-square',
         'desc': 'Sostituisce il file Excel Inser_Articoli_10001',
-        'groups': ['itd'],
+        'groups': ['itd','gruppoced'],
         'app_name': 'Ins. Art. 10001',
     },
     {

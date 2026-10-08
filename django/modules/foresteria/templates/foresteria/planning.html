@@ -1,30 +1,96 @@
 {% extends 'portal/base.html' %}
+{% block extra_css %}
+<style>
+  .planning tr {
+    border-color: #adb5bd !important;
+    border-width: 2px !important;
+  }
+  .planning th,
+  .planning td {
+    border: 2px solid #adb5bd !important;
+  }
+    .planning .cam-MB {
+    --bs-table-bg: #cfe2ff;
+  }
+  .planning .cam-CE {
+    --bs-table-bg: #d1e7dd;
+  }
+    .planning .col-camera {
+    text-align: left;
+    white-space: nowrap;
+    font-weight: 600;
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    background-color: var(--bs-table-bg);
+  }
+    .planning thead .col-camera {
+    --bs-table-bg: #506794;
+    color: #fff;
+  }
+  .planning tbody tr {
+    height: min(calc((100vh - 260px) / 2), 120px);
+  }
+  .planning {
+    table-layout: fixed;
+    width: calc(140px + {{ giorni|length }} * 70px);
+    min-width: 100%;
+  }
+  .planning .col-camera {
+    width: 140px;
+  }
+  .planning tbody td {
+    overflow-wrap: anywhere;
+  }
+</style>
+{% endblock %}
 {% block page_content %}
-<div class="container-fluid">
+{% for message in messages %}
+  <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show">
+    {{ message }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+{% endfor %}
+<div class="container-fluid p-2">
   <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
       <a href="{% url 'foresteria:planning' %}?anno={{ anno_prec }}&mese={{ mese_prec }}" class="btn btn-sm btn-outline-secondary">&laquo;</a>
-      <h5 class="mb-0">Foresteria – {{ mese }}/{{ anno }}</h5>
+      <h5 class="mb-0">Foresteria - {{ nome_mese }} {{ anno }}</h5>
       <a href="{% url 'foresteria:planning' %}?anno={{ anno_succ }}&mese={{ mese_succ }}" class="btn btn-sm btn-outline-secondary">&raquo;</a>
     </div>
-    <div class="card-body">
+    <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table table-bordered table-sm text-center">
+            <table class="table table-bordered table-sm text-center planning">
                 <thead>
                 <tr>
-                    <th>Camera</th>
+                    <th class="col-camera">Camera</th>
                     {% for giorno in giorni %}
-                    <th>{{ giorno }}</th>
+                    <th class="{% if giorno.oggi %}table-warning{% elif giorno.weekend %}table-secondary{% endif %}">
+                        {{ giorno.numero }}<br>
+                        <small class="fw-normal">{{ giorno.sigla }}</small>
+                    </th>
                     {% endfor %}
                 </tr>
                 </thead>
                 <tbody>
-                    {% for stanza in stanze %}
+                    {% for riga in griglia %}
                     <tr>
-                    <th>{{ stanza }}</th>
-                        {% for giorno in giorni %}
-                            <td></td>
-                        {% endfor %}
+                    <th class="col-camera cam-{{ riga.codice }}">{{ riga.camera }}</th>
+                    {% for cella in riga.celle %}
+                        {% if cella.prenotazione %}
+                            <td class="position-relative cam-{{ riga.codice }}">
+                            <a href="{% url 'foresteria:modifica' cella.prenotazione.pk %}" class="stretched-link text-decoration-none text-dark">
+                                {{ cella.prenotazione.cognome }}<br>
+                                <small class="text-muted">{{ cella.prenotazione.azienda }}</small>
+                            </a>
+                            </td>
+                        {% else %}
+                            <td class="position-relative {% if cella.oggi %}table-warning{% elif cella.weekend %}table-secondary{% endif %}">
+                            <a href="{% url 'foresteria:prenotazione' %}?camera={{ riga.codice }}&data={{ cella.data|date:'Y-m-d' }}"
+                                class="stretched-link"></a>
+                            </td>
+                        {% endif %}
+                    {% endfor %}
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -34,3 +100,4 @@
   </div>
 </div>
 {% endblock %}
+

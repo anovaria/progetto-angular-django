@@ -143,3 +143,4 @@ CACHES = {
         'LOCATION': f'C:/portale/django/cache_{ENV}',
     }
 }
+FORESTERIA_EMAIL_PULIZIE = ['silmaitalia@libero.it']

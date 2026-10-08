@@ -1,0 +1,71 @@
+{% extends 'portal/base.html' %}
+{% block extra_css %}
+<style>
+  .form-select:disabled {
+    background-image: none;
+  }
+</style>
+{% endblock %}
+{% block page_content %}
+<div class="container-fluid">
+  <div class="card" style="max-width: 600px;">
+    <div class="card-header">
+      <h5 class="mb-0">{% if prenotazione %}Modifica prenotazione{% else %}Nuova prenotazione{% endif %}</h5>
+    </div>
+    <div class="card-body">
+      <form method="post">
+        {% csrf_token %}
+        {% if form.non_field_errors %}
+          <div class="alert alert-danger">{{ form.non_field_errors|striptags }}</div>
+        {% endif %}
+        <div class="row mb-3">
+          <div class="col-12">
+            {{ form.camera.label_tag }}
+            {{ form.camera }}
+            <div class="text-danger small">{{ form.camera.errors|striptags }}</div>
+          </div>
+          <div class="col-md-6">
+            {{ form.cognome.label_tag }}
+            {{ form.cognome }}
+            <div class="text-danger small">{{ form.cognome.errors|striptags }}</div>
+          </div>
+          <div class="col-md-6">
+            {{ form.nome.label_tag }}
+            {{ form.nome }}
+            <div class="text-danger small">{{ form.nome.errors|striptags }}</div>
+          </div>
+          <div class="col-12">
+            {{ form.azienda.label_tag }}
+            {{ form.azienda }}
+            <div class="text-danger small">{{ form.azienda.errors|striptags }}</div>
+          </div>
+          <div class="col-md-6">
+            {{ form.data_arrivo.label_tag }}
+            {{ form.data_arrivo }}
+            <div class="text-danger small">{{ form.data_arrivo.errors|striptags }}</div>
+          </div>
+          <div class="col-md-6">
+            {{ form.data_partenza.label_tag }}
+            {{ form.data_partenza }}
+            <div class="text-danger small">{{ form.data_partenza.errors|striptags }}</div>
+          </div>
+          <div class="col-12">
+            {{ form.note.label_tag }}
+            {{ form.note }}
+            <div class="text-danger small">{{ form.note.errors|striptags }}</div>
+          </div>          
+        </div>
+        <button type="submit" class="btn btn-primary">Salva</button>
+        <a href="{% url 'foresteria:planning' %}" class="btn btn-outline-secondary">Annulla</a>
+      </form>
+      {% if prenotazione %}
+        <form method="post" action="{% url 'foresteria:cancella' prenotazione.pk %}" class="mt-3"
+              onsubmit="return confirm('Cancellare questa prenotazione? Verrà avvisata la ditta di pulizie.');">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-outline-danger">Cancella prenotazione</button>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
